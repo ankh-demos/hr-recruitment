@@ -1,0 +1,14 @@
+# Render.com deployment configuration
+# This file tells Render how to build and run your server
+
+# Build command
+buildCommand: npm install && npm run build
+
+# Start command  
+startCommand: npm start
+
+# Environment variables (set these in Render dashboard):
+# - PORT: 10000 (Render default)
+# - NODE_ENV: production
+# - JWT_SECRET: (generate a secure random string)
+# - CORS_ORIGIN: https://your-vercel-app.vercel.app

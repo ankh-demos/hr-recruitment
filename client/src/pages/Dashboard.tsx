@@ -1,0 +1,415 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { applicationsApi, employeesApi, resignedAgentsApi } from '../services/api';
+import { Application, Employee } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+export function Dashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    totalApplications: 0,
+    newApplications: 0,
+    interviewingApplications: 0,
+    iconnectApplications: 0,
+    totalEmployees: 0,
+    newThisWeek: 0
+  });
+  const [employeeStats, setEmployeeStats] = useState({
+    active: 0,           // Идэвхтэй
+    new_0_3: 0,          // Шинэ 0-3 сар
+    inactive_transaction: 0, // Идэвхгүй, гүйлгээтэй
+    inactive: 0,         // Идэвхгүй
+    active_no_transaction: 0, // Идэвхтэй, гүйлгээгүй
+    on_leave: 0,         // Чөлөөтэй
+    maternity_leave: 0,  // Жирэмсний амралт
+    team_member: 0,      // Багийн гишүүн
+    resigned: 0,         // Гарсан
+    totalIconnect: 0,    // Нийт iConnect
+    totalAgents: 0,      // Нийт агент
+    quality: 0           // Чанар
+  });
+  const [recentApplications, setRecentApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Chart data
+  const [statusDistribution, setStatusDistribution] = useState<{status: string; count: number; color: string}[]>([]);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [applications, employees, resignedAgents] = await Promise.all([
+          applicationsApi.getAll(),
+          employeesApi.getAll(),
+          resignedAgentsApi.getAll()
+        ]);
+
+        // Calculate new applications this week
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const newThisWeek = applications.filter((a: Application) => 
+          new Date(a.createdAt) >= oneWeekAgo
+        ).length;
+
+        // Calculate stats
+        const newApps = applications.filter((a: Application) => a.status === 'new').length;
+        const interviewingApps = applications.filter((a: Application) => a.status === 'interviewing').length;
+        const iconnectApps = applications.filter((a: Application) => a.status === 'iconnect').length;
+        const resignedCount = resignedAgents.length;
+
+        setStats({
+          totalApplications: applications.length,
+          newApplications: newApps,
+          interviewingApplications: interviewingApps,
+          iconnectApplications: iconnectApps,
+          totalEmployees: employees.length,
+          newThisWeek: newThisWeek
+        });
+
+        // Calculate employee stats
+        const activeCount = employees.filter((e: Employee) => e.status === 'active').length;
+        const new03Count = employees.filter((e: Employee) => e.status === 'new_0_3').length;
+        const inactiveTransactionCount = employees.filter((e: Employee) => e.status === 'inactive_transaction').length;
+        const inactiveCount = employees.filter((e: Employee) => e.status === 'inactive').length;
+        const activeNoTransactionCount = employees.filter((e: Employee) => e.status === 'active_no_transaction').length;
+        const onLeaveCount = employees.filter((e: Employee) => e.status === 'on_leave').length;
+        const maternityLeaveCount = employees.filter((e: Employee) => e.status === 'maternity_leave').length;
+        const teamMemberCount = employees.filter((e: Employee) => e.status === 'team_member').length;
+        // Note: resignedCount already calculated from resignedAgents above
+        const totalAgents = employees.length;
+        const qualitySum = activeCount + new03Count + inactiveTransactionCount;
+        const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
+
+        setEmployeeStats({
+          active: activeCount,
+          new_0_3: new03Count,
+          inactive_transaction: inactiveTransactionCount,
+          inactive: inactiveCount,
+          active_no_transaction: activeNoTransactionCount,
+          on_leave: onLeaveCount,
+          maternity_leave: maternityLeaveCount,
+          team_member: teamMemberCount,
+          resigned: resignedCount,
+          totalIconnect: iconnectApps,
+          totalAgents: totalAgents,
+          quality: quality
+        });
+
+        // Status distribution for chart
+        const statusCounts = applications.reduce((acc: Record<string, number>, a: Application) => {
+          acc[a.status] = (acc[a.status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const statusColors: Record<string, string> = {
+          'new': '#3B82F6',
+          'interviewing': '#F59E0B',
+          'iconnect': '#10B981',
+          'fireup': '#8B5CF6',
+          'cancelled': '#EF4444'
+        };
+
+        setStatusDistribution(Object.entries(statusCounts).map(([status, count]) => ({
+          status,
+          count: count as number,
+          color: statusColors[status] || '#6B7280'
+        })));
+
+        setRecentApplications(applications.slice(0, 5));
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const totalForChart = statusDistribution.reduce((sum, item) => sum + item.count, 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+        <h1 className="text-2xl font-bold">Сайн байна у|у, {user?.fullName || 'Менежер'}! 👋</h1>
+        <p className="mt-2 text-blue-100">Remax HR системийн хяналтын самбар</p>
+      </div>
+
+      {/* Main Stats */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl border-l-4 border-blue-500">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Нийт анкет</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.totalApplications}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl border-l-4 border-yellow-500">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <svg className="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Ярилцлага хийж байгаа</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.interviewingApplications}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl border-l-4 border-green-500">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Ажилтнууд</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.totalEmployees}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl border-l-4 border-purple-500">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
+                  <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Энэ 7 хоногт шинэ</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.newThisWeek}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="bg-white p-5 shadow rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">Шинэ анкет</span>
+            <span className="text-2xl font-bold text-gray-900">{stats.newApplications}</span>
+          </div>
+          <div className="mt-2">
+            <span className="text-blue-600 text-sm font-medium">Шинээр ирсэн</span>
+          </div>
+        </div>
+        <div className="bg-white p-5 shadow rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">iConnect хувь</span>
+            <span className="text-2xl font-bold text-gray-900">
+              {stats.totalApplications > 0 
+                ? Math.round((stats.iconnectApplications / stats.totalApplications) * 100) 
+                : 0}%
+            </span>
+          </div>
+          <div className="mt-2">
+            <span className="text-green-600 text-sm font-medium">Ажилтан болсон</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Employee Status Stats */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="bg-green-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-green-700">{employeeStats.active}</p>
+            <p className="text-sm text-green-600">Идэвхтэй</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_3}</p>
+            <p className="text-sm text-blue-600">Шинэ 0-3 сар</p>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
+            <p className="text-sm text-yellow-600">Идэвхгүй, гүйлгээтэй</p>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
+            <p className="text-sm text-gray-600">Идэвхгүй</p>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
+            <p className="text-sm text-orange-600">Идэвхтэй, гүйлгээгүй</p>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave}</p>
+            <p className="text-sm text-purple-600">Чөлөөтэй</p>
+          </div>
+          <div className="bg-pink-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-pink-700">{employeeStats.maternity_leave}</p>
+            <p className="text-sm text-pink-600">Жирэмсний амралт</p>
+          </div>
+          <div className="bg-indigo-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-indigo-700">{employeeStats.team_member}</p>
+            <p className="text-sm text-indigo-600">Багийн гишүүн</p>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-red-700">{employeeStats.resigned}</p>
+            <p className="text-sm text-red-600">Гарсан</p>
+          </div>
+          <div className="bg-teal-50 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-teal-700">{employeeStats.totalIconnect}</p>
+            <p className="text-sm text-teal-600">Нийт iConnect</p>
+          </div>
+          <div className="bg-slate-100 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-slate-700">{employeeStats.totalAgents}</p>
+            <p className="text-sm text-slate-600">Нийт агент</p>
+          </div>
+          <div className="bg-emerald-100 p-4 rounded-lg text-center">
+            <p className="text-2xl font-bold text-emerald-700">{employeeStats.quality.toFixed(1)}%</p>
+            <p className="text-sm text-emerald-600">Чанар</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts and Lists */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Status Distribution Chart */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Анкетын төлөв</h3>
+          {totalForChart > 0 ? (
+            <div className="space-y-4">
+              {statusDistribution.map((item) => (
+                <div key={item.status}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="capitalize text-gray-600">
+                      {item.status === 'new' ? 'Шинэ' :
+                       item.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                       item.status === 'iconnect' ? 'iConnect' :
+                       item.status === 'fireup' ? 'Fire UP' :
+                       item.status === 'cancelled' ? 'Цуцалсан' : item.status}
+                    </span>
+                    <span className="font-medium">{item.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className="h-3 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${(item.count / totalForChart) * 100}%`,
+                        backgroundColor: item.color
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">Мэдээлэл байхгүй</p>
+          )}
+        </div>
+
+        {/* Recent Applications */}
+        <div className="bg-white shadow rounded-lg lg:col-span-2">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Сүүлийн анкетууд</h3>
+          </div>
+          <ul className="divide-y divide-gray-200">
+            {recentApplications.length === 0 ? (
+              <li className="px-4 py-8 text-gray-500 text-center">Анкет байхгүй</li>
+            ) : (
+              recentApplications.map((app) => (
+                <li key={app.id} className="px-4 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {app.lastName} {app.firstName}
+                      </p>
+                      <p className="text-sm text-gray-500">{app.email}</p>
+                    </div>
+                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${
+                      app.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                      app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                      app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                      app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {app.status === 'new' ? 'Шинэ' :
+                       app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                       app.status === 'iconnect' ? 'iConnect' :
+                       app.status === 'fireup' ? 'Fire UP' : 'Цуцалсан'}
+                    </span>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+          <div className="px-4 py-4 border-t border-gray-200">
+            <Link to="/applications" className="text-sm text-blue-600 hover:text-blue-500 font-medium">
+              Бүх анкетыг харах →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Түргэн үйлдлүүд</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <Link to="/employees" className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-8 h-8 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Ажилчид</span>
+          </Link>
+          <Link to="/applications" className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-8 h-8 text-purple-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Анкетууд</span>
+          </Link>
+          <Link to="/admin" className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Тохиргоо</span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

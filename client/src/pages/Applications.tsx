@@ -1,0 +1,1026 @@
+import { useEffect, useState, useMemo } from 'react';
+import { Application, ApplicationMeeting, User } from '../types';
+import { usersApi, applicationsApi } from '../services/api';
+
+const API_BASE = '/api';
+
+// Application status options
+const APPLICATION_STATUSES = [
+  { value: 'new', label: 'Шинэ', color: 'bg-blue-100 text-blue-800' },
+  { value: 'interviewing', label: 'Ярилцлага хийж байгаа', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'fireup', label: 'Fire UP', color: 'bg-purple-100 text-purple-800' },
+  { value: 'iconnect', label: 'iConnect', color: 'bg-green-100 text-green-800' },
+  { value: 'cancelled', label: 'Цуцалсан', color: 'bg-red-100 text-red-800' }
+];
+
+export function Applications() {
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  
+  // Status Filter State (multi-select)
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+  
+  // Meeting Modal State
+  const [meetingModalOpen, setMeetingModalOpen] = useState(false);
+  const [currentMeetingLevel, setCurrentMeetingLevel] = useState<1 | 2 | 3>(1);
+  const [meetingForm, setMeetingForm] = useState<ApplicationMeeting>({
+    date: '',
+    interviewerId: '',
+    interviewerName: '',
+    notes: ''
+  });
+  
+  // Fire UP Modal State
+  const [fireUpModalOpen, setFireUpModalOpen] = useState(false);
+  const [trainingNumber, setTrainingNumber] = useState('');
+  
+  // iConnect Confirmation State
+  const [iconnectConfirmOpen, setIconnectConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    loadApplications();
+    loadUsers();
+  }, []);
+
+  // Filtered applications based on selected statuses
+  const filteredApplications = useMemo(() => {
+    if (selectedStatuses.length === 0) {
+      return applications;
+    }
+    return applications.filter(app => selectedStatuses.includes(app.status));
+  }, [applications, selectedStatuses]);
+
+  function toggleStatusFilter(status: string) {
+    setSelectedStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  }
+
+  async function loadUsers() {
+    try {
+      const data = await usersApi.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  }
+
+  async function loadApplications() {
+    try {
+      const response = await fetch(`${API_BASE}/applications`);
+      const data = await response.json();
+      setApplications(data);
+    } catch (error) {
+      console.error('Failed to load applications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateStatus(id: string, status: Application['status']) {
+    try {
+      await fetch(`${API_BASE}/applications/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      loadApplications();
+    } catch (error) {
+      console.error('Failed to update application:', error);
+    }
+  }
+
+  // Open Fire UP modal
+  function openFireUpModal() {
+    if (!selectedApplication) return;
+    setTrainingNumber(selectedApplication.trainingNumber || '');
+    setFireUpModalOpen(true);
+  }
+
+  // Save Fire UP with training number
+  async function saveFireUp() {
+    if (!selectedApplication) return;
+    try {
+      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'fireup', trainingNumber })
+      });
+      setFireUpModalOpen(false);
+      setTrainingNumber('');
+      loadApplications();
+      // Update selected application
+      setSelectedApplication({ ...selectedApplication, status: 'fireup', trainingNumber });
+    } catch (error) {
+      console.error('Failed to update to Fire UP:', error);
+    }
+  }
+
+  // Open iConnect confirmation
+  function openIconnectConfirm() {
+    if (!selectedApplication) return;
+    setIconnectConfirmOpen(true);
+  }
+
+  // Confirm iConnect and move to employees
+  async function confirmIconnect() {
+    if (!selectedApplication) return;
+    try {
+      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'iconnect' })
+      });
+      setIconnectConfirmOpen(false);
+      setSelectedApplication(null);
+      loadApplications();
+    } catch (error) {
+      console.error('Failed to move to iConnect:', error);
+    }
+  }
+
+  async function deleteApplication(id: string) {
+    if (!confirm('Энэ анкетыг устгах уу?')) return;
+    try {
+      await fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' });
+      loadApplications();
+      if (selectedApplication?.id === id) {
+        setSelectedApplication(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete application:', error);
+    }
+  }
+
+  function openMeetingModal(level: 1 | 2 | 3) {
+    if (!selectedApplication) return;
+    
+    const existingMeeting = level === 1 ? selectedApplication.meeting1 :
+                            level === 2 ? selectedApplication.meeting2 :
+                            selectedApplication.meeting3;
+    
+    setCurrentMeetingLevel(level);
+    setMeetingForm(existingMeeting || {
+      date: '',
+      interviewerId: '',
+      interviewerName: '',
+      notes: ''
+    });
+    setMeetingModalOpen(true);
+  }
+
+  async function saveMeeting() {
+    if (!selectedApplication) return;
+    
+    const selectedUser = users.find(u => u.id === meetingForm.interviewerId);
+    const meetingData: ApplicationMeeting = {
+      ...meetingForm,
+      interviewerName: selectedUser?.fullName || ''
+    };
+    
+    const updateData: Partial<Application> = {};
+    if (currentMeetingLevel === 1) updateData.meeting1 = meetingData;
+    else if (currentMeetingLevel === 2) updateData.meeting2 = meetingData;
+    else updateData.meeting3 = meetingData;
+    
+    try {
+      await applicationsApi.update(selectedApplication.id, updateData);
+      await loadApplications();
+      // Update selected application with new data
+      const updatedApp = applications.find(a => a.id === selectedApplication.id);
+      if (updatedApp) {
+        setSelectedApplication({ ...updatedApp, ...updateData });
+      }
+      setMeetingModalOpen(false);
+    } catch (error) {
+      console.error('Failed to save meeting:', error);
+    }
+  }
+
+  function getMeetingStatus(meeting?: ApplicationMeeting): 'empty' | 'filled' {
+    return meeting?.date ? 'filled' : 'empty';
+  }
+
+  function getStatusLabel(status: string) {
+    return APPLICATION_STATUSES.find(s => s.value === status)?.label || status;
+  }
+
+  // Export to CSV
+  function exportToCSV() {
+    const headers = [
+      'Овог', 'Нэр', 'Ургийн овог', 'Сонирхож буй оффис', 'Имэйл', 'Утас', 'Яаралтай утас',
+      'Регистрийн дугаар', 'Төрсөн огноо', 'Хүйс', 'Төрсөн газар', 'Үндэс угсаа',
+      'Гэрийн хаяг', 'Facebook', 'Жолооны эрх', 'Бусад ур чадвар', 'Давуу/сул тал',
+      'Мэдээллийн эх сурвалж', 'Уулзалт 1 огноо', 'Уулзалт 1 хийсэн', 'Уулзалт 2 огноо', 'Уулзалт 2 хийсэн',
+      'Уулзалт 3 огноо', 'Уулзалт 3 хийсэн', 'Сургалтын дугаар', 'Төлөв', 'Бүртгэсэн огноо'
+    ];
+    
+    const rows = filteredApplications.map(app => [
+      app.lastName || '',
+      app.firstName || '',
+      app.familyName || '',
+      app.interestedOffice || '',
+      app.email || '',
+      app.phone || '',
+      app.emergencyPhone || '',
+      app.registerNumber || '',
+      app.birthDate || '',
+      app.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй',
+      app.birthPlace || '',
+      app.ethnicity || '',
+      app.homeAddress || '',
+      app.facebook || '',
+      app.hasDriverLicense ? 'Тийм' : 'Үгүй',
+      app.otherSkills || '',
+      app.strengthsWeaknesses || '',
+      app.referralSource || '',
+      app.meeting1?.date || '',
+      app.meeting1?.interviewerName || '',
+      app.meeting2?.date || '',
+      app.meeting2?.interviewerName || '',
+      app.meeting3?.date || '',
+      app.meeting3?.interviewerName || '',
+      app.trainingNumber || '',
+      getStatusLabel(app.status),
+      app.createdAt ? new Date(app.createdAt).toLocaleDateString('mn-MN') : ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `applications_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (loading) {
+    return <div className="text-center py-8">Loading...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Анкетууд ({applications.length})</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={exportToCSV}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            CSV
+          </button>
+          <a
+            href="/apply"
+            target="_blank"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+          >
+            Анкет илгээх холбоос
+          </a>
+        </div>
+      </div>
+
+      {/* Status Filter */}
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="text-sm font-medium text-gray-700">Төлөвөөр шүүх:</span>
+          <div className="relative">
+            <button
+              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center gap-2"
+            >
+              <span>{selectedStatuses.length === 0 ? 'Бүгд' : `${selectedStatuses.length} сонгосон`}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {statusFilterOpen && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                <div className="p-2">
+                  {APPLICATION_STATUSES.map(status => (
+                    <label
+                      key={status.value}
+                      className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatuses.includes(status.value)}
+                        onChange={() => toggleStatusFilter(status.value)}
+                        className="rounded text-indigo-600"
+                      />
+                      <span className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="border-t p-2">
+                  <button
+                    onClick={() => { setSelectedStatuses([]); setStatusFilterOpen(false); }}
+                    className="w-full text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    Цэвэрлэх
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          {selectedStatuses.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {selectedStatuses.map(s => {
+                const status = APPLICATION_STATUSES.find(st => st.value === s);
+                return status ? (
+                  <span key={s} className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
+                    {status.label}
+                  </span>
+                ) : null;
+              })}
+            </div>
+          )}
+          <div className="ml-auto flex rounded-lg overflow-hidden border border-gray-300">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-2 text-sm font-medium ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Жагсаалт
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Хүснэгт
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {viewMode === 'list' ? (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Applications List */}
+        <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 className="font-medium text-gray-900">Өргөдлүүд ({filteredApplications.length}/{applications.length})</h2>
+          </div>
+          <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+            {filteredApplications.length === 0 ? (
+              <li className="px-4 py-4 text-gray-500 text-center">Анкет байхгүй</li>
+            ) : (
+              filteredApplications.map((app) => (
+                <li
+                  key={app.id}
+                  onClick={() => setSelectedApplication(app)}
+                  className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${
+                    selectedApplication?.id === app.id ? 'bg-indigo-50' : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {app.lastName} {app.firstName}
+                      </p>
+                      <p className="text-sm text-gray-500">{app.email}</p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(app.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      app.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                      app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                      app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                      app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {app.status === 'new' ? 'Шинэ' :
+                       app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                       app.status === 'iconnect' ? 'iConnect' :
+                       app.status === 'fireup' ? 'Fire UP' : 'Цуцалсан'}
+                    </span>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        {/* Application Details */}
+        <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+          {selectedApplication ? (
+            <div className="p-6 max-h-[700px] overflow-y-auto">
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-4">
+                  {selectedApplication.photoUrl && (
+                    <img
+                      src={selectedApplication.photoUrl}
+                      alt="Photo"
+                      className="w-20 h-20 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {selectedApplication.familyName} {selectedApplication.lastName} {selectedApplication.firstName}
+                    </h2>
+                    <p className="text-gray-500">{selectedApplication.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => deleteApplication(selectedApplication.id)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Устгах
+                </button>
+              </div>
+
+              {/* Status Actions */}
+              <div className="mb-6 flex flex-wrap gap-2">
+                <button
+                  onClick={() => updateStatus(selectedApplication.id, 'new')}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                >
+                  Шинэ
+                </button>
+                <button
+                  onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
+                  className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                >
+                  Ярилцлага хийж байгаа
+                </button>
+                <button
+                  onClick={openFireUpModal}
+                  className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                >
+                  Fire UP
+                  {selectedApplication.trainingNumber && (
+                    <span className="ml-1 text-xs">({selectedApplication.trainingNumber})</span>
+                  )}
+                </button>
+                <button
+                  onClick={openIconnectConfirm}
+                  className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
+                >
+                  iConnect
+                </button>
+                <button
+                  onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
+                  className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                >
+                  Цуцлах
+                </button>
+              </div>
+
+              {/* Meeting Buttons */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Уулзалтууд</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => openMeetingModal(1)}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                      getMeetingStatus(selectedApplication.meeting1) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                    }`}
+                  >
+                    Уулзалт 1
+                    {selectedApplication.meeting1?.date && (
+                      <span className="ml-2 text-xs">✓</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => openMeetingModal(2)}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                      getMeetingStatus(selectedApplication.meeting2) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                    }`}
+                  >
+                    Уулзалт 2
+                    {selectedApplication.meeting2?.date && (
+                      <span className="ml-2 text-xs">✓</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => openMeetingModal(3)}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                      getMeetingStatus(selectedApplication.meeting3) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                    }`}
+                  >
+                    Уулзалт 3
+                    {selectedApplication.meeting3?.date && (
+                      <span className="ml-2 text-xs">✓</span>
+                    )}
+                  </button>
+                </div>
+                {/* Display meeting info if exists */}
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                  {selectedApplication.meeting1?.date && (
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="font-medium">Уулзалт 1</p>
+                      <p className="text-gray-600">{selectedApplication.meeting1.date}</p>
+                      <p className="text-gray-600">{selectedApplication.meeting1.interviewerName}</p>
+                    </div>
+                  )}
+                  {selectedApplication.meeting2?.date && (
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="font-medium">Уулзалт 2</p>
+                      <p className="text-gray-600">{selectedApplication.meeting2.date}</p>
+                      <p className="text-gray-600">{selectedApplication.meeting2.interviewerName}</p>
+                    </div>
+                  )}
+                  {selectedApplication.meeting3?.date && (
+                    <div className="p-2 bg-gray-50 rounded">
+                      <p className="font-medium">Уулзалт 3</p>
+                      <p className="text-gray-600">{selectedApplication.meeting3.date}</p>
+                      <p className="text-gray-600">{selectedApplication.meeting3.interviewerName}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Personal Info */}
+              <section className="mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Хувийн мэдээлэл</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-gray-500">Оффис:</span> {selectedApplication.interestedOffice}</div>
+                  <div><span className="text-gray-500">Ажилд орох огноо:</span> {selectedApplication.availableDate}</div>
+                  <div><span className="text-gray-500">Төрсөн газар:</span> {selectedApplication.birthPlace}</div>
+                  <div><span className="text-gray-500">Үндэс угсаа:</span> {selectedApplication.ethnicity}</div>
+                  <div><span className="text-gray-500">Хүйс:</span> {selectedApplication.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</div>
+                  <div><span className="text-gray-500">Төрсөн огноо:</span> {selectedApplication.birthDate}</div>
+                  <div><span className="text-gray-500">Регистр:</span> {selectedApplication.registerNumber}</div>
+                  <div><span className="text-gray-500">Гэрийн хаяг:</span> {selectedApplication.homeAddress}</div>
+                  <div><span className="text-gray-500">Утас:</span> {selectedApplication.phone}</div>
+                  <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
+                  <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
+                  <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
+                </div>
+              </section>
+
+              {/* Family Members */}
+              {selectedApplication.familyMembers.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гэр бүлийн байдал</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Хэн болох</th>
+                          <th className="px-3 py-2 text-left">Овог нэр</th>
+                          <th className="px-3 py-2 text-left">Төрсөн газар</th>
+                          <th className="px-3 py-2 text-left">Мэргэжил</th>
+                          <th className="px-3 py-2 text-left">Утас</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedApplication.familyMembers.map((member, i) => (
+                          <tr key={i} className="border-b">
+                            <td className="px-3 py-2">{member.relationship}</td>
+                            <td className="px-3 py-2">{member.fullName}</td>
+                            <td className="px-3 py-2">{member.birthPlace}</td>
+                            <td className="px-3 py-2">{member.profession}</td>
+                            <td className="px-3 py-2">{member.phone}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Education */}
+              {selectedApplication.education.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Боловсрол</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Сургууль</th>
+                          <th className="px-3 py-2 text-left">Элссэн</th>
+                          <th className="px-3 py-2 text-left">Төгссөн</th>
+                          <th className="px-3 py-2 text-left">Мэргэжил</th>
+                          <th className="px-3 py-2 text-left">Голч</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedApplication.education.map((edu, i) => (
+                          <tr key={i} className="border-b">
+                            <td className="px-3 py-2">{edu.school}</td>
+                            <td className="px-3 py-2">{edu.enrollmentDate}</td>
+                            <td className="px-3 py-2">{edu.graduationDate}</td>
+                            <td className="px-3 py-2">{edu.major}</td>
+                            <td className="px-3 py-2">{edu.gpa}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Languages */}
+              {selectedApplication.languages.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гадаад хэл</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedApplication.languages.map((lang, i) => (
+                      <span key={i} className="px-3 py-1 bg-gray-100 rounded text-sm">
+                        {lang.language} - {lang.level}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Work Experience */}
+              {selectedApplication.workExperience.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Ажлын туршлага</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Байгууллага</th>
+                          <th className="px-3 py-2 text-left">Төрөл</th>
+                          <th className="px-3 py-2 text-left">Албан тушаал</th>
+                          <th className="px-3 py-2 text-left">Орсон</th>
+                          <th className="px-3 py-2 text-left">Гарсан</th>
+                          <th className="px-3 py-2 text-left">Цалин</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedApplication.workExperience.map((work, i) => (
+                          <tr key={i} className="border-b">
+                            <td className="px-3 py-2">{work.companyName}</td>
+                            <td className="px-3 py-2">{work.businessType}</td>
+                            <td className="px-3 py-2">{work.position}</td>
+                            <td className="px-3 py-2">{work.startDate}</td>
+                            <td className="px-3 py-2">{work.endDate}</td>
+                            <td className="px-3 py-2">{work.salary}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Additional Info */}
+              {(selectedApplication.otherSkills || selectedApplication.strengthsWeaknesses) && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Нэмэлт мэдээлэл</h3>
+                  {selectedApplication.otherSkills && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-500 mb-1">Бусад чадвар:</p>
+                      <p className="text-sm">{selectedApplication.otherSkills}</p>
+                    </div>
+                  )}
+                  {selectedApplication.strengthsWeaknesses && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Давуу/сул тал:</p>
+                      <p className="text-sm">{selectedApplication.strengthsWeaknesses}</p>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Awards */}
+              {selectedApplication.awards.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Шагнал</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Байгууллага</th>
+                          <th className="px-3 py-2 text-left">Он</th>
+                          <th className="px-3 py-2 text-left">Шагналын нэр</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedApplication.awards.map((award, i) => (
+                          <tr key={i} className="border-b">
+                            <td className="px-3 py-2">{award.organization}</td>
+                            <td className="px-3 py-2">{award.year}</td>
+                            <td className="px-3 py-2">{award.awardName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Signature */}
+              {selectedApplication.signatureUrl && (
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гарын үсэг</h3>
+                  <img src={selectedApplication.signatureUrl} alt="Signature" className="max-h-16" />
+                </section>
+              )}
+
+              <div className="text-sm text-gray-500 pt-4 border-t">
+                <p>Мэдээлэл авсан эх сурвалж: {selectedApplication.referralSource}</p>
+                <p>Огноо: {new Date(selectedApplication.createdAt).toLocaleString()}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              Анкет сонгоно уу
+            </div>
+          )}
+        </div>
+      </div>
+      ) : (
+      /* Table View */
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ургийн овог</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Утас</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Яаралтай</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Регистр</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрсөн</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хүйс</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 1</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 2</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 3</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сургалт №</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Бүртгэсэн</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredApplications.length === 0 ? (
+                <tr>
+                  <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
+                    Анкет байхгүй
+                  </td>
+                </tr>
+              ) : (
+                filteredApplications.map((app) => {
+                  const statusInfo = APPLICATION_STATUSES.find(s => s.value === app.status);
+                  return (
+                    <tr 
+                      key={app.id} 
+                      onClick={() => { setSelectedApplication(app); setViewMode('list'); }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {app.photoUrl ? (
+                          <img src={app.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-indigo-600">
+                              {app.firstName?.charAt(0) || ''}{app.lastName?.charAt(0) || ''}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{app.lastName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{app.firstName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.familyName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.interestedOffice || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.email || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.phone || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.emergencyPhone || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.registerNumber || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.birthDate ? new Date(app.birthDate).toLocaleDateString('mn-MN') : '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.gender === 'male' ? 'Эр' : 'Эм'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {app.meeting1?.date ? (
+                          <span className="text-green-600 text-xs">{new Date(app.meeting1.date).toLocaleDateString('mn-MN')}</span>
+                        ) : <span className="text-gray-400">-</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {app.meeting2?.date ? (
+                          <span className="text-green-600 text-xs">{new Date(app.meeting2.date).toLocaleDateString('mn-MN')}</span>
+                        ) : <span className="text-gray-400">-</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {app.meeting3?.date ? (
+                          <span className="text-green-600 text-xs">{new Date(app.meeting3.date).toLocaleDateString('mn-MN')}</span>
+                        ) : <span className="text-gray-400">-</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.trainingNumber || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}>
+                          {statusInfo?.label || app.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">
+                        {app.createdAt ? new Date(app.createdAt).toLocaleDateString('mn-MN') : '-'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
+
+      {/* Meeting Modal */}
+      {meetingModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Уулзалт {currentMeetingLevel}
+                </h3>
+                <button
+                  onClick={() => setMeetingModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Уулзалт хийсэн огноо
+                  </label>
+                  <input
+                    type="date"
+                    value={meetingForm.date}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, date: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Уулзалт хийсэн ажилтан
+                  </label>
+                  <select
+                    value={meetingForm.interviewerId}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, interviewerId: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Сонгоно уу...</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Нэмэлт тэмдэглэл
+                  </label>
+                  <textarea
+                    value={meetingForm.notes}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, notes: e.target.value })}
+                    rows={4}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Тэмдэглэл бичих..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setMeetingModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Болих
+                </button>
+                <button
+                  onClick={saveMeeting}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                >
+                  Хадгалах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fire UP Modal */}
+      {fireUpModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Fire UP</h3>
+                <button
+                  onClick={() => setFireUpModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Сургалтын дугаар
+                  </label>
+                  <input
+                    type="number"
+                    value={trainingNumber}
+                    onChange={(e) => setTrainingNumber(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Сургалтын дугаар оруулах..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setFireUpModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Болих
+                </button>
+                <button
+                  onClick={saveFireUp}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Хадгалах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* iConnect Confirmation Modal */}
+      {iconnectConfirmOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">iConnect баталгаажуулалт</h3>
+                <button
+                  onClick={() => setIconnectConfirmOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-lg font-medium text-gray-900">Үндсэн агентаар бүртгэх үү?</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Энэ үйлдлийг хийснээр анкет ажилтны жагсаалт руу шилжинэ.
+                </p>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setIconnectConfirmOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Болих
+                </button>
+                <button
+                  onClick={confirmIconnect}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Тийм, бүртгэх
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

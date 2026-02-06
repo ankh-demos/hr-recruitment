@@ -1,0 +1,582 @@
+import { useEffect, useState, useMemo } from 'react';
+import { AgentRank, RankLevel, Employee } from '../types';
+import { agentRanksApi, employeesApi } from '../services/api';
+
+const RANK_LEVELS: RankLevel[] = ['Стандарт', 'Силвер', 'Голд', 'Платиниум', 'Даймонд'];
+
+const RANK_COLORS: Record<RankLevel, string> = {
+  'Стандарт': 'bg-gray-100 text-gray-800',
+  'Силвер': 'bg-slate-200 text-slate-800',
+  'Голд': 'bg-yellow-100 text-yellow-800',
+  'Платиниум': 'bg-purple-100 text-purple-800',
+  'Даймонд': 'bg-blue-100 text-blue-800'
+};
+
+// Calculate end date as exactly +1 year from start date
+function calculateEndDate(startDate: string): string {
+  const date = new Date(startDate);
+  date.setFullYear(date.getFullYear() + 1);
+  return date.toISOString().split('T')[0];
+}
+
+// Check if rank is currently valid
+function isRankValid(endDate: string): boolean {
+  const today = new Date().toISOString().split('T')[0];
+  return endDate >= today;
+}
+
+export function Ranks() {
+  const [agentRanks, setAgentRanks] = useState<AgentRank[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRank, setSelectedRank] = useState<AgentRank | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  
+  // Create/Add modal
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    agentId: '',
+    agentName: '',
+    contractNumber: '',
+    rank: 'Стандарт' as RankLevel,
+    startDate: ''
+  });
+  
+  // Upgrade rank modal
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeForm, setUpgradeForm] = useState({
+    rank: 'Стандарт' as RankLevel,
+    startDate: ''
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredRanks = useMemo(() => {
+    return agentRanks.filter(rank => {
+      const searchLower = searchTerm.toLowerCase();
+      return searchTerm === '' || 
+        rank.agentName.toLowerCase().includes(searchLower) ||
+        rank.agentId.toLowerCase().includes(searchLower);
+    });
+  }, [agentRanks, searchTerm]);
+
+  async function loadData() {
+    try {
+      const [ranksData, employeesData] = await Promise.all([
+        agentRanksApi.getAll(),
+        employeesApi.getAll()
+      ]);
+      setAgentRanks(ranksData);
+      setEmployees(employeesData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Get employees with MLS that don't have rank records yet
+  const availableEmployees = useMemo(() => {
+    const existingAgentIds = agentRanks.map(r => r.agentId);
+    return employees.filter(e => e.mls && !existingAgentIds.includes(e.mls));
+  }, [employees, agentRanks]);
+
+  async function handleCreate() {
+    if (!createForm.agentId || !createForm.startDate) return;
+    try {
+      await agentRanksApi.create({
+        agentId: createForm.agentId,
+        agentName: createForm.agentName,
+        contractNumber: createForm.contractNumber,
+        rank: createForm.rank,
+        startDate: createForm.startDate
+      });
+      setCreateModalOpen(false);
+      setCreateForm({ agentId: '', agentName: '', contractNumber: '', rank: 'Стандарт', startDate: '' });
+      loadData();
+    } catch (error) {
+      console.error('Failed to create agent rank:', error);
+    }
+  }
+
+  async function handleUpgrade() {
+    if (!selectedRank || !upgradeForm.startDate) return;
+    try {
+      await agentRanksApi.updateRank(selectedRank.id, {
+        rank: upgradeForm.rank,
+        startDate: upgradeForm.startDate
+      });
+      setUpgradeModalOpen(false);
+      setUpgradeForm({ rank: 'Стандарт', startDate: '' });
+      loadData();
+      // Refresh selected rank
+      const updated = await agentRanksApi.getById(selectedRank.id);
+      setSelectedRank(updated);
+    } catch (error) {
+      console.error('Failed to upgrade rank:', error);
+    }
+  }
+
+  function openUpgradeModal() {
+    if (!selectedRank) return;
+    // Suggest next rank level
+    const currentIndex = RANK_LEVELS.indexOf(selectedRank.currentRank);
+    const nextRank = currentIndex < RANK_LEVELS.length - 1 
+      ? RANK_LEVELS[currentIndex + 1] 
+      : selectedRank.currentRank;
+    setUpgradeForm({
+      rank: nextRank,
+      startDate: new Date().toISOString().split('T')[0]
+    });
+    setUpgradeModalOpen(true);
+  }
+
+  function handleEmployeeSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const mls = e.target.value;
+    const employee = employees.find(emp => emp.mls === mls);
+    if (employee) {
+      setCreateForm({
+        ...createForm,
+        agentId: mls,
+        agentName: `${employee.lastName} ${employee.firstName}`
+      });
+    }
+  }
+
+  // Export to CSV
+  function exportToCSV() {
+    const headers = [
+      'Агентын нэр', 'ID (MLS)', 'Гэрээний дугаар', 'Одоогийн цол',
+      'Гэрээ эхэлсэн', 'Гэрээ дуусах', 'Төлөв', 'Түүхийн тоо', 'Бүртгэсэн огноо'
+    ];
+    
+    const rows = filteredRanks.map(rank => [
+      rank.agentName || '',
+      rank.agentId || '',
+      rank.contractNumber || '',
+      rank.currentRank || '',
+      rank.currentStartDate || '',
+      rank.currentEndDate || '',
+      isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан',
+      rank.rankHistory?.length.toString() || '0',
+      rank.createdAt ? new Date(rank.createdAt).toLocaleDateString('mn-MN') : ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ranks_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Цолны мэдээлэл</h1>
+            <p className="mt-1 text-purple-100">Агентуудын цол, зэрэглэлийн мэдээлэл</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 rounded-lg px-4 py-2">
+              <span className="text-3xl font-bold">{agentRanks.length}</span>
+              <span className="ml-2 text-purple-100">бүртгэл</span>
+            </div>
+            <button
+              onClick={exportToCSV}
+              className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 font-medium flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              CSV
+            </button>
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 font-medium"
+            >
+              + Шинэ цол нэмэх
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and View Toggle */}
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Агентын нэр эсвэл ID-р хайх..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-gray-300">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-2 text-sm font-medium ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Жагсаалт
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium ${viewMode === 'table' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Хүснэгт
+            </button>
+          </div>
+        </div>
+        <div className="mt-2 text-sm text-gray-500">
+          {filteredRanks.length} бүртгэл олдлоо
+        </div>
+      </div>
+
+      {viewMode === 'list' ? (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Ranks List */}
+        <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 className="font-medium text-gray-900">Цолны жагсаалт</h2>
+          </div>
+          <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+            {filteredRanks.length === 0 ? (
+              <li className="px-4 py-8 text-gray-500 text-center">
+                Цолны бүртгэл байхгүй
+              </li>
+            ) : (
+              filteredRanks.map((rank) => (
+                <li
+                  key={rank.id}
+                  onClick={() => setSelectedRank(rank)}
+                  className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${
+                    selectedRank?.id === rank.id ? 'bg-purple-50' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{rank.agentName}</p>
+                      <p className="text-sm text-gray-500">ID: {rank.agentId}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
+                        {rank.currentRank}
+                      </span>
+                      <p className={`text-xs mt-1 ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                        {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        {/* Rank Details */}
+        <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+          {selectedRank ? (
+            <div className="p-6 max-h-[700px] overflow-y-auto">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedRank.agentName}</h2>
+                  <p className="text-gray-500">Агентын ID: {selectedRank.agentId}</p>
+                  {selectedRank.contractNumber && (
+                    <p className="text-gray-500">Гэрээний дугаар: {selectedRank.contractNumber}</p>
+                  )}
+                </div>
+                <button
+                  onClick={openUpgradeModal}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Цол өөрчлөх
+                </button>
+              </div>
+
+              {/* Current Rank */}
+              <section className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border-2 ${RANK_BADGE_COLORS[selectedRank.currentRank]}">
+                <h3 className="font-semibold text-purple-800 mb-3">Одоогийн цол</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-sm text-purple-600">Цол:</span>
+                    <p className="font-bold text-lg">{selectedRank.currentRank}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-purple-600">Гэрээ эхэлсэн:</span>
+                    <p className="font-medium">{new Date(selectedRank.currentStartDate).toLocaleDateString('mn-MN')}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-purple-600">Гэрээ дуусах:</span>
+                    <p className={`font-medium ${isRankValid(selectedRank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                      {new Date(selectedRank.currentEndDate).toLocaleDateString('mn-MN')}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Rank History */}
+              <section>
+                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Цолын түүх</h3>
+                <div className="space-y-3">
+                  {[...selectedRank.rankHistory].reverse().map((history, i) => (
+                    <div 
+                      key={i} 
+                      className={`p-3 rounded-lg border-l-4 ${
+                        i === 0 ? 'bg-purple-50 border-purple-500' : 'bg-gray-50 border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[history.rank]}`}>
+                            {history.rank}
+                          </span>
+                          {i === 0 && (
+                            <span className="text-xs text-purple-600 font-medium">Одоогийн</span>
+                          )}
+                        </div>
+                        <span className={`text-xs ${isRankValid(history.endDate) ? 'text-green-600' : 'text-gray-500'}`}>
+                          {isRankValid(history.endDate) ? 'Хүчинтэй' : 'Дууссан'}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-600 grid grid-cols-2 gap-2">
+                        <div>Эхэлсэн: {new Date(history.startDate).toLocaleDateString('mn-MN')}</div>
+                        <div>Дуусах: {new Date(history.endDate).toLocaleDateString('mn-MN')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              Агент сонгоно уу
+            </div>
+          )}
+        </div>
+      </div>
+      ) : (
+      /* Table View */
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Агентын нэр</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID (MLS)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээний дугаар</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Цол</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ эхэлсэн</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ дуусах</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredRanks.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    Цолны бүртгэл байхгүй
+                  </td>
+                </tr>
+              ) : (
+                filteredRanks.map((rank) => (
+                  <tr 
+                    key={rank.id} 
+                    onClick={() => { setSelectedRank(rank); setViewMode('list'); }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{rank.agentName}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.agentId}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.contractNumber || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
+                        {rank.currentRank}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                      {new Date(rank.currentStartDate).toLocaleDateString('mn-MN')}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                      {new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs font-medium ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                        {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
+
+      {/* Create Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Шинэ цол нэмэх</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Агент сонгох (МЛС-тэй)</label>
+                <select
+                  value={createForm.agentId}
+                  onChange={handleEmployeeSelect}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Сонгоно уу...</option>
+                  {availableEmployees.map(emp => (
+                    <option key={emp.mls} value={emp.mls}>
+                      {emp.lastName} {emp.firstName} (MLS: {emp.mls})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Агентын нэр</label>
+                <input
+                  type="text"
+                  value={createForm.agentName}
+                  onChange={(e) => setCreateForm({ ...createForm, agentName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Овог Нэр"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээний дугаар</label>
+                <input
+                  type="text"
+                  value={createForm.contractNumber}
+                  onChange={(e) => setCreateForm({ ...createForm, contractNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Гэрээний дугаар"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Цол</label>
+                <select
+                  value={createForm.rank}
+                  onChange={(e) => setCreateForm({ ...createForm, rank: e.target.value as RankLevel })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  {RANK_LEVELS.map(rank => (
+                    <option key={rank} value={rank}>{rank}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээ эхэлсэн огноо</label>
+                <input
+                  type="date"
+                  value={createForm.startDate}
+                  onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              {createForm.startDate && (
+                <div className="text-sm text-gray-500">
+                  Гэрээ дуусах огноо: {new Date(calculateEndDate(createForm.startDate)).toLocaleDateString('mn-MN')}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setCreateModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Болих
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!createForm.agentId || !createForm.startDate}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Modal */}
+      {upgradeModalOpen && selectedRank && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Цол өөрчлөх</h3>
+            <p className="text-gray-600 mb-4">
+              {selectedRank.agentName} - одоогийн цол: <span className="font-medium">{selectedRank.currentRank}</span>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Шинэ цол</label>
+                <select
+                  value={upgradeForm.rank}
+                  onChange={(e) => setUpgradeForm({ ...upgradeForm, rank: e.target.value as RankLevel })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  {RANK_LEVELS.map(rank => (
+                    <option key={rank} value={rank}>{rank}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээ эхэлсэн огноо</label>
+                <input
+                  type="date"
+                  value={upgradeForm.startDate}
+                  onChange={(e) => setUpgradeForm({ ...upgradeForm, startDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              {upgradeForm.startDate && (
+                <div className="text-sm text-gray-500">
+                  Гэрээ дуусах огноо: {new Date(calculateEndDate(upgradeForm.startDate)).toLocaleDateString('mn-MN')}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setUpgradeModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Болих
+              </button>
+              <button
+                onClick={handleUpgrade}
+                disabled={!upgradeForm.startDate}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

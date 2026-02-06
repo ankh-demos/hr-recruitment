@@ -1,0 +1,124 @@
+import { Router, Request, Response } from 'express';
+import { agentRankModel } from '../models';
+import { RankLevel } from '../types';
+
+const router = Router();
+
+// Get all agent ranks
+router.get('/', (req: Request, res: Response) => {
+  try {
+    const agentRanks = agentRankModel.getAll();
+    res.json(agentRanks);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch agent ranks' });
+  }
+});
+
+// Get agent rank by ID
+router.get('/:id', (req: Request, res: Response) => {
+  try {
+    const agentRank = agentRankModel.getById(req.params.id);
+    if (!agentRank) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.json(agentRank);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch agent rank' });
+  }
+});
+
+// Get agent rank by agent ID (MLS)
+router.get('/by-agent/:agentId', (req: Request, res: Response) => {
+  try {
+    const agentRank = agentRankModel.getByAgentId(req.params.agentId);
+    if (!agentRank) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.json(agentRank);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch agent rank' });
+  }
+});
+
+// Get current valid rank for agent
+router.get('/current/:agentId', (req: Request, res: Response) => {
+  try {
+    const checkDate = req.query.date as string | undefined;
+    const currentRank = agentRankModel.getCurrentRankByAgentId(req.params.agentId, checkDate);
+    res.json({ rank: currentRank });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get current rank' });
+  }
+});
+
+// Create new agent rank
+router.post('/', (req: Request, res: Response) => {
+  try {
+    const { agentId, agentName, contractNumber, rank, startDate } = req.body;
+    
+    // Check if agent already has a rank record
+    const existing = agentRankModel.getByAgentId(agentId);
+    if (existing) {
+      return res.status(400).json({ error: 'Agent already has a rank record. Use PUT to update.' });
+    }
+
+    const agentRank = agentRankModel.create({
+      agentId,
+      agentName,
+      contractNumber,
+      rank: rank as RankLevel,
+      startDate
+    });
+    res.status(201).json(agentRank);
+  } catch (error) {
+    console.error('Error creating agent rank:', error);
+    res.status(500).json({ error: 'Failed to create agent rank' });
+  }
+});
+
+// Update rank (promote/change) - adds to history
+router.put('/:id/rank', (req: Request, res: Response) => {
+  try {
+    const { rank, startDate, agentName } = req.body;
+    const agentRank = agentRankModel.updateRank(req.params.id, {
+      rank: rank as RankLevel,
+      startDate,
+      agentName
+    });
+    if (!agentRank) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.json(agentRank);
+  } catch (error) {
+    console.error('Error updating rank:', error);
+    res.status(500).json({ error: 'Failed to update rank' });
+  }
+});
+
+// Update agent rank general info
+router.put('/:id', (req: Request, res: Response) => {
+  try {
+    const agentRank = agentRankModel.update(req.params.id, req.body);
+    if (!agentRank) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.json(agentRank);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update agent rank' });
+  }
+});
+
+// Delete agent rank
+router.delete('/:id', (req: Request, res: Response) => {
+  try {
+    const success = agentRankModel.delete(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete agent rank' });
+  }
+});
+
+export default router;
