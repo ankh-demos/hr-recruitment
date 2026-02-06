@@ -33,7 +33,7 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 px-4">
       {/* Main Title */}
       <div className="text-center mb-8">
-        <img src="/logo.png" alt="Remax Sky Logo" className="h-20 mx-auto mb-4" />
+        <img src="/logo.jpg" alt="Remax Sky Logo" className="h-20 mx-auto mb-4" />
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Remax HR</h1>
         <p className="text-blue-100 text-lg">Хүний нөөцийн удирдлагын систем</p>
       </div>

@@ -20,7 +20,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <img src="/logo.png" alt="Remax Sky" className="h-10 mr-2" />
+                <img src="/logo.jpg" alt="Remax Sky" className="h-10 mr-2" />
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Remax HR
                 </span>
