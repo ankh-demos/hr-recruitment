@@ -74,6 +74,7 @@ export function Employees() {
   // Edit modal for new fields
   const [editFieldsOpen, setEditFieldsOpen] = useState(false);
   const [editFields, setEditFields] = useState({
+    iConnectName: '',
     employmentStartDate: '',
     certificateNumber: '',
     citizenRegistrationNumber: '',
@@ -157,7 +158,7 @@ export function Employees() {
   // Export to CSV
   function exportToCSV() {
     const headers = [
-      'Овог', 'Нэр', 'Ургийн овог', 'Оффис', 'Имэйл', 'Утас', 'Яаралтай утас',
+      'iConnect нэр', 'Овог', 'Нэр', 'Ургийн овог', 'Оффис', 'Имэйл', 'Утас', 'Яаралтай утас',
       'Регистрийн дугаар', 'Төрсөн огноо', 'Хүйс', 'Төрсөн газар', 'Үндэс угсаа',
       'Гэрийн хаяг', 'Дүүрэг', 'Facebook', 'Жолооны эрх',
       'Certificate дугаар', 'Иргэний бүртгэлийн дугаар', 'СЗХ сертификатын дугаар',
@@ -168,6 +169,7 @@ export function Employees() {
     const rows = filteredEmployees.map(emp => {
       const rank = getCurrentRankForEmployee(emp.mls);
       return [
+        emp.iConnectName || '',
         emp.lastName || '',
         emp.firstName || '',
         emp.familyName || '',
@@ -214,7 +216,7 @@ export function Employees() {
 
   // CSV Template columns for bulk import
   const CSV_TEMPLATE_HEADERS = [
-    'familyName', 'lastName', 'firstName', 'interestedOffice', 'email', 'phone', 'emergencyPhone',
+    'iConnectName', 'familyName', 'lastName', 'firstName', 'interestedOffice', 'email', 'phone', 'emergencyPhone',
     'registerNumber', 'birthDate', 'gender', 'birthPlace', 'ethnicity',
     'homeAddress', 'district', 'facebook', 'hasDriverLicense',
     'certificateNumber', 'citizenRegistrationNumber', 'szhCertificateNumber',
@@ -226,7 +228,7 @@ export function Employees() {
   function downloadCSVTemplate() {
     const headerRow = CSV_TEMPLATE_HEADERS.join(',');
     const exampleRow = [
-      'Ургийн овог', 'Овог', 'Нэр', 'Оффис', 'email@example.com', '99001122', '99003344',
+      'iConnect нэр', 'Ургийн овог', 'Овог', 'Нэр', 'Оффис', 'email@example.com', '99001122', '99003344',
       'АА00112233', '1990-01-15', 'male', 'Улаанбаатар', 'Халх',
       'Хаяг', 'БЗД', 'facebook_id', 'true',
       'CERT001', 'REG001', 'SZH001',
@@ -404,6 +406,7 @@ export function Employees() {
   function openEditFields() {
     if (!selectedEmployee) return;
     setEditFields({
+      iConnectName: selectedEmployee.iConnectName || '',
       employmentStartDate: selectedEmployee.employmentStartDate || '',
       certificateNumber: selectedEmployee.certificateNumber || '',
       citizenRegistrationNumber: selectedEmployee.citizenRegistrationNumber || '',
@@ -700,6 +703,7 @@ export function Employees() {
                     Хувийн мэдээлэл
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="text-gray-500">iConnect нэр:</span> <span className="font-medium">{selectedEmployee.iConnectName || '-'}</span></div>
                     <div><span className="text-gray-500">Ургийн овог:</span> <span className="font-medium">{selectedEmployee.familyName}</span></div>
                     <div><span className="text-gray-500">Овог:</span> <span className="font-medium">{selectedEmployee.lastName}</span></div>
                     <div><span className="text-gray-500">Нэр:</span> <span className="font-medium">{selectedEmployee.firstName}</span></div>
@@ -962,6 +966,7 @@ export function Employees() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">iConnect нэр</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
@@ -989,7 +994,7 @@ export function Employees() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={22} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={23} className="px-4 py-8 text-center text-gray-500">
                     {employees.length === 0 ? 'Ажилтан байхгүй' : 'Хайлтын илэрц олдсонгүй'}
                   </td>
                 </tr>
@@ -1002,6 +1007,7 @@ export function Employees() {
                       onClick={() => { setSelectedEmployee(emp); setViewMode('list'); }}
                       className="hover:bg-gray-50 cursor-pointer"
                     >
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.iConnectName || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {emp.photoUrl ? (
                           <img src={emp.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
@@ -1166,6 +1172,16 @@ export function Employees() {
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Нэмэлт мэдээлэл засах</h3>
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 border-b pb-4 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">iConnect нэр</label>
+                <input
+                  type="text"
+                  value={editFields.iConnectName}
+                  onChange={(e) => setEditFields({ ...editFields, iConnectName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                  placeholder="iConnect дээрх нэр"
+                />
+              </div>
               <div className="col-span-2 border-b pb-4 mb-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ажилд орсон огноо</label>
                 <input

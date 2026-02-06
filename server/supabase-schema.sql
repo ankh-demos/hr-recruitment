@@ -132,6 +132,8 @@ CREATE TABLE applications (
 CREATE TABLE employees (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   application_id UUID REFERENCES applications(id) ON DELETE SET NULL,
+  -- iConnect name
+  iconnect_name TEXT,
   -- Personal Information
   family_name TEXT,
   last_name TEXT NOT NULL,
@@ -187,6 +189,8 @@ CREATE TABLE resigned_agents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   employee_id UUID, -- Original employee ID (may be deleted)
   application_id UUID,
+  -- iConnect name
+  iconnect_name TEXT,
   -- Personal Information (copied from employee)
   family_name TEXT,
   last_name TEXT NOT NULL,

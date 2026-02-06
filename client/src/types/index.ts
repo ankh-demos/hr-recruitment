@@ -161,6 +161,7 @@ export interface Employee {
   id: string;
   applicationId: string;
   // Personal Information from Application
+  iConnectName?: string; // iConnect нэр
   familyName: string;
   lastName: string;
   firstName: string;
@@ -214,6 +215,7 @@ export interface ResignedAgent {
   employeeId: string; // Original employee ID
   applicationId: string;
   // All employee fields
+  iConnectName?: string; // iConnect нэр
   familyName: string;
   lastName: string;
   firstName: string;
