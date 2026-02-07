@@ -1,13 +1,31 @@
 import { Router, Request, Response } from 'express';
-import { employeeModel } from '../models';
+import { employeeModel, agentRankModel } from '../models';
 
 const router = Router();
+
+// Helper to add rank info to employee
+async function addRankInfo(employee: any) {
+  if (employee.mls) {
+    const agentRank = await agentRankModel.getByAgentId(employee.mls);
+    if (agentRank) {
+      employee.currentRank = agentRank.currentRank;
+      employee.rankContractNumber = agentRank.contractNumber;
+      employee.rankStartDate = agentRank.currentStartDate;
+      employee.rankEndDate = agentRank.currentEndDate;
+    }
+  }
+  return employee;
+}
 
 // Get all employees
 router.get('/', async (req: Request, res: Response) => {
   try {
     const employees = await employeeModel.getAll();
-    res.json(employees);
+    // Add rank info to each employee
+    const employeesWithRank = await Promise.all(
+      employees.map(e => addRankInfo({ ...e }))
+    );
+    res.json(employeesWithRank);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch employees' });
   }
@@ -34,7 +52,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
-    res.json(employee);
+    // Add rank info
+    const employeeWithRank = await addRankInfo({ ...employee });
+    res.json(employeeWithRank);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch employee' });
   }

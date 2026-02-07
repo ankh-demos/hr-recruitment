@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { candidatesApi, jobsApi } from '../services/api';
 import { Candidate, Job } from '../types';
+import { Pagination } from '../components/Pagination';
 
 export function Candidates() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -12,6 +13,10 @@ export function Candidates() {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -46,6 +51,17 @@ export function Candidates() {
       return matchesSearch && matchesStatus;
     });
   }, [candidates, searchTerm, statusFilter]);
+
+  // Paginated candidates
+  const paginatedCandidates = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCandidates.slice(start, start + pageSize);
+  }, [filteredCandidates, currentPage, pageSize]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   async function loadData() {
     try {
@@ -341,14 +357,14 @@ export function Candidates() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredCandidates.length === 0 ? (
+            {paginatedCandidates.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   {candidates.length === 0 ? 'Нэр дэвшигч байхгүй' : 'Хайлтын илэрц олдсонгүй'}
                 </td>
               </tr>
             ) : (
-              filteredCandidates.map((candidate) => (
+              paginatedCandidates.map((candidate) => (
                 <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {candidate.firstName} {candidate.lastName}
@@ -402,6 +418,13 @@ export function Candidates() {
             )}
           </tbody>
         </table>
+        <Pagination
+          totalItems={filteredCandidates.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Employee, RankLevel, AgentRank } from '../types';
 import { resignedAgentsApi, agentRanksApi, employeesApi } from '../services/api';
+import { Pagination } from '../components/Pagination';
 
 const API_BASE = '/api';
 
@@ -60,6 +61,10 @@ export function Employees() {
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   
   // Resignation modal state
   const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
@@ -126,6 +131,17 @@ export function Employees() {
       return matchesSearch;
     });
   }, [employees, searchTerm, selectedStatuses]);
+
+  // Paginated employees for table view
+  const paginatedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEmployees.slice(start, start + pageSize);
+  }, [filteredEmployees, currentPage, pageSize]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedStatuses]);
 
   async function loadData() {
     try {
@@ -992,14 +1008,14 @@ export function Employees() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredEmployees.length === 0 ? (
+              {paginatedEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={23} className="px-4 py-8 text-center text-gray-500">
                     {employees.length === 0 ? 'Ажилтан байхгүй' : 'Хайлтын илэрц олдсонгүй'}
                   </td>
                 </tr>
               ) : (
-                filteredEmployees.map((emp) => {
+                paginatedEmployees.map((emp) => {
                   const rank = getCurrentRankForEmployee(emp.mls);
                   return (
                     <tr 
@@ -1059,6 +1075,13 @@ export function Employees() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          totalItems={filteredEmployees.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
       )}
 

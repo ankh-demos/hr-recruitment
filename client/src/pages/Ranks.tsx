@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { AgentRank, RankLevel, Employee } from '../types';
 import { agentRanksApi, employeesApi } from '../services/api';
+import { Pagination } from '../components/Pagination';
 
 const RANK_LEVELS: RankLevel[] = ['Стандарт', 'Силвер', 'Голд', 'Платиниум', 'Даймонд'];
 
@@ -33,6 +34,10 @@ export function Ranks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
   // Create/Add modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -62,6 +67,17 @@ export function Ranks() {
         rank.agentId.toLowerCase().includes(searchLower);
     });
   }, [agentRanks, searchTerm]);
+
+  // Paginated ranks for table view
+  const paginatedRanks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRanks.slice(start, start + pageSize);
+  }, [filteredRanks, currentPage, pageSize]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   async function loadData() {
     try {
@@ -395,14 +411,14 @@ export function Ranks() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRanks.length === 0 ? (
+              {paginatedRanks.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     Цолны бүртгэл байхгүй
                   </td>
                 </tr>
               ) : (
-                filteredRanks.map((rank) => (
+                paginatedRanks.map((rank) => (
                   <tr 
                     key={rank.id} 
                     onClick={() => { setSelectedRank(rank); setViewMode('list'); }}
@@ -433,6 +449,13 @@ export function Ranks() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          totalItems={filteredRanks.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
       )}
 

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import { User } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { Pagination } from '../components/Pagination';
 
 export function Admin() {
   const { user: currentUser, isAdmin } = useAuth();
@@ -11,6 +12,10 @@ export function Admin() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -35,6 +40,12 @@ export function Admin() {
       setLoading(false);
     }
   }
+
+  // Paginated users
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return users.slice(start, start + pageSize);
+  }, [users, currentPage, pageSize]);
 
   function resetForm() {
     setFormData({
@@ -286,14 +297,14 @@ export function Admin() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.length === 0 ? (
+            {paginatedUsers.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                   Хэрэглэгч байхгүй
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              paginatedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -353,6 +364,13 @@ export function Admin() {
             )}
           </tbody>
         </table>
+        <Pagination
+          totalItems={users.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { jobsApi } from '../services/api';
 import { Job } from '../types';
+import { Pagination } from '../components/Pagination';
 
 export function Jobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
   const [formData, setFormData] = useState({
     title: '',
     department: '',
@@ -33,6 +39,12 @@ export function Jobs() {
       setLoading(false);
     }
   }
+
+  // Paginated jobs
+  const paginatedJobs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return jobs.slice(start, start + pageSize);
+  }, [jobs, currentPage, pageSize]);
 
   function resetForm() {
     setFormData({
@@ -254,12 +266,12 @@ export function Jobs() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {jobs.length === 0 ? (
+            {paginatedJobs.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No jobs found</td>
               </tr>
             ) : (
-              jobs.map((job) => (
+              paginatedJobs.map((job) => (
                 <tr key={job.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{job.title}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.department}</td>
@@ -294,6 +306,13 @@ export function Jobs() {
             )}
           </tbody>
         </table>
+        <Pagination
+          totalItems={jobs.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

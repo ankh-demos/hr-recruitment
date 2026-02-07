@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { interviewsApi, candidatesApi, jobsApi } from '../services/api';
 import { Interview, Candidate, Job } from '../types';
+import { Pagination } from '../components/Pagination';
 
 export function Interviews() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -9,6 +10,11 @@ export function Interviews() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
   const [formData, setFormData] = useState({
     candidateId: '',
     jobId: '',
@@ -41,6 +47,12 @@ export function Interviews() {
       setLoading(false);
     }
   }
+
+  // Paginated interviews
+  const paginatedInterviews = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return interviews.slice(start, start + pageSize);
+  }, [interviews, currentPage, pageSize]);
 
   function resetForm() {
     setFormData({
@@ -285,12 +297,12 @@ export function Interviews() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {interviews.length === 0 ? (
+            {paginatedInterviews.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No interviews scheduled</td>
               </tr>
             ) : (
-              interviews.map((interview) => (
+              paginatedInterviews.map((interview) => (
                 <tr key={interview.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {getCandidateName(interview.candidateId)}
@@ -331,6 +343,13 @@ export function Interviews() {
             )}
           </tbody>
         </table>
+        <Pagination
+          totalItems={interviews.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );
