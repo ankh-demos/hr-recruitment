@@ -4,9 +4,9 @@ import { applicationModel, employeeModel } from '../models';
 const router = Router();
 
 // Get all applications
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const applications = applicationModel.getAll();
+    const applications = await applicationModel.getAll();
     res.json(applications);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch applications' });
@@ -14,9 +14,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get application by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const application = applicationModel.getById(req.params.id);
+    const application = await applicationModel.getById(req.params.id);
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
@@ -27,9 +27,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Create application (public endpoint for applicants)
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const application = applicationModel.create(req.body);
+    const application = await applicationModel.create(req.body);
     res.status(201).json(application);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create application' });
@@ -37,10 +37,10 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update application status
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { status, ...rest } = req.body;
-    const currentApplication = applicationModel.getById(req.params.id);
+    const currentApplication = await applicationModel.getById(req.params.id);
     
     if (!currentApplication) {
       return res.status(404).json({ error: 'Application not found' });
@@ -49,20 +49,20 @@ router.put('/:id', (req: Request, res: Response) => {
     // If status is changing to 'iconnect', create an employee and delete application
     if (status === 'iconnect' && currentApplication.status !== 'iconnect') {
       // Check if employee already exists for this application
-      const existingEmployee = employeeModel.getByApplicationId(req.params.id);
+      const existingEmployee = await employeeModel.getByApplicationId(req.params.id);
       if (!existingEmployee) {
         // Update application with any additional data before creating employee
-        const updatedApp = applicationModel.update(req.params.id, { status, ...rest });
+        const updatedApp = await applicationModel.update(req.params.id, { status, ...rest });
         if (updatedApp) {
-          employeeModel.createFromApplication(updatedApp);
+          await employeeModel.createFromApplication(updatedApp);
           // Delete the application after moving to employees
-          applicationModel.delete(req.params.id);
+          await applicationModel.delete(req.params.id);
           return res.json({ moved: true, message: 'Application moved to employees' });
         }
       }
     }
 
-    const application = applicationModel.update(req.params.id, { status, ...rest });
+    const application = await applicationModel.update(req.params.id, { status, ...rest });
     res.json(application);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update application' });
@@ -70,9 +70,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete application
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = applicationModel.delete(req.params.id);
+    const success = await applicationModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Application not found' });
     }

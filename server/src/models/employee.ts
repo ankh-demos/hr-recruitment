@@ -1,21 +1,21 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { Employee, Application, ResignedAgent } from '../types';
 
 export const employeeModel = {
-  getAll(): Employee[] {
-    return database.getEmployees();
+  async getAll(): Promise<Employee[]> {
+    return db.getEmployees();
   },
 
-  getById(id: string): Employee | undefined {
-    return database.getEmployeeById(id);
+  async getById(id: string): Promise<Employee | undefined> {
+    return db.getEmployeeById(id);
   },
 
-  getByApplicationId(applicationId: string): Employee | undefined {
-    return database.getEmployeeByApplicationId(applicationId);
+  async getByApplicationId(applicationId: string): Promise<Employee | undefined> {
+    return db.getEmployeeByApplicationId(applicationId);
   },
 
-  createFromApplication(application: Application): Employee {
+  async createFromApplication(application: Application): Promise<Employee> {
     const now = new Date().toISOString();
     const employee: Employee = {
       id: uuidv4(),
@@ -53,10 +53,10 @@ export const employeeModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createEmployee(employee);
+    return db.createEmployee(employee);
   },
 
-  createFromResignedAgent(resignedAgent: ResignedAgent): Employee {
+  async createFromResignedAgent(resignedAgent: ResignedAgent): Promise<Employee> {
     const now = new Date().toISOString();
     const employee: Employee = {
       id: uuidv4(),
@@ -106,10 +106,10 @@ export const employeeModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createEmployee(employee);
+    return db.createEmployee(employee);
   },
 
-  create(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Employee {
+  async create(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> {
     const now = new Date().toISOString();
     const employee: Employee = {
       ...data,
@@ -117,19 +117,24 @@ export const employeeModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createEmployee(employee);
+    return db.createEmployee(employee);
   },
 
-  bulkCreate(employees: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>[]): Employee[] {
-    return employees.map(data => this.create(data));
+  async bulkCreate(employees: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Employee[]> {
+    const results: Employee[] = [];
+    for (const data of employees) {
+      const created = await this.create(data);
+      results.push(created);
+    }
+    return results;
   },
 
-  update(id: string, data: Partial<Employee>): Employee | undefined {
+  async update(id: string, data: Partial<Employee>): Promise<Employee | undefined> {
     const now = new Date().toISOString();
-    return database.updateEmployee(id, { ...data, updatedAt: now });
+    return db.updateEmployee(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteEmployee(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteEmployee(id);
   }
 };

@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { ResignedAgent, Employee } from '../types';
 
 export const resignedAgentModel = {
-  getAll(): ResignedAgent[] {
-    return database.getResignedAgents();
+  async getAll(): Promise<ResignedAgent[]> {
+    return db.getResignedAgents();
   },
 
-  getById(id: string): ResignedAgent | undefined {
-    return database.getResignedAgentById(id);
+  async getById(id: string): Promise<ResignedAgent | undefined> {
+    return db.getResignedAgentById(id);
   },
 
-  createFromEmployee(
+  async createFromEmployee(
     employee: Employee, 
     resignationData: {
       workedMonths: number;
@@ -19,7 +19,7 @@ export const resignedAgentModel = {
       resignationReason: ResignedAgent['resignationReason'];
       resignationNotes?: string;
     }
-  ): ResignedAgent {
+  ): Promise<ResignedAgent> {
     const now = new Date().toISOString();
     const resignedAgent: ResignedAgent = {
       id: uuidv4(),
@@ -73,15 +73,15 @@ export const resignedAgentModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createResignedAgent(resignedAgent);
+    return db.createResignedAgent(resignedAgent);
   },
 
-  update(id: string, data: Partial<ResignedAgent>): ResignedAgent | undefined {
+  async update(id: string, data: Partial<ResignedAgent>): Promise<ResignedAgent | undefined> {
     const now = new Date().toISOString();
-    return database.updateResignedAgent(id, { ...data, updatedAt: now });
+    return db.updateResignedAgent(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteResignedAgent(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteResignedAgent(id);
   }
 };

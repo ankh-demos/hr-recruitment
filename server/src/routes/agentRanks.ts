@@ -5,9 +5,9 @@ import { RankLevel } from '../types';
 const router = Router();
 
 // Get all agent ranks
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const agentRanks = agentRankModel.getAll();
+    const agentRanks = await agentRankModel.getAll();
     res.json(agentRanks);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch agent ranks' });
@@ -15,9 +15,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get agent rank by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const agentRank = agentRankModel.getById(req.params.id);
+    const agentRank = await agentRankModel.getById(req.params.id);
     if (!agentRank) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
@@ -28,9 +28,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Get agent rank by agent ID (MLS)
-router.get('/by-agent/:agentId', (req: Request, res: Response) => {
+router.get('/by-agent/:agentId', async (req: Request, res: Response) => {
   try {
-    const agentRank = agentRankModel.getByAgentId(req.params.agentId);
+    const agentRank = await agentRankModel.getByAgentId(req.params.agentId);
     if (!agentRank) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
@@ -41,10 +41,10 @@ router.get('/by-agent/:agentId', (req: Request, res: Response) => {
 });
 
 // Get current valid rank for agent
-router.get('/current/:agentId', (req: Request, res: Response) => {
+router.get('/current/:agentId', async (req: Request, res: Response) => {
   try {
     const checkDate = req.query.date as string | undefined;
-    const currentRank = agentRankModel.getCurrentRankByAgentId(req.params.agentId, checkDate);
+    const currentRank = await agentRankModel.getCurrentRankByAgentId(req.params.agentId, checkDate);
     res.json({ rank: currentRank });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get current rank' });
@@ -52,17 +52,17 @@ router.get('/current/:agentId', (req: Request, res: Response) => {
 });
 
 // Create new agent rank
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { agentId, agentName, contractNumber, rank, startDate } = req.body;
     
     // Check if agent already has a rank record
-    const existing = agentRankModel.getByAgentId(agentId);
+    const existing = await agentRankModel.getByAgentId(agentId);
     if (existing) {
       return res.status(400).json({ error: 'Agent already has a rank record. Use PUT to update.' });
     }
 
-    const agentRank = agentRankModel.create({
+    const agentRank = await agentRankModel.create({
       agentId,
       agentName,
       contractNumber,
@@ -77,10 +77,10 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update rank (promote/change) - adds to history
-router.put('/:id/rank', (req: Request, res: Response) => {
+router.put('/:id/rank', async (req: Request, res: Response) => {
   try {
     const { rank, startDate, agentName } = req.body;
-    const agentRank = agentRankModel.updateRank(req.params.id, {
+    const agentRank = await agentRankModel.updateRank(req.params.id, {
       rank: rank as RankLevel,
       startDate,
       agentName
@@ -96,9 +96,9 @@ router.put('/:id/rank', (req: Request, res: Response) => {
 });
 
 // Update agent rank general info
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const agentRank = agentRankModel.update(req.params.id, req.body);
+    const agentRank = await agentRankModel.update(req.params.id, req.body);
     if (!agentRank) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
@@ -109,9 +109,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete agent rank
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = agentRankModel.delete(req.params.id);
+    const success = await agentRankModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }

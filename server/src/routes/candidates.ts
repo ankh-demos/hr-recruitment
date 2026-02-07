@@ -4,9 +4,9 @@ import { candidateModel } from '../models';
 const router = Router();
 
 // Get all candidates
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const candidates = candidateModel.getAll();
+    const candidates = await candidateModel.getAll();
     res.json(candidates);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch candidates' });
@@ -14,9 +14,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get candidate by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const candidate = candidateModel.getById(req.params.id);
+    const candidate = await candidateModel.getById(req.params.id);
     if (!candidate) {
       return res.status(404).json({ error: 'Candidate not found' });
     }
@@ -27,9 +27,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Get candidates by job ID
-router.get('/job/:jobId', (req: Request, res: Response) => {
+router.get('/job/:jobId', async (req: Request, res: Response) => {
   try {
-    const candidates = candidateModel.getByJobId(req.params.jobId);
+    const candidates = await candidateModel.getByJobId(req.params.jobId);
     res.json(candidates);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch candidates' });
@@ -37,9 +37,9 @@ router.get('/job/:jobId', (req: Request, res: Response) => {
 });
 
 // Create candidate
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const candidate = candidateModel.create(req.body);
+    const candidate = await candidateModel.create(req.body);
     res.status(201).json(candidate);
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -50,9 +50,9 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update candidate
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const candidate = candidateModel.update(req.params.id, req.body);
+    const candidate = await candidateModel.update(req.params.id, req.body);
     if (!candidate) {
       return res.status(404).json({ error: 'Candidate not found' });
     }
@@ -63,9 +63,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete candidate
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = candidateModel.delete(req.params.id);
+    const success = await candidateModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Candidate not found' });
     }

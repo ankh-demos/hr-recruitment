@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { Application } from '../types';
 
 export const applicationModel = {
-  getAll(): Application[] {
-    return database.getApplications();
+  async getAll(): Promise<Application[]> {
+    return db.getApplications();
   },
 
-  getById(id: string): Application | undefined {
-    return database.getApplicationById(id);
+  async getById(id: string): Promise<Application | undefined> {
+    return db.getApplicationById(id);
   },
 
-  create(data: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Application {
+  async create(data: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<Application> {
     const now = new Date().toISOString();
     const application: Application = {
       id: uuidv4(),
@@ -20,15 +20,15 @@ export const applicationModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createApplication(application);
+    return db.createApplication(application);
   },
 
-  update(id: string, data: Partial<Application>): Application | undefined {
+  async update(id: string, data: Partial<Application>): Promise<Application | undefined> {
     const now = new Date().toISOString();
-    return database.updateApplication(id, { ...data, updatedAt: now });
+    return db.updateApplication(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteApplication(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteApplication(id);
   }
 };

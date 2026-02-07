@@ -4,9 +4,9 @@ import { interviewModel } from '../models';
 const router = Router();
 
 // Get all interviews
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const interviews = interviewModel.getAll();
+    const interviews = await interviewModel.getAll();
     res.json(interviews);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch interviews' });
@@ -14,9 +14,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get upcoming interviews
-router.get('/upcoming', (req: Request, res: Response) => {
+router.get('/upcoming', async (req: Request, res: Response) => {
   try {
-    const interviews = interviewModel.getUpcoming();
+    const interviews = await interviewModel.getUpcoming();
     res.json(interviews);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch upcoming interviews' });
@@ -24,9 +24,9 @@ router.get('/upcoming', (req: Request, res: Response) => {
 });
 
 // Get interview by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const interview = interviewModel.getById(req.params.id);
+    const interview = await interviewModel.getById(req.params.id);
     if (!interview) {
       return res.status(404).json({ error: 'Interview not found' });
     }
@@ -37,9 +37,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Get interviews by candidate ID
-router.get('/candidate/:candidateId', (req: Request, res: Response) => {
+router.get('/candidate/:candidateId', async (req: Request, res: Response) => {
   try {
-    const interviews = interviewModel.getByCandidateId(req.params.candidateId);
+    const interviews = await interviewModel.getByCandidateId(req.params.candidateId);
     res.json(interviews);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch interviews' });
@@ -47,9 +47,9 @@ router.get('/candidate/:candidateId', (req: Request, res: Response) => {
 });
 
 // Get interviews by job ID
-router.get('/job/:jobId', (req: Request, res: Response) => {
+router.get('/job/:jobId', async (req: Request, res: Response) => {
   try {
-    const interviews = interviewModel.getByJobId(req.params.jobId);
+    const interviews = await interviewModel.getByJobId(req.params.jobId);
     res.json(interviews);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch interviews' });
@@ -57,9 +57,9 @@ router.get('/job/:jobId', (req: Request, res: Response) => {
 });
 
 // Create interview
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const interview = interviewModel.create(req.body);
+    const interview = await interviewModel.create(req.body);
     res.status(201).json(interview);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create interview' });
@@ -67,9 +67,9 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update interview
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const interview = interviewModel.update(req.params.id, req.body);
+    const interview = await interviewModel.update(req.params.id, req.body);
     if (!interview) {
       return res.status(404).json({ error: 'Interview not found' });
     }
@@ -80,9 +80,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete interview
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = interviewModel.delete(req.params.id);
+    const success = await interviewModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Interview not found' });
     }

@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { Job } from '../types';
 
 export const jobModel = {
-  getAll(): Job[] {
-    return database.getJobs();
+  async getAll(): Promise<Job[]> {
+    return db.getJobs();
   },
 
-  getById(id: string): Job | undefined {
-    return database.getJobById(id);
+  async getById(id: string): Promise<Job | undefined> {
+    return db.getJobById(id);
   },
 
-  create(data: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Job {
+  async create(data: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> {
     const now = new Date().toISOString();
     const job: Job = {
       id: uuidv4(),
@@ -19,15 +19,15 @@ export const jobModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createJob(job);
+    return db.createJob(job);
   },
 
-  update(id: string, data: Partial<Job>): Job | undefined {
+  async update(id: string, data: Partial<Job>): Promise<Job | undefined> {
     const now = new Date().toISOString();
-    return database.updateJob(id, { ...data, updatedAt: now });
+    return db.updateJob(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteJob(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteJob(id);
   }
 };
