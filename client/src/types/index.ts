@@ -138,6 +138,7 @@ export interface Application {
   
   // How did you hear about us
   referralSource: string; // Оффисын талаар мэдээлэл хаанаас авсан бэ?
+  referredAgentName?: string; // Санал болгосон агентын нэр (Найз танил сонгосон үед)
   
   // Signature
   signatureUrl: string; // Гарын үсэг

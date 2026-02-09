@@ -42,6 +42,7 @@ export function Apply() {
     hasDriverLicense: false,
     photoUrl: '',
     referralSource: '',
+    referredAgentName: '',
     signatureUrl: ''
   });
 
@@ -263,14 +264,22 @@ export function Apply() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    // Validate Cyrillic fields
+    // Validate Cyrillic fields (homeAddress removed - allows all characters)
     const cyrillicFields = [
       { field: 'familyName', name: 'Ургийн овог' },
       { field: 'lastName', name: 'Овог' },
       { field: 'firstName', name: 'Нэр' },
       { field: 'birthPlace', name: 'Төрсөн газар' },
-      { field: 'ethnicity', name: 'Үндэс угсаа' },
-      { field: 'homeAddress', name: 'Гэрийн хаяг' },
+      { field: 'ethnicity', name: 'Үндэс угсаа' }
+    ];
+    
+    // Validate homeAddress - required but allows all characters
+    if (!formData.homeAddress.trim()) {
+      errors.homeAddress = 'Гэрийн хаяг оруулна уу';
+    }
+    
+    // Validate optional Cyrillic fields only if they have a value
+    const optionalCyrillicFields = [
       { field: 'otherSkills', name: 'Бусад ур чадвар' },
       { field: 'strengthsWeaknesses', name: 'Давуу болон сул тал' }
     ];
@@ -278,6 +287,14 @@ export function Apply() {
     for (const { field, name } of cyrillicFields) {
       const err = validateCyrillicField(formData[field as keyof typeof formData] as string, name);
       if (err) errors[field] = err;
+    }
+    
+    // Validate optional Cyrillic fields only if they have a value
+    for (const { field, name } of optionalCyrillicFields) {
+      const value = formData[field as keyof typeof formData] as string;
+      if (value && value.trim() && !MONGOLIAN_CYRILLIC_REGEX.test(value)) {
+        errors[field] = `${name} зөвхөн Монгол кирилл үсэг оруулна уу`;
+      }
     }
     
     // Validate register number
@@ -997,7 +1014,7 @@ export function Apply() {
               </h2>
               <select
                 value={formData.referralSource}
-                onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, referralSource: e.target.value, referredAgentName: e.target.value === 'Найз танил' ? formData.referredAgentName : '' })}
                 required
                 className="block w-full border border-gray-300 rounded-md shadow-sm p-2"
               >
@@ -1007,6 +1024,22 @@ export function Apply() {
                 <option value="Вебсайт">Вебсайт</option>
                 <option value="Бусад">Бусад</option>
               </select>
+              
+              {/* Conditional field for agent name when Найз танил is selected */}
+              {formData.referralSource === 'Найз танил' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Санал болгосон агентын нэр
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.referredAgentName}
+                    onChange={(e) => setFormData({ ...formData, referredAgentName: e.target.value })}
+                    placeholder="Агентын нэрийг оруулна уу"
+                    className="block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  />
+                </div>
+              )}
             </section>
 
             {/* Signature - Drawing Pad */}

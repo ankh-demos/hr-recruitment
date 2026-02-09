@@ -9,11 +9,15 @@ export function ResignedAgents() {
   const [selectedAgent, setSelectedAgent] = useState<ResignedAgent | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [moveBackConfirmOpen, setMoveBackConfirmOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  
+  // Edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<ResignedAgent>>({});
 
   useEffect(() => {
     loadData();
@@ -61,6 +65,44 @@ export function ResignedAgents() {
       loadData();
     } catch (error) {
       console.error('Failed to move back to employees:', error);
+    }
+  }
+
+  function openEditModal() {
+    if (!selectedAgent) return;
+    setEditForm({
+      familyName: selectedAgent.familyName,
+      lastName: selectedAgent.lastName,
+      firstName: selectedAgent.firstName,
+      interestedOffice: selectedAgent.interestedOffice,
+      email: selectedAgent.email,
+      phone: selectedAgent.phone,
+      emergencyPhone: selectedAgent.emergencyPhone,
+      registerNumber: selectedAgent.registerNumber,
+      birthDate: selectedAgent.birthDate,
+      gender: selectedAgent.gender,
+      birthPlace: selectedAgent.birthPlace,
+      ethnicity: selectedAgent.ethnicity,
+      homeAddress: selectedAgent.homeAddress,
+      district: selectedAgent.district,
+      resignedDate: selectedAgent.resignedDate,
+      workedMonths: selectedAgent.workedMonths,
+      resignationReason: selectedAgent.resignationReason,
+      resignationNotes: selectedAgent.resignationNotes
+    });
+    setEditModalOpen(true);
+  }
+
+  async function handleEditSave() {
+    if (!selectedAgent) return;
+    try {
+      await resignedAgentsApi.update(selectedAgent.id, editForm);
+      setEditModalOpen(false);
+      loadData();
+      // Refresh selected agent
+      setSelectedAgent({ ...selectedAgent, ...editForm } as ResignedAgent);
+    } catch (error) {
+      console.error('Failed to update resigned agent:', error);
     }
   }
 
@@ -255,6 +297,12 @@ export function ResignedAgents() {
                   <p className="text-gray-500">{selectedAgent.email}</p>
                   <p className="text-gray-500">{selectedAgent.phone}</p>
                 </div>
+                <button
+                  onClick={openEditModal}
+                  className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
+                >
+                  Засах
+                </button>
               </div>
 
               {/* Resignation Info */}
@@ -455,6 +503,153 @@ export function ResignedAgents() {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
                 Тийм
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Гарсан ажилтны мэдээлэл засах</h3>
+            <div className="grid grid-cols-3 gap-4">
+              {/* Personal Info */}
+              <div className="col-span-3 border-b pb-2 mb-2">
+                <h4 className="font-medium text-gray-700">Хувийн мэдээлэл</h4>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ургийн овог</label>
+                <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({...editForm, familyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Овог</label>
+                <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Нэр</label>
+                <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Оффис</label>
+                <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                  <option value="">Сонгох</option>
+                  <option value="Sky">Sky</option>
+                  <option value="Premier">Premier</option>
+                  <option value="Alliance">Alliance</option>
+                  <option value="Express">Express</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Хүйс</label>
+                <select value={editForm.gender || 'male'} onChange={(e) => setEditForm({...editForm, gender: e.target.value as 'male' | 'female'})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                  <option value="male">Эрэгтэй</option>
+                  <option value="female">Эмэгтэй</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн огноо</label>
+                <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({...editForm, birthDate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн газар</label>
+                <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({...editForm, birthPlace: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Үндэс угсаа</label>
+                <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({...editForm, ethnicity: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Регистрийн дугаар</label>
+                <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({...editForm, registerNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              
+              {/* Contact Info */}
+              <div className="col-span-3 border-b pb-2 mb-2 mt-4">
+                <h4 className="font-medium text-gray-700">Холбоо барих</h4>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Имэйл</label>
+                <input type="email" value={editForm.email || ''} onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Утас</label>
+                <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Яаралтай холбоо</label>
+                <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({...editForm, emergencyPhone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрийн хаяг</label>
+                <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({...editForm, homeAddress: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Дүүрэг</label>
+                <input type="text" value={editForm.district || ''} onChange={(e) => setEditForm({...editForm, district: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              
+              {/* Resignation Info */}
+              <div className="col-span-3 border-b pb-2 mb-2 mt-4">
+                <h4 className="font-medium text-gray-700">Гарсан мэдээлэл</h4>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гарсан огноо</label>
+                <input type="date" value={editForm.resignedDate || ''} onChange={(e) => setEditForm({...editForm, resignedDate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ажилласан хугацаа (сар)</label>
+                <input type="number" min="0" value={editForm.workedMonths || 0} onChange={(e) => setEditForm({...editForm, workedMonths: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гарсан шалтгаан</label>
+                <select value={editForm.resignationReason || ''} onChange={(e) => setEditForm({...editForm, resignationReason: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                  <option value="">Сонгох</option>
+                  <option value="Шилжсэн">Шилжсэн</option>
+                  <option value="Ажиллах чадваргүй">Ажиллах чадваргүй</option>
+                  <option value="Зайлшгүй шалтгаан">Зайлшгүй шалтгаан</option>
+                  <option value="Байгууллагын соёл таалагдаагүй">Байгууллагын соёл таалагдаагүй</option>
+                  <option value="Давхар ажилтай">Давхар ажилтай</option>
+                  <option value="Оффисын зүгээс гэрээ цуцалсан">Оффисын зүгээс гэрээ цуцалсан</option>
+                  <option value="Урт хугацааны чөлөө авсан">Урт хугацааны чөлөө авсан</option>
+                </select>
+              </div>
+              <div className="col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Нэмэлт тэмдэглэл</label>
+                <textarea value={editForm.resignationNotes || ''} onChange={(e) => setEditForm({...editForm, resignationNotes: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Болих
+              </button>
+              <button
+                onClick={handleEditSave}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Хадгалах
               </button>
             </div>
           </div>

@@ -255,53 +255,161 @@ export function Dashboard() {
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-green-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-green-700">{employeeStats.active}</p>
-            <p className="text-sm text-green-600">Идэвхтэй</p>
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700">{employeeStats.active}</p>
+                <p className="text-xs text-green-600">Идэвхтэй</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-blue-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_3}</p>
-            <p className="text-sm text-blue-600">Шинэ 0-3 сар</p>
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_3}</p>
+                <p className="text-xs text-blue-600">Шинэ 0-3 сар</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
-            <p className="text-sm text-yellow-600">Идэвхгүй, гүйлгээтэй</p>
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
+                <p className="text-xs text-yellow-600">Идэвхгүй, гүйлгээтэй</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
-            <p className="text-sm text-gray-600">Идэвхгүй</p>
+          <div className="bg-gray-100 border-l-4 border-gray-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
+                <p className="text-xs text-gray-600">Идэвхгүй</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-orange-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
-            <p className="text-sm text-orange-600">Идэвхтэй, гүйлгээгүй</p>
+          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
+                <p className="text-xs text-orange-600">Идэвхтэй, гүйлгээгүй</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-purple-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave}</p>
-            <p className="text-sm text-purple-600">Чөлөөтэй</p>
+          <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave}</p>
+                <p className="text-xs text-purple-600">Чөлөөтэй</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-pink-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-pink-700">{employeeStats.maternity_leave}</p>
-            <p className="text-sm text-pink-600">Жирэмсний амралт</p>
+          <div className="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-pink-700">{employeeStats.maternity_leave}</p>
+                <p className="text-xs text-pink-600">Жирэмсний амралт</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-indigo-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-indigo-700">{employeeStats.team_member}</p>
-            <p className="text-sm text-indigo-600">Багийн гишүүн</p>
+          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-indigo-700">{employeeStats.team_member}</p>
+                <p className="text-xs text-indigo-600">Багийн гишүүн</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-red-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-red-700">{employeeStats.resigned}</p>
-            <p className="text-sm text-red-600">Гарсан</p>
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-700">{employeeStats.resigned}</p>
+                <p className="text-xs text-red-600">Гарсан</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-teal-50 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-teal-700">{employeeStats.totalIconnect}</p>
-            <p className="text-sm text-teal-600">Нийт iConnect</p>
+          <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-teal-700">{employeeStats.totalIconnect}</p>
+                <p className="text-xs text-teal-600">Нийт iConnect</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-slate-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-slate-700">{employeeStats.totalAgents}</p>
-            <p className="text-sm text-slate-600">Нийт агент</p>
+          <div className="bg-slate-100 border-l-4 border-slate-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-700">{employeeStats.totalAgents}</p>
+                <p className="text-xs text-slate-600">Нийт агент</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-emerald-100 p-4 rounded-lg text-center">
-            <p className="text-2xl font-bold text-emerald-700">{employeeStats.quality.toFixed(1)}%</p>
-            <p className="text-sm text-emerald-600">Чанар</p>
+          <div className="bg-emerald-100 border-l-4 border-emerald-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-200 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-700">{employeeStats.quality.toFixed(1)}%</p>
+                <p className="text-xs text-emerald-600">Чанар</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

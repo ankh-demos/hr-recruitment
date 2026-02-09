@@ -19,7 +19,7 @@ export function Applications() {
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
   // Status Filter State (multi-select)
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
@@ -45,6 +45,10 @@ export function Applications() {
   
   // iConnect Confirmation State
   const [iconnectConfirmOpen, setIconnectConfirmOpen] = useState(false);
+  
+  // Edit Mode State
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Application>>({});
 
   useEffect(() => {
     loadApplications();
@@ -171,6 +175,59 @@ export function Applications() {
       }
     } catch (error) {
       console.error('Failed to delete application:', error);
+    }
+  }
+
+  // Enter edit mode
+  function enterEditMode() {
+    if (!selectedApplication) return;
+    setEditForm({
+      familyName: selectedApplication.familyName,
+      lastName: selectedApplication.lastName,
+      firstName: selectedApplication.firstName,
+      interestedOffice: selectedApplication.interestedOffice,
+      availableDate: selectedApplication.availableDate,
+      birthPlace: selectedApplication.birthPlace,
+      ethnicity: selectedApplication.ethnicity,
+      gender: selectedApplication.gender,
+      birthDate: selectedApplication.birthDate,
+      registerNumber: selectedApplication.registerNumber,
+      homeAddress: selectedApplication.homeAddress,
+      phone: selectedApplication.phone,
+      emergencyPhone: selectedApplication.emergencyPhone,
+      email: selectedApplication.email,
+      facebook: selectedApplication.facebook,
+      hasDriverLicense: selectedApplication.hasDriverLicense,
+      otherSkills: selectedApplication.otherSkills,
+      strengthsWeaknesses: selectedApplication.strengthsWeaknesses,
+      referralSource: selectedApplication.referralSource,
+      trainingNumber: selectedApplication.trainingNumber
+    });
+    setIsEditMode(true);
+  }
+
+  // Cancel edit mode
+  function cancelEditMode() {
+    setIsEditMode(false);
+    setEditForm({});
+  }
+
+  // Save edited application
+  async function saveApplication() {
+    if (!selectedApplication) return;
+    try {
+      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      await loadApplications();
+      // Update selected application with new data
+      setSelectedApplication({ ...selectedApplication, ...editForm } as Application);
+      setIsEditMode(false);
+      setEditForm({});
+    } catch (error) {
+      console.error('Failed to save application:', error);
     }
   }
 
@@ -450,12 +507,39 @@ export function Applications() {
                     <p className="text-gray-500">{selectedApplication.email}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteApplication(selectedApplication.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Устгах
-                </button>
+                <div className="flex gap-2">
+                  {isEditMode ? (
+                    <>
+                      <button
+                        onClick={saveApplication}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Хадгалах
+                      </button>
+                      <button
+                        onClick={cancelEditMode}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                      >
+                        Болих
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={enterEditMode}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                      >
+                        Засах
+                      </button>
+                      <button
+                        onClick={() => deleteApplication(selectedApplication.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Устгах
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Status Actions */}
@@ -568,20 +652,143 @@ export function Applications() {
               {/* Personal Info */}
               <section className="mb-6">
                 <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Хувийн мэдээлэл</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-500">Оффис:</span> {selectedApplication.interestedOffice}</div>
-                  <div><span className="text-gray-500">Ажилд орох огноо:</span> {selectedApplication.availableDate}</div>
-                  <div><span className="text-gray-500">Төрсөн газар:</span> {selectedApplication.birthPlace}</div>
-                  <div><span className="text-gray-500">Үндэс угсаа:</span> {selectedApplication.ethnicity}</div>
-                  <div><span className="text-gray-500">Хүйс:</span> {selectedApplication.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</div>
-                  <div><span className="text-gray-500">Төрсөн огноо:</span> {selectedApplication.birthDate}</div>
-                  <div><span className="text-gray-500">Регистр:</span> {selectedApplication.registerNumber}</div>
-                  <div><span className="text-gray-500">Гэрийн хаяг:</span> {selectedApplication.homeAddress}</div>
-                  <div><span className="text-gray-500">Утас:</span> {selectedApplication.phone}</div>
-                  <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
-                  <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
-                  <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
-                </div>
+                {isEditMode ? (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <label className="block text-gray-500 mb-1">Ургийн овог</label>
+                      <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({...editForm, familyName: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Овог</label>
+                      <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Нэр</label>
+                      <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Оффис</label>
+                      <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1">
+                        <option value="">Сонгох</option>
+                        <option value="Sky">Sky</option>
+                        <option value="Premier">Premier</option>
+                        <option value="Alliance">Alliance</option>
+                        <option value="Express">Express</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Ажилд орох огноо</label>
+                      <input type="date" value={editForm.availableDate || ''} onChange={(e) => setEditForm({...editForm, availableDate: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Төрсөн газар</label>
+                      <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({...editForm, birthPlace: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Үндэс угсаа</label>
+                      <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({...editForm, ethnicity: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Хүйс</label>
+                      <select value={editForm.gender || ''} onChange={(e) => setEditForm({...editForm, gender: e.target.value as 'male' | 'female'})}
+                        className="w-full border border-gray-300 rounded px-2 py-1">
+                        <option value="male">Эрэгтэй</option>
+                        <option value="female">Эмэгтэй</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Төрсөн огноо</label>
+                      <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({...editForm, birthDate: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Регистр</label>
+                      <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({...editForm, registerNumber: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 mb-1">Гэрийн хаяг</label>
+                      <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({...editForm, homeAddress: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Имэйл</label>
+                      <input type="email" value={editForm.email || ''} onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Утас</label>
+                      <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Яаралтай холбоо</label>
+                      <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({...editForm, emergencyPhone: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Facebook</label>
+                      <input type="text" value={editForm.facebook || ''} onChange={(e) => setEditForm({...editForm, facebook: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Жолооны эрх</label>
+                      <select value={editForm.hasDriverLicense ? 'yes' : 'no'} onChange={(e) => setEditForm({...editForm, hasDriverLicense: e.target.value === 'yes'})}
+                        className="w-full border border-gray-300 rounded px-2 py-1">
+                        <option value="yes">Тийм</option>
+                        <option value="no">Үгүй</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Сургалтын дугаар</label>
+                      <input type="text" value={editForm.trainingNumber || ''} onChange={(e) => setEditForm({...editForm, trainingNumber: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 mb-1">Бусад чадвар</label>
+                      <textarea value={editForm.otherSkills || ''} onChange={(e) => setEditForm({...editForm, otherSkills: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 mb-1">Давуу/сул тал</label>
+                      <textarea value={editForm.strengthsWeaknesses || ''} onChange={(e) => setEditForm({...editForm, strengthsWeaknesses: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 mb-1">Мэдээллийн эх сурвалж</label>
+                      <select value={editForm.referralSource || ''} onChange={(e) => setEditForm({...editForm, referralSource: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-2 py-1">
+                        <option value="">Сонгох</option>
+                        <option value="Facebook хуудас">Facebook хуудас</option>
+                        <option value="Найз танил">Найз танил</option>
+                        <option value="Вебсайт">Вебсайт</option>
+                        <option value="Бусад">Бусад</option>
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="text-gray-500">Оффис:</span> {selectedApplication.interestedOffice}</div>
+                    <div><span className="text-gray-500">Ажилд орох огноо:</span> {selectedApplication.availableDate}</div>
+                    <div><span className="text-gray-500">Төрсөн газар:</span> {selectedApplication.birthPlace}</div>
+                    <div><span className="text-gray-500">Үндэс угсаа:</span> {selectedApplication.ethnicity}</div>
+                    <div><span className="text-gray-500">Хүйс:</span> {selectedApplication.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</div>
+                    <div><span className="text-gray-500">Төрсөн огноо:</span> {selectedApplication.birthDate}</div>
+                    <div><span className="text-gray-500">Регистр:</span> {selectedApplication.registerNumber}</div>
+                    <div><span className="text-gray-500">Гэрийн хаяг:</span> {selectedApplication.homeAddress}</div>
+                    <div><span className="text-gray-500">Утас:</span> {selectedApplication.phone}</div>
+                    <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
+                    <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
+                    <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
+                  </div>
+                )}
               </section>
 
               {/* Family Members */}

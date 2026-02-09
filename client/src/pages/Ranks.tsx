@@ -32,7 +32,7 @@ export function Ranks() {
   const [loading, setLoading] = useState(true);
   const [selectedRank, setSelectedRank] = useState<AgentRank | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,6 +53,16 @@ export function Ranks() {
   const [upgradeForm, setUpgradeForm] = useState({
     rank: 'Стандарт' as RankLevel,
     startDate: ''
+  });
+  
+  // Edit rank modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    agentName: '',
+    contractNumber: '',
+    currentRank: 'Стандарт' as RankLevel,
+    currentStartDate: '',
+    currentEndDate: ''
   });
 
   useEffect(() => {
@@ -148,6 +158,32 @@ export function Ranks() {
       startDate: new Date().toISOString().split('T')[0]
     });
     setUpgradeModalOpen(true);
+  }
+
+  function openEditModal() {
+    if (!selectedRank) return;
+    setEditForm({
+      agentName: selectedRank.agentName || '',
+      contractNumber: selectedRank.contractNumber || '',
+      currentRank: selectedRank.currentRank,
+      currentStartDate: selectedRank.currentStartDate || '',
+      currentEndDate: selectedRank.currentEndDate || ''
+    });
+    setEditModalOpen(true);
+  }
+
+  async function handleEditSave() {
+    if (!selectedRank) return;
+    try {
+      await agentRanksApi.update(selectedRank.id, editForm);
+      setEditModalOpen(false);
+      loadData();
+      // Refresh selected rank
+      const updated = await agentRanksApi.getById(selectedRank.id);
+      setSelectedRank(updated);
+    } catch (error) {
+      console.error('Failed to update rank:', error);
+    }
   }
 
   function handleEmployeeSelect(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -325,12 +361,20 @@ export function Ranks() {
                     <p className="text-gray-500">Гэрээний дугаар: {selectedRank.contractNumber}</p>
                   )}
                 </div>
-                <button
-                  onClick={openUpgradeModal}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  Цол өөрчлөх
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={openEditModal}
+                    className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
+                  >
+                    Засах
+                  </button>
+                  <button
+                    onClick={openUpgradeModal}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    Цол өөрчлөх
+                  </button>
+                </div>
               </div>
 
               {/* Current Rank */}
@@ -593,6 +637,79 @@ export function Ranks() {
                 onClick={handleUpgrade}
                 disabled={!upgradeForm.startDate}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Цолын мэдээлэл засах</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Агентын нэр</label>
+                <input
+                  type="text"
+                  value={editForm.agentName}
+                  onChange={(e) => setEditForm({ ...editForm, agentName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээний дугаар</label>
+                <input
+                  type="text"
+                  value={editForm.contractNumber}
+                  onChange={(e) => setEditForm({ ...editForm, contractNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Одоогийн цол</label>
+                <select
+                  value={editForm.currentRank}
+                  onChange={(e) => setEditForm({ ...editForm, currentRank: e.target.value as RankLevel })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  {RANK_LEVELS.map(rank => (
+                    <option key={rank} value={rank}>{rank}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээ эхэлсэн огноо</label>
+                <input
+                  type="date"
+                  value={editForm.currentStartDate}
+                  onChange={(e) => setEditForm({ ...editForm, currentStartDate: e.target.value, currentEndDate: calculateEndDate(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрээ дуусах огноо</label>
+                <input
+                  type="date"
+                  value={editForm.currentEndDate}
+                  onChange={(e) => setEditForm({ ...editForm, currentEndDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Болих
+              </button>
+              <button
+                onClick={handleEditSave}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 Хадгалах
               </button>
