@@ -136,8 +136,8 @@ export function Employees() {
   // Filtered employees
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
-      // Office filter
-      if (selectedOffice !== 'Бүгд' && employee.officeName !== selectedOffice && employee.interestedOffice !== selectedOffice) {
+      // Office filter - use officeName only
+      if (selectedOffice !== 'Бүгд' && employee.officeName !== selectedOffice) {
         return false;
       }
       

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const navigation = [
   { name: 'Хяналтын самбар', href: '/', icon: '📊' },
   { name: 'Ажилчид', href: '/employees', icon: '✅' },
-  { name: 'Анкетууд', href: '/applications', icon: '📝' },
+  { name: 'Сонгон шалгаруулалт', href: '/applications', icon: '📝' },
   { name: 'Цолны мэдээлэл', href: '/ranks', icon: '🏆' },
   { name: 'Гарсан агентууд', href: '/resigned-agents', icon: '🚪' }
 ];

@@ -29,8 +29,8 @@ export function ResignedAgents() {
 
   const filteredAgents = useMemo(() => {
     return resignedAgents.filter(agent => {
-      // Office filter
-      if (selectedOffice !== 'Бүгд' && agent.officeName !== selectedOffice && agent.interestedOffice !== selectedOffice) {
+      // Office filter - use officeName only
+      if (selectedOffice !== 'Бүгд' && agent.officeName !== selectedOffice) {
         return false;
       }
       

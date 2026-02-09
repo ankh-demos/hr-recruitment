@@ -75,10 +75,10 @@ export function Ranks() {
 
   const filteredRanks = useMemo(() => {
     return agentRanks.filter(rank => {
-      // Office filter - find employee by MLS (agentId) and check their office
+      // Office filter - find employee by MLS (agentId) and check their officeName
       if (selectedOffice !== 'Бүгд') {
         const employee = employees.find(e => e.mls === rank.agentId);
-        if (!employee || (employee.officeName !== selectedOffice && employee.interestedOffice !== selectedOffice)) {
+        if (!employee || employee.officeName !== selectedOffice) {
           return false;
         }
       }

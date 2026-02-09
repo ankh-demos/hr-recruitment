@@ -69,11 +69,11 @@ export function Dashboard() {
     // Filter by office
     const filteredEmployees = selectedOffice === 'Бүгд' 
       ? allEmployees 
-      : allEmployees.filter(e => e.officeName === selectedOffice || e.interestedOffice === selectedOffice);
+      : allEmployees.filter(e => e.officeName === selectedOffice);
     
     const filteredResignedAgents = selectedOffice === 'Бүгд'
       ? allResignedAgents
-      : allResignedAgents.filter(r => r.officeName === selectedOffice || r.interestedOffice === selectedOffice);
+      : allResignedAgents.filter(r => r.officeName === selectedOffice);
     
     const filteredApplications = selectedOffice === 'Бүгд'
       ? allApplications
@@ -168,7 +168,7 @@ export function Dashboard() {
       ? allAgentRanks 
       : allAgentRanks.filter(rank => {
           const employee = allEmployees.find(e => e.mls === rank.agentId);
-          return employee && (employee.officeName === selectedOffice || employee.interestedOffice === selectedOffice);
+          return employee && employee.officeName === selectedOffice;
         });
 
     const expired: AgentRank[] = [];
@@ -185,6 +185,12 @@ export function Dashboard() {
         nextMonth.push(rank);
       }
     });
+
+    // Sort by expiration date (ascending - soonest first)
+    const sortByDate = (a: AgentRank, b: AgentRank) => a.currentEndDate.localeCompare(b.currentEndDate);
+    expired.sort(sortByDate);
+    thisMonth.sort(sortByDate);
+    nextMonth.sort(sortByDate);
 
     return { expiredRanks: expired, expiringThisMonth: thisMonth, expiringNextMonth: nextMonth };
   }, [allAgentRanks, allEmployees, selectedOffice]);
