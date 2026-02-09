@@ -22,7 +22,7 @@ CREATE TABLE users (
 -- Insert default admin user (password: admin123 - change in production!)
 -- Hash generated with bcrypt for 'admin123'
 INSERT INTO users (username, password, full_name, email, role, is_active)
-VALUES ('admin', '$2a$10$rQnM1TqvPvXVqH8CW7X3/.7MK0KqLf3HH5GzF8OYG8K.Y5V6YC1Oe', 'System Admin', 'admin@hr.com', 'admin', true);
+VALUES ('admin', '$2b$10$hy.faUthtTGbrbt8KEPAY.ryfuaODyEMajLUowKpD00CN46Saapsu', 'System Admin', 'admin@hr.com', 'admin', true);
 
 -- ============================================
 -- CANDIDATES TABLE
