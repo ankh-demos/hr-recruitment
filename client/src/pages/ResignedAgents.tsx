@@ -620,7 +620,7 @@ export function ResignedAgents() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Гарсан шалтгаан</label>
-                <select value={editForm.resignationReason || ''} onChange={(e) => setEditForm({...editForm, resignationReason: e.target.value})}
+                <select value={editForm.resignationReason || ''} onChange={(e) => setEditForm({...editForm, resignationReason: e.target.value as ResignedAgent['resignationReason']})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                   <option value="">Сонгох</option>
                   <option value="Шилжсэн">Шилжсэн</option>
