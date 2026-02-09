@@ -107,7 +107,7 @@ export function Employees() {
     district: '',
     detailedAddress: '',
     childrenCount: 0,
-    status: '' as string
+    status: 'active' as Employee['status']
   });
 
   // CSV Import state
@@ -466,7 +466,7 @@ export function Employees() {
       district: selectedEmployee.district || '',
       detailedAddress: selectedEmployee.detailedAddress || '',
       childrenCount: selectedEmployee.childrenCount || 0,
-      status: selectedEmployee.status || ''
+      status: selectedEmployee.status
     });
     setEditFieldsOpen(true);
   }
@@ -1264,7 +1264,7 @@ export function Employees() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Төлөв</label>
-                <select value={editFields.status} onChange={(e) => setEditFields({ ...editFields, status: e.target.value })}
+                <select value={editFields.status} onChange={(e) => setEditFields({ ...editFields, status: e.target.value as Employee['status'] })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   {EMPLOYEE_STATUSES.map(s => (
                     <option key={s.value} value={s.value}>{s.label}</option>
