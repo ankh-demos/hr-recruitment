@@ -14,7 +14,7 @@ const RANK_COLORS: Record<RankLevel, string> = {
 };
 
 // Office options
-const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 // Calculate end date as exactly +1 year from start date
 function calculateEndDate(startDate: string): string {
@@ -96,7 +96,7 @@ export function Ranks() {
     return filteredRanks.slice(start, start + pageSize);
   }, [filteredRanks, currentPage, pageSize]);
 
-  // Categorize ranks by expiration status
+  // Categorize ranks by expiration status and sort by date
   const { expiredRanks, expiringThisMonth, expiringNextMonth } = useMemo(() => {
     const today = new Date();
     const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -119,6 +119,12 @@ export function Ranks() {
         nextMonth.push(rank);
       }
     });
+
+    // Sort by expiration date (ascending - soonest first)
+    const sortByDate = (a: AgentRank, b: AgentRank) => a.currentEndDate.localeCompare(b.currentEndDate);
+    expired.sort(sortByDate);
+    thisMonth.sort(sortByDate);
+    nextMonth.sort(sortByDate);
 
     return { expiredRanks: expired, expiringThisMonth: thisMonth, expiringNextMonth: nextMonth };
   }, [filteredRanks]);

@@ -15,7 +15,7 @@ const APPLICATION_STATUSES = [
 ];
 
 // Office options
-const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 export function Applications() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -697,10 +697,9 @@ export function Applications() {
                       <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
                         className="w-full border border-gray-300 rounded px-2 py-1">
                         <option value="">Сонгох</option>
-                        <option value="Sky">Sky</option>
-                        <option value="Premier">Premier</option>
-                        <option value="Alliance">Alliance</option>
-                        <option value="Express">Express</option>
+                        <option value="Гэгээнтэн">Гэгээнтэн</option>
+                        <option value="Ривер">Ривер</option>
+                        <option value="Даун таун">Даун таун</option>
                       </select>
                     </div>
                     <div>
@@ -997,8 +996,8 @@ export function Applications() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ургийн овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
@@ -1042,8 +1041,8 @@ export function Applications() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{app.lastName || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{app.firstName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{app.firstName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{app.lastName || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.familyName || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.interestedOffice || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.email || '-'}</td>

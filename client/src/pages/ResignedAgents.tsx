@@ -4,7 +4,7 @@ import { resignedAgentsApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
 // Office options
-const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 export function ResignedAgents() {
   const [resignedAgents, setResignedAgents] = useState<ResignedAgent[]>([]);
@@ -433,8 +433,8 @@ export function ResignedAgents() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Утас</th>
@@ -474,8 +474,8 @@ export function ResignedAgents() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{agent.lastName || '-'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-900">{agent.firstName || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{agent.firstName || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-900">{agent.lastName || '-'}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{agent.interestedOffice || '-'}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{agent.email || '-'}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{agent.phone || '-'}</td>
@@ -560,10 +560,9 @@ export function ResignedAgents() {
                 <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                   <option value="">Сонгох</option>
-                  <option value="Sky">Sky</option>
-                  <option value="Premier">Premier</option>
-                  <option value="Alliance">Alliance</option>
-                  <option value="Express">Express</option>
+                  <option value="Гэгээнтэн">Гэгээнтэн</option>
+                  <option value="Ривер">Ривер</option>
+                  <option value="Даун таун">Даун таун</option>
                 </select>
               </div>
               <div>
@@ -571,10 +570,9 @@ export function ResignedAgents() {
                 <select value={editForm.officeName || ''} onChange={(e) => setEditForm({...editForm, officeName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                   <option value="">Сонгох</option>
-                  <option value="Sky">Sky</option>
-                  <option value="Premier">Premier</option>
-                  <option value="Alliance">Alliance</option>
-                  <option value="Express">Express</option>
+                  <option value="Гэгээнтэн">Гэгээнтэн</option>
+                  <option value="Ривер">Ривер</option>
+                  <option value="Даун таун">Даун таун</option>
                 </select>
               </div>
               <div>

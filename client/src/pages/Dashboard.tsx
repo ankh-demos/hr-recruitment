@@ -4,7 +4,7 @@ import { applicationsApi, employeesApi, resignedAgentsApi, agentRanksApi } from 
 import { Application, Employee, ResignedAgent, AgentRank } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 export function Dashboard() {
   const { user } = useAuth();

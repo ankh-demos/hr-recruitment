@@ -38,7 +38,7 @@ const RESIGNATION_REASONS = [
 ] as const;
 
 // Office options
-const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 function getStatusInfo(status: string) {
   return EMPLOYEE_STATUSES.find(s => s.value === status) || { value: status, label: status, color: 'bg-gray-100 text-gray-800' };
@@ -1040,8 +1040,8 @@ export function Employees() {
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">iConnect нэр</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ургийн овог</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
@@ -1091,8 +1091,8 @@ export function Employees() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{emp.lastName || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{emp.firstName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{emp.firstName || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{emp.lastName || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.familyName || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.interestedOffice || '-'}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.email || '-'}</td>
@@ -1280,10 +1280,9 @@ export function Employees() {
                 <select value={editFields.interestedOffice} onChange={(e) => setEditFields({ ...editFields, interestedOffice: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="">Сонгох</option>
-                  <option value="Sky">Sky</option>
-                  <option value="Premier">Premier</option>
-                  <option value="Alliance">Alliance</option>
-                  <option value="Express">Express</option>
+                  <option value="Гэгээнтэн">Гэгээнтэн</option>
+                  <option value="Ривер">Ривер</option>
+                  <option value="Даун таун">Даун таун</option>
                 </select>
               </div>
               <div>
@@ -1291,10 +1290,9 @@ export function Employees() {
                 <select value={editFields.officeName || ''} onChange={(e) => setEditFields({ ...editFields, officeName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="">Сонгох</option>
-                  <option value="Sky">Sky</option>
-                  <option value="Premier">Premier</option>
-                  <option value="Alliance">Alliance</option>
-                  <option value="Express">Express</option>
+                  <option value="Гэгээнтэн">Гэгээнтэн</option>
+                  <option value="Ривер">Ривер</option>
+                  <option value="Даун таун">Даун таун</option>
                 </select>
               </div>
               <div>
