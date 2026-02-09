@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Application, ApplicationMeeting, User } from '../types';
 import { usersApi, applicationsApi } from '../services/api';
+import { Pagination } from '../components/Pagination';
 
 const API_BASE = '/api';
 
@@ -23,6 +24,10 @@ export function Applications() {
   // Status Filter State (multi-select)
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   
   // Meeting Modal State
   const [meetingModalOpen, setMeetingModalOpen] = useState(false);
@@ -53,6 +58,17 @@ export function Applications() {
     }
     return applications.filter(app => selectedStatuses.includes(app.status));
   }, [applications, selectedStatuses]);
+
+  // Paginated applications for table view
+  const paginatedApplications = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredApplications.slice(start, start + pageSize);
+  }, [filteredApplications, currentPage, pageSize]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatuses]);
 
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev => 
@@ -770,14 +786,14 @@ export function Applications() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredApplications.length === 0 ? (
+              {paginatedApplications.length === 0 ? (
                 <tr>
                   <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
                     Анкет байхгүй
                   </td>
                 </tr>
               ) : (
-                filteredApplications.map((app) => {
+                paginatedApplications.map((app) => {
                   const statusInfo = APPLICATION_STATUSES.find(s => s.value === app.status);
                   return (
                     <tr 
@@ -837,6 +853,13 @@ export function Applications() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          totalItems={filteredApplications.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
       )}
 

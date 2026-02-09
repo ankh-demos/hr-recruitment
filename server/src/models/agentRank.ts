@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { AgentRank, RankLevel, AgentRankHistory } from '../types';
 
 // Calculate end date as exactly +1 year from start date
@@ -10,25 +10,25 @@ function calculateEndDate(startDate: string): string {
 }
 
 export const agentRankModel = {
-  getAll(): AgentRank[] {
-    return database.getAgentRanks();
+  async getAll(): Promise<AgentRank[]> {
+    return db.getAgentRanks();
   },
 
-  getById(id: string): AgentRank | undefined {
-    return database.getAgentRankById(id);
+  async getById(id: string): Promise<AgentRank | undefined> {
+    return db.getAgentRankById(id);
   },
 
-  getByAgentId(agentId: string): AgentRank | undefined {
-    return database.getAgentRankByAgentId(agentId);
+  async getByAgentId(agentId: string): Promise<AgentRank | undefined> {
+    return db.getAgentRankByAgentId(agentId);
   },
 
-  create(data: {
+  async create(data: {
     agentId: string;
     agentName: string;
     contractNumber?: string;
     rank: RankLevel;
     startDate: string;
-  }): AgentRank {
+  }): Promise<AgentRank> {
     const now = new Date().toISOString();
     const endDate = calculateEndDate(data.startDate);
     
@@ -52,16 +52,16 @@ export const agentRankModel = {
       updatedAt: now
     };
     
-    return database.createAgentRank(agentRank);
+    return db.createAgentRank(agentRank);
   },
 
   // Update rank (promote/change) - adds to history
-  updateRank(id: string, data: {
+  async updateRank(id: string, data: {
     rank: RankLevel;
     startDate: string;
     agentName?: string;
-  }): AgentRank | undefined {
-    const existing = database.getAgentRankById(id);
+  }): Promise<AgentRank | undefined> {
+    const existing = await db.getAgentRankById(id);
     if (!existing) return undefined;
 
     const now = new Date().toISOString();
@@ -86,21 +86,21 @@ export const agentRankModel = {
       updates.agentName = data.agentName;
     }
 
-    return database.updateAgentRank(id, updates);
+    return db.updateAgentRank(id, updates);
   },
 
-  update(id: string, data: Partial<AgentRank>): AgentRank | undefined {
+  async update(id: string, data: Partial<AgentRank>): Promise<AgentRank | undefined> {
     const now = new Date().toISOString();
-    return database.updateAgentRank(id, { ...data, updatedAt: now });
+    return db.updateAgentRank(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteAgentRank(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteAgentRank(id);
   },
 
   // Get current valid rank for an agent by date
-  getCurrentRankByAgentId(agentId: string, checkDate?: string): RankLevel | null {
-    const agentRank = database.getAgentRankByAgentId(agentId);
+  async getCurrentRankByAgentId(agentId: string, checkDate?: string): Promise<RankLevel | null> {
+    const agentRank = await db.getAgentRankByAgentId(agentId);
     if (!agentRank) return null;
 
     const today = checkDate || new Date().toISOString().split('T')[0];

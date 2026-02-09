@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { ResignedAgent } from '../types';
 import { resignedAgentsApi } from '../services/api';
+import { Pagination } from '../components/Pagination';
 
 export function ResignedAgents() {
   const [resignedAgents, setResignedAgents] = useState<ResignedAgent[]>([]);
@@ -9,6 +10,10 @@ export function ResignedAgents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [moveBackConfirmOpen, setMoveBackConfirmOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     loadData();
@@ -24,6 +29,17 @@ export function ResignedAgents() {
         (agent.interestedOffice && agent.interestedOffice.toLowerCase().includes(searchLower));
     });
   }, [resignedAgents, searchTerm]);
+
+  // Paginated agents for table view
+  const paginatedAgents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAgents.slice(start, start + pageSize);
+  }, [filteredAgents, currentPage, pageSize]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   async function loadData() {
     try {
@@ -365,14 +381,14 @@ export function ResignedAgents() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAgents.length === 0 ? (
+              {paginatedAgents.length === 0 ? (
                 <tr>
                   <td colSpan={15} className="px-4 py-8 text-center text-gray-500">
                     Гарсан агент байхгүй
                   </td>
                 </tr>
               ) : (
-                filteredAgents.map((agent) => (
+                paginatedAgents.map((agent) => (
                   <tr 
                     key={agent.id} 
                     onClick={() => { setSelectedAgent(agent); setViewMode('list'); }}
@@ -409,6 +425,13 @@ export function ResignedAgents() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          totalItems={filteredAgents.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
       )}
 

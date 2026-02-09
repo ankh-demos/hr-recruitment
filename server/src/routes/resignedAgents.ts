@@ -4,9 +4,9 @@ import { resignedAgentModel, employeeModel } from '../models';
 const router = Router();
 
 // Get all resigned agents
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const resignedAgents = resignedAgentModel.getAll();
+    const resignedAgents = await resignedAgentModel.getAll();
     res.json(resignedAgents);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch resigned agents' });
@@ -14,9 +14,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get resigned agent by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const resignedAgent = resignedAgentModel.getById(req.params.id);
+    const resignedAgent = await resignedAgentModel.getById(req.params.id);
     if (!resignedAgent) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }
@@ -27,17 +27,17 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Move employee to resigned agents
-router.post('/from-employee/:employeeId', (req: Request, res: Response) => {
+router.post('/from-employee/:employeeId', async (req: Request, res: Response) => {
   try {
     const { workedMonths, resignedDate, resignationReason, resignationNotes } = req.body;
     
-    const employee = employeeModel.getById(req.params.employeeId);
+    const employee = await employeeModel.getById(req.params.employeeId);
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
     // Create resigned agent from employee
-    const resignedAgent = resignedAgentModel.createFromEmployee(employee, {
+    const resignedAgent = await resignedAgentModel.createFromEmployee(employee, {
       workedMonths,
       resignedDate,
       resignationReason,
@@ -45,7 +45,7 @@ router.post('/from-employee/:employeeId', (req: Request, res: Response) => {
     });
 
     // Delete employee from employees table
-    employeeModel.delete(req.params.employeeId);
+    await employeeModel.delete(req.params.employeeId);
 
     res.status(201).json(resignedAgent);
   } catch (error) {
@@ -55,18 +55,18 @@ router.post('/from-employee/:employeeId', (req: Request, res: Response) => {
 });
 
 // Move resigned agent back to employees
-router.post('/to-employee/:resignedAgentId', (req: Request, res: Response) => {
+router.post('/to-employee/:resignedAgentId', async (req: Request, res: Response) => {
   try {
-    const resignedAgent = resignedAgentModel.getById(req.params.resignedAgentId);
+    const resignedAgent = await resignedAgentModel.getById(req.params.resignedAgentId);
     if (!resignedAgent) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }
 
     // Create employee from resigned agent
-    const employee = employeeModel.createFromResignedAgent(resignedAgent);
+    const employee = await employeeModel.createFromResignedAgent(resignedAgent);
 
     // Delete resigned agent
-    resignedAgentModel.delete(req.params.resignedAgentId);
+    await resignedAgentModel.delete(req.params.resignedAgentId);
 
     res.status(201).json(employee);
   } catch (error) {
@@ -76,9 +76,9 @@ router.post('/to-employee/:resignedAgentId', (req: Request, res: Response) => {
 });
 
 // Update resigned agent
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const resignedAgent = resignedAgentModel.update(req.params.id, req.body);
+    const resignedAgent = await resignedAgentModel.update(req.params.id, req.body);
     if (!resignedAgent) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }
@@ -89,9 +89,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete resigned agent
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = resignedAgentModel.delete(req.params.id);
+    const success = await resignedAgentModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { User, UserPublic } from '../types';
 
 const router = Router();
@@ -17,9 +17,9 @@ const toPublic = (user: User): UserPublic => ({
 });
 
 // Get all users (admin only)
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const users = database.getUsers();
+    const users = await db.getUsers();
     res.json(users.map(toPublic));
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -28,9 +28,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get user by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const user = database.getUserById(req.params.id);
+    const user = await db.getUserById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
     }
@@ -42,7 +42,7 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Create new user (admin only)
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { username, password, fullName, email, role } = req.body;
     
@@ -51,7 +51,7 @@ router.post('/', (req: Request, res: Response) => {
     }
     
     // Check if username already exists
-    const existingUser = database.getUserByUsername(username);
+    const existingUser = await db.getUserByUsername(username);
     if (existingUser) {
       return res.status(400).json({ error: 'Хэрэглэгчийн нэр бүртгэлтэй байна' });
     }
@@ -68,7 +68,7 @@ router.post('/', (req: Request, res: Response) => {
       updatedAt: new Date().toISOString()
     };
     
-    const created = database.createUser(newUser);
+    const created = await db.createUser(newUser);
     res.status(201).json(toPublic(created));
   } catch (error) {
     console.error('Error creating user:', error);
@@ -77,7 +77,7 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update user
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { fullName, email, role, isActive, password } = req.body;
     
@@ -91,7 +91,7 @@ router.put('/:id', (req: Request, res: Response) => {
     if (isActive !== undefined) updates.isActive = isActive;
     if (password !== undefined) updates.password = password;
     
-    const updated = database.updateUser(req.params.id, updates);
+    const updated = await db.updateUser(req.params.id, updates);
     
     if (!updated) {
       return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
@@ -105,11 +105,11 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete user
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     // Prevent deleting the last admin
-    const users = database.getUsers();
-    const userToDelete = database.getUserById(req.params.id);
+    const users = await db.getUsers();
+    const userToDelete = await db.getUserById(req.params.id);
     
     if (!userToDelete) {
       return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
@@ -122,7 +122,7 @@ router.delete('/:id', (req: Request, res: Response) => {
       }
     }
     
-    const deleted = database.deleteUser(req.params.id);
+    const deleted = await db.deleteUser(req.params.id);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });

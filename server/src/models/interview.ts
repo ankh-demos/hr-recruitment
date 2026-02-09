@@ -1,29 +1,33 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { Interview } from '../types';
 
 export const interviewModel = {
-  getAll(): Interview[] {
-    return database.getInterviews();
+  async getAll(): Promise<Interview[]> {
+    return db.getInterviews();
   },
 
-  getById(id: string): Interview | undefined {
-    return database.getInterviewById(id);
+  async getById(id: string): Promise<Interview | undefined> {
+    return db.getInterviewById(id);
   },
 
-  getByCandidateId(candidateId: string): Interview[] {
-    return database.getInterviewsByCandidateId(candidateId);
+  async getByCandidateId(candidateId: string): Promise<Interview[]> {
+    const interviews = await db.getInterviews();
+    return interviews.filter(i => i.candidateId === candidateId);
   },
 
-  getByJobId(jobId: string): Interview[] {
-    return database.getInterviewsByJobId(jobId);
+  async getByJobId(jobId: string): Promise<Interview[]> {
+    const interviews = await db.getInterviews();
+    return interviews.filter(i => i.jobId === jobId);
   },
 
-  getUpcoming(): Interview[] {
-    return database.getUpcomingInterviews();
+  async getUpcoming(): Promise<Interview[]> {
+    const interviews = await db.getInterviews();
+    const now = new Date().toISOString();
+    return interviews.filter(i => i.scheduledAt > now && i.status === 'scheduled');
   },
 
-  create(data: Omit<Interview, 'id' | 'createdAt' | 'updatedAt'>): Interview {
+  async create(data: Omit<Interview, 'id' | 'createdAt' | 'updatedAt'>): Promise<Interview> {
     const now = new Date().toISOString();
     const interview: Interview = {
       id: uuidv4(),
@@ -31,15 +35,15 @@ export const interviewModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createInterview(interview);
+    return db.createInterview(interview);
   },
 
-  update(id: string, data: Partial<Interview>): Interview | undefined {
+  async update(id: string, data: Partial<Interview>): Promise<Interview | undefined> {
     const now = new Date().toISOString();
-    return database.updateInterview(id, { ...data, updatedAt: now });
+    return db.updateInterview(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteInterview(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteInterview(id);
   }
 };

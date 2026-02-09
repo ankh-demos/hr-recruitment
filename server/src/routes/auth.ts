@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { UserPublic } from '../types';
 import { generateToken, authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 
@@ -15,7 +15,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Хэрэглэгчийн нэр болон нууц үг оруулна уу' });
     }
     
-    const user = database.getUserByUsername(username);
+    const user = await db.getUserByUsername(username);
     
     if (!user) {
       return res.status(401).json({ error: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна' });
@@ -57,13 +57,13 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 // Get current user (using JWT)
-router.get('/me', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Нэвтрээгүй байна' });
     }
     
-    const user = database.getUserById(req.user.id);
+    const user = await db.getUserById(req.user.id);
     
     if (!user) {
       return res.status(401).json({ error: 'Хэрэглэгч олдсонгүй' });

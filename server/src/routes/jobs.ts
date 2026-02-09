@@ -4,9 +4,9 @@ import { jobModel } from '../models';
 const router = Router();
 
 // Get all jobs
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const jobs = jobModel.getAll();
+    const jobs = await jobModel.getAll();
     res.json(jobs);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch jobs' });
@@ -14,9 +14,9 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // Get job by ID
-router.get('/:id', (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const job = jobModel.getById(req.params.id);
+    const job = await jobModel.getById(req.params.id);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
@@ -27,9 +27,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Create job
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const job = jobModel.create(req.body);
+    const job = await jobModel.create(req.body);
     res.status(201).json(job);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create job' });
@@ -37,9 +37,9 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update job
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const job = jobModel.update(req.params.id, req.body);
+    const job = await jobModel.update(req.params.id, req.body);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
@@ -50,9 +50,9 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete job
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const success = jobModel.delete(req.params.id);
+    const success = await jobModel.delete(req.params.id);
     if (!success) {
       return res.status(404).json({ error: 'Job not found' });
     }

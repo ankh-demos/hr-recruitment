@@ -1,21 +1,22 @@
 import { v4 as uuidv4 } from 'uuid';
-import { database } from '../database';
+import { db } from '../database/unifiedDb';
 import { Candidate } from '../types';
 
 export const candidateModel = {
-  getAll(): Candidate[] {
-    return database.getCandidates();
+  async getAll(): Promise<Candidate[]> {
+    return db.getCandidates();
   },
 
-  getById(id: string): Candidate | undefined {
-    return database.getCandidateById(id);
+  async getById(id: string): Promise<Candidate | undefined> {
+    return db.getCandidateById(id);
   },
 
-  getByJobId(jobId: string): Candidate[] {
-    return database.getCandidatesByJobId(jobId);
+  async getByJobId(jobId: string): Promise<Candidate[]> {
+    const candidates = await db.getCandidates();
+    return candidates.filter(c => c.appliedJobId === jobId);
   },
 
-  create(data: Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'>): Candidate {
+  async create(data: Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'>): Promise<Candidate> {
     const now = new Date().toISOString();
     const candidate: Candidate = {
       id: uuidv4(),
@@ -23,19 +24,20 @@ export const candidateModel = {
       createdAt: now,
       updatedAt: now
     };
-    return database.createCandidate(candidate);
+    return db.createCandidate(candidate);
   },
 
-  update(id: string, data: Partial<Candidate>): Candidate | undefined {
+  async update(id: string, data: Partial<Candidate>): Promise<Candidate | undefined> {
     const now = new Date().toISOString();
-    return database.updateCandidate(id, { ...data, updatedAt: now });
+    return db.updateCandidate(id, { ...data, updatedAt: now });
   },
 
-  delete(id: string): boolean {
-    return database.deleteCandidate(id);
+  async delete(id: string): Promise<boolean> {
+    return db.deleteCandidate(id);
   },
 
-  emailExists(email: string, excludeId?: string): boolean {
-    return database.candidateEmailExists(email, excludeId);
+  async emailExists(email: string, excludeId?: string): Promise<boolean> {
+    const candidates = await db.getCandidates();
+    return candidates.some(c => c.email === email && c.id !== excludeId);
   }
 };
