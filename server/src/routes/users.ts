@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/unifiedDb';
 import { User, UserPublic } from '../types';
 
@@ -56,10 +58,13 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Хэрэглэгчийн нэр бүртгэлтэй байна' });
     }
     
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
     const newUser: User = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       username,
-      password,
+      password: hashedPassword,
       fullName,
       email,
       role,
@@ -89,7 +94,9 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (email !== undefined) updates.email = email;
     if (role !== undefined) updates.role = role;
     if (isActive !== undefined) updates.isActive = isActive;
-    if (password !== undefined) updates.password = password;
+    if (password !== undefined) {
+      updates.password = await bcrypt.hash(password, 10);
+    }
     
     const updated = await db.updateUser(req.params.id, updates);
     
