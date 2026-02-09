@@ -150,6 +150,7 @@ export interface Application {
   
   // Fire UP training number
   trainingNumber?: string; // Сургалтын дугаар
+  fireupDate?: string; // Fire UP огнои (хэзээ товлосон)
   
   // Metadata
   status: 'new' | 'interviewing' | 'fireup' | 'iconnect' | 'cancelled';

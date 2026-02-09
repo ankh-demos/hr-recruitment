@@ -195,6 +195,64 @@ export function Dashboard() {
     return { expiredRanks: expired, expiringThisMonth: thisMonth, expiringNextMonth: nextMonth };
   }, [allAgentRanks, allEmployees, selectedOffice]);
 
+  // Birthday employees this month
+  const birthdayEmployees = useMemo(() => {
+    const currentMonth = new Date().getMonth(); // 0-indexed
+    
+    // Filter by office if needed
+    const filteredEmployees = selectedOffice === 'Бүгд' 
+      ? allEmployees 
+      : allEmployees.filter(e => e.officeName === selectedOffice);
+    
+    const birthdays = filteredEmployees.filter(emp => {
+      if (!emp.birthDate) return false;
+      const birthMonth = new Date(emp.birthDate).getMonth();
+      return birthMonth === currentMonth;
+    });
+    
+    // Sort by day of month
+    birthdays.sort((a, b) => {
+      const dayA = new Date(a.birthDate).getDate();
+      const dayB = new Date(b.birthDate).getDate();
+      return dayA - dayB;
+    });
+    
+    return birthdays;
+  }, [allEmployees, selectedOffice]);
+
+  // Monthly statistics for Fire UP and iConnect
+  const monthlyStats = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // Filter applications by office if needed
+    const filteredApps = selectedOffice === 'Бүгд' 
+      ? allApplications 
+      : allApplications.filter(a => a.interestedOffice === selectedOffice);
+    
+    // Filter employees by office if needed
+    const filteredEmps = selectedOffice === 'Бүгд' 
+      ? allEmployees 
+      : allEmployees.filter(e => e.officeName === selectedOffice);
+    
+    // Fire UP this month (applications with fireup status and fireupDate in current month)
+    const fireUpThisMonth = filteredApps.filter(app => {
+      if (app.status !== 'fireup' || !app.fireupDate) return false;
+      const fireupDate = new Date(app.fireupDate);
+      return fireupDate.getMonth() === currentMonth && fireupDate.getFullYear() === currentYear;
+    }).length;
+    
+    // iConnect this month (employees created this month)
+    const iConnectThisMonth = filteredEmps.filter(emp => {
+      if (!emp.createdAt) return false;
+      const createdDate = new Date(emp.createdAt);
+      return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear;
+    }).length;
+    
+    return { fireUpThisMonth, iConnectThisMonth };
+  }, [allApplications, allEmployees, selectedOffice]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -586,6 +644,74 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Birthday Section */}
+      {birthdayEmployees.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <span className="text-2xl">🎂</span>
+            Энэ сарын төрсөн өдөр ({birthdayEmployees.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {birthdayEmployees.slice(0, 8).map(emp => (
+              <div key={emp.id} className="bg-pink-50 border border-pink-200 rounded-lg p-3 flex items-center gap-3">
+                {emp.photoUrl ? (
+                  <img src={emp.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-pink-600">
+                      {emp.firstName?.charAt(0) || ''}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{emp.firstName} {emp.lastName}</p>
+                  <p className="text-xs text-pink-600">
+                    {new Date(emp.birthDate).toLocaleDateString('mn-MN', { month: 'long', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {birthdayEmployees.length > 8 && (
+            <p className="mt-3 text-center text-sm text-gray-500">+{birthdayEmployees.length - 8} бусад</p>
+          )}
+        </div>
+      )}
+
+      {/* Monthly Statistics */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Энэ сарын статистик
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center">
+                <span className="text-xl">🔥</span>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-700">{monthlyStats.fireUpThisMonth}</p>
+                <p className="text-sm text-purple-600">Fire UP товлосон</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center">
+                <span className="text-xl">✅</span>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700">{monthlyStats.iConnectThisMonth}</p>
+                <p className="text-sm text-green-600">iConnect нээлгэсэн</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Charts and Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Status Distribution Chart */}
@@ -597,11 +723,11 @@ export function Dashboard() {
                 <div key={item.status}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="capitalize text-gray-600">
-                      {item.status === 'new' ? 'Шинэ' :
+                      {item.status === 'new' ? 'Шинэ анкет' :
                        item.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
-                       item.status === 'iconnect' ? 'iConnect' :
-                       item.status === 'fireup' ? 'Fire UP' :
-                       item.status === 'cancelled' ? 'Цуцалсан' : item.status}
+                       item.status === 'iconnect' ? 'iConnect нээлгэсэн' :
+                       item.status === 'fireup' ? 'Fire UP товлосон' :
+                       item.status === 'cancelled' ? 'Ажиллахаа больсон' : item.status}
                     </span>
                     <span className="font-medium">{item.count}</span>
                   </div>
@@ -647,10 +773,10 @@ export function Dashboard() {
                       app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {app.status === 'new' ? 'Шинэ' :
+                      {app.status === 'new' ? 'Шинэ анкет' :
                        app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
-                       app.status === 'iconnect' ? 'iConnect' :
-                       app.status === 'fireup' ? 'Fire UP' : 'Цуцалсан'}
+                       app.status === 'iconnect' ? 'iConnect нээлгэсэн' :
+                       app.status === 'fireup' ? 'Fire UP товлосон' : 'Ажиллахаа больсон'}
                     </span>
                   </div>
                 </li>

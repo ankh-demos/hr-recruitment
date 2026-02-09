@@ -120,6 +120,7 @@ CREATE TABLE applications (
   meeting3 JSONB,
   -- Fire UP training
   training_number TEXT,
+  fireup_date DATE,
   -- Status
   status TEXT CHECK (status IN ('new', 'interviewing', 'fireup', 'iconnect', 'cancelled')) DEFAULT 'new',
   created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -46,6 +46,11 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Application not found' });
     }
 
+    // If status is changing to 'fireup', set fireupDate
+    if (status === 'fireup' && currentApplication.status !== 'fireup') {
+      rest.fireupDate = new Date().toISOString().split('T')[0];
+    }
+
     // If status is changing to 'iconnect', create an employee and delete application
     if (status === 'iconnect' && currentApplication.status !== 'iconnect') {
       // Check if employee already exists for this application

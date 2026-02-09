@@ -7,11 +7,11 @@ const API_BASE = '/api';
 
 // Application status options
 const APPLICATION_STATUSES = [
-  { value: 'new', label: 'Шинэ', color: 'bg-blue-100 text-blue-800' },
+  { value: 'new', label: 'Шинэ анкет', color: 'bg-blue-100 text-blue-800' },
   { value: 'interviewing', label: 'Ярилцлага хийж байгаа', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'fireup', label: 'Fire UP', color: 'bg-purple-100 text-purple-800' },
-  { value: 'iconnect', label: 'iConnect', color: 'bg-green-100 text-green-800' },
-  { value: 'cancelled', label: 'Цуцалсан', color: 'bg-red-100 text-red-800' }
+  { value: 'fireup', label: 'Fire UP товлосон', color: 'bg-purple-100 text-purple-800' },
+  { value: 'iconnect', label: 'iConnect нээлгэсэн', color: 'bg-green-100 text-green-800' },
+  { value: 'cancelled', label: 'Ажиллахаа больсон', color: 'bg-red-100 text-red-800' }
 ];
 
 // Office options
