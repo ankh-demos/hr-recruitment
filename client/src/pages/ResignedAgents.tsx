@@ -3,11 +3,15 @@ import { ResignedAgent } from '../types';
 import { resignedAgentsApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
+// Office options
+const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+
 export function ResignedAgents() {
   const [resignedAgents, setResignedAgents] = useState<ResignedAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<ResignedAgent | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [moveBackConfirmOpen, setMoveBackConfirmOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
@@ -25,6 +29,11 @@ export function ResignedAgents() {
 
   const filteredAgents = useMemo(() => {
     return resignedAgents.filter(agent => {
+      // Office filter
+      if (selectedOffice !== 'Бүгд' && agent.officeName !== selectedOffice && agent.interestedOffice !== selectedOffice) {
+        return false;
+      }
+      
       const searchLower = searchTerm.toLowerCase();
       return searchTerm === '' || 
         agent.firstName.toLowerCase().includes(searchLower) ||
@@ -32,7 +41,7 @@ export function ResignedAgents() {
         agent.email.toLowerCase().includes(searchLower) ||
         (agent.interestedOffice && agent.interestedOffice.toLowerCase().includes(searchLower));
     });
-  }, [resignedAgents, searchTerm]);
+  }, [resignedAgents, searchTerm, selectedOffice]);
 
   // Paginated agents for table view
   const paginatedAgents = useMemo(() => {
@@ -75,6 +84,7 @@ export function ResignedAgents() {
       lastName: selectedAgent.lastName,
       firstName: selectedAgent.firstName,
       interestedOffice: selectedAgent.interestedOffice,
+      officeName: selectedAgent.officeName,
       email: selectedAgent.email,
       phone: selectedAgent.phone,
       emergencyPhone: selectedAgent.emergencyPhone,
@@ -209,6 +219,17 @@ export function ResignedAgents() {
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
+          <div className="min-w-[150px]">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-red-500"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex rounded-lg overflow-hidden border border-gray-300">
             <button
               onClick={() => setViewMode('list')}
@@ -261,8 +282,8 @@ export function ResignedAgents() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {agent.lastName} {agent.firstName}
+                      <p className="text-gray-900 truncate">
+                        <span className="font-bold">{agent.firstName}</span> {agent.lastName}
                       </p>
                       <p className="text-sm text-gray-500 truncate">{agent.interestedOffice}</p>
                       <p className="text-xs text-red-500">
@@ -291,8 +312,8 @@ export function ResignedAgents() {
                   </div>
                 )}
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {selectedAgent.familyName} {selectedAgent.lastName} {selectedAgent.firstName}
+                  <h2 className="text-xl text-gray-900">
+                    {selectedAgent.familyName} <span className="font-bold">{selectedAgent.firstName}</span> {selectedAgent.lastName}
                   </h2>
                   <p className="text-gray-500">{selectedAgent.email}</p>
                   <p className="text-gray-500">{selectedAgent.phone}</p>
@@ -489,7 +510,7 @@ export function ResignedAgents() {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold mb-4">Ажилтан болгох уу?</h3>
             <p className="text-gray-600 mb-6">
-              {selectedAgent?.lastName} {selectedAgent?.firstName}-г буцааж ажилтан болгохдоо итгэлтэй байна уу?
+              <span className="font-bold">{selectedAgent?.firstName}</span> {selectedAgent?.lastName}-г буцааж ажилтан болгохдоо итгэлтэй байна уу?
             </p>
             <div className="flex gap-3 justify-end">
               <button
@@ -535,8 +556,19 @@ export function ResignedAgents() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Оффис</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Сонирхсон оффис</label>
                 <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                  <option value="">Сонгох</option>
+                  <option value="Sky">Sky</option>
+                  <option value="Premier">Premier</option>
+                  <option value="Alliance">Alliance</option>
+                  <option value="Express">Express</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ажилладаг байсан оффис</label>
+                <select value={editForm.officeName || ''} onChange={(e) => setEditForm({...editForm, officeName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                   <option value="">Сонгох</option>
                   <option value="Sky">Sky</option>

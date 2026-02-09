@@ -14,6 +14,9 @@ const APPLICATION_STATUSES = [
   { value: 'cancelled', label: 'Цуцалсан', color: 'bg-red-100 text-red-800' }
 ];
 
+// Office options
+const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+
 export function Applications() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +26,7 @@ export function Applications() {
   
   // Status Filter State (multi-select)
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   
   // Pagination state
@@ -55,13 +59,20 @@ export function Applications() {
     loadUsers();
   }, []);
 
-  // Filtered applications based on selected statuses
+  // Filtered applications based on selected statuses and office
   const filteredApplications = useMemo(() => {
-    if (selectedStatuses.length === 0) {
-      return applications;
-    }
-    return applications.filter(app => selectedStatuses.includes(app.status));
-  }, [applications, selectedStatuses]);
+    return applications.filter(app => {
+      // Office filter
+      if (selectedOffice !== 'Бүгд' && app.interestedOffice !== selectedOffice) {
+        return false;
+      }
+      // Status filter
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(app.status)) {
+        return false;
+      }
+      return true;
+    });
+  }, [applications, selectedStatuses, selectedOffice]);
 
   // Paginated applications for table view
   const paginatedApplications = useMemo(() => {
@@ -410,6 +421,18 @@ export function Applications() {
               </div>
             )}
           </div>
+          {/* Office Filter */}
+          <div className="min-w-[150px]">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
+              ))}
+            </select>
+          </div>
           {selectedStatuses.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {selectedStatuses.map(s => {
@@ -460,8 +483,8 @@ export function Applications() {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {app.lastName} {app.firstName}
+                      <p className="text-gray-900">
+                        <span className="font-bold">{app.firstName}</span> {app.lastName}
                       </p>
                       <p className="text-sm text-gray-500">{app.email}</p>
                       <p className="text-xs text-gray-400">
@@ -501,8 +524,8 @@ export function Applications() {
                     />
                   )}
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {selectedApplication.familyName} {selectedApplication.lastName} {selectedApplication.firstName}
+                    <h2 className="text-xl text-gray-900">
+                      {selectedApplication.familyName} <span className="font-bold">{selectedApplication.firstName}</span> {selectedApplication.lastName}
                     </h2>
                     <p className="text-gray-500">{selectedApplication.email}</p>
                   </div>

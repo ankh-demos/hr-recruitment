@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { applicationsApi, employeesApi, resignedAgentsApi } from '../services/api';
-import { Application, Employee } from '../types';
+import { applicationsApi, employeesApi, resignedAgentsApi, agentRanksApi } from '../services/api';
+import { Application, Employee, ResignedAgent, AgentRank } from '../types';
 import { useAuth } from '../context/AuthContext';
+
+const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
 
 export function Dashboard() {
   const { user } = useAuth();
+  const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
+  const [allApplications, setAllApplications] = useState<Application[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [allResignedAgents, setAllResignedAgents] = useState<ResignedAgent[]>([]);
+  const [allAgentRanks, setAllAgentRanks] = useState<AgentRank[]>([]);
   const [stats, setStats] = useState({
     totalApplications: 0,
     newApplications: 0,
@@ -34,87 +41,20 @@ export function Dashboard() {
   // Chart data
   const [statusDistribution, setStatusDistribution] = useState<{status: string; count: number; color: string}[]>([]);
 
+  // Load all data once
   useEffect(() => {
     async function loadData() {
       try {
-        const [applications, employees, resignedAgents] = await Promise.all([
+        const [applications, employees, resignedAgents, agentRanks] = await Promise.all([
           applicationsApi.getAll(),
           employeesApi.getAll(),
-          resignedAgentsApi.getAll()
+          resignedAgentsApi.getAll(),
+          agentRanksApi.getAll()
         ]);
-
-        // Calculate new applications this week
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const newThisWeek = applications.filter((a: Application) => 
-          new Date(a.createdAt) >= oneWeekAgo
-        ).length;
-
-        // Calculate stats
-        const newApps = applications.filter((a: Application) => a.status === 'new').length;
-        const interviewingApps = applications.filter((a: Application) => a.status === 'interviewing').length;
-        const iconnectApps = applications.filter((a: Application) => a.status === 'iconnect').length;
-        const resignedCount = resignedAgents.length;
-
-        setStats({
-          totalApplications: applications.length,
-          newApplications: newApps,
-          interviewingApplications: interviewingApps,
-          iconnectApplications: iconnectApps,
-          totalEmployees: employees.length,
-          newThisWeek: newThisWeek
-        });
-
-        // Calculate employee stats
-        const activeCount = employees.filter((e: Employee) => e.status === 'active').length;
-        const new03Count = employees.filter((e: Employee) => e.status === 'new_0_3').length;
-        const inactiveTransactionCount = employees.filter((e: Employee) => e.status === 'inactive_transaction').length;
-        const inactiveCount = employees.filter((e: Employee) => e.status === 'inactive').length;
-        const activeNoTransactionCount = employees.filter((e: Employee) => e.status === 'active_no_transaction').length;
-        const onLeaveCount = employees.filter((e: Employee) => e.status === 'on_leave').length;
-        const maternityLeaveCount = employees.filter((e: Employee) => e.status === 'maternity_leave').length;
-        const teamMemberCount = employees.filter((e: Employee) => e.status === 'team_member').length;
-        // Note: resignedCount already calculated from resignedAgents above
-        const totalAgents = employees.length;
-        const qualitySum = activeCount + new03Count + inactiveTransactionCount;
-        const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
-
-        setEmployeeStats({
-          active: activeCount,
-          new_0_3: new03Count,
-          inactive_transaction: inactiveTransactionCount,
-          inactive: inactiveCount,
-          active_no_transaction: activeNoTransactionCount,
-          on_leave: onLeaveCount,
-          maternity_leave: maternityLeaveCount,
-          team_member: teamMemberCount,
-          resigned: resignedCount,
-          totalIconnect: iconnectApps,
-          totalAgents: totalAgents,
-          quality: quality
-        });
-
-        // Status distribution for chart
-        const statusCounts = applications.reduce((acc: Record<string, number>, a: Application) => {
-          acc[a.status] = (acc[a.status] || 0) + 1;
-          return acc;
-        }, {});
-
-        const statusColors: Record<string, string> = {
-          'new': '#3B82F6',
-          'interviewing': '#F59E0B',
-          'iconnect': '#10B981',
-          'fireup': '#8B5CF6',
-          'cancelled': '#EF4444'
-        };
-
-        setStatusDistribution(Object.entries(statusCounts).map(([status, count]) => ({
-          status,
-          count: count as number,
-          color: statusColors[status] || '#6B7280'
-        })));
-
-        setRecentApplications(applications.slice(0, 5));
+        setAllApplications(applications);
+        setAllEmployees(employees);
+        setAllResignedAgents(resignedAgents);
+        setAllAgentRanks(agentRanks);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -124,7 +64,130 @@ export function Dashboard() {
     loadData();
   }, []);
 
+  // Calculate stats based on selected office filter
+  useEffect(() => {
+    // Filter by office
+    const filteredEmployees = selectedOffice === 'Бүгд' 
+      ? allEmployees 
+      : allEmployees.filter(e => e.officeName === selectedOffice || e.interestedOffice === selectedOffice);
+    
+    const filteredResignedAgents = selectedOffice === 'Бүгд'
+      ? allResignedAgents
+      : allResignedAgents.filter(r => r.officeName === selectedOffice || r.interestedOffice === selectedOffice);
+    
+    const filteredApplications = selectedOffice === 'Бүгд'
+      ? allApplications
+      : allApplications.filter(a => a.interestedOffice === selectedOffice);
+
+    // Calculate new applications this week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const newThisWeek = filteredApplications.filter((a: Application) => 
+      new Date(a.createdAt) >= oneWeekAgo
+    ).length;
+
+    // Calculate stats
+    const newApps = filteredApplications.filter((a: Application) => a.status === 'new').length;
+    const interviewingApps = filteredApplications.filter((a: Application) => a.status === 'interviewing').length;
+    const iconnectApps = filteredApplications.filter((a: Application) => a.status === 'iconnect').length;
+    const resignedCount = filteredResignedAgents.length;
+
+    setStats({
+      totalApplications: filteredApplications.length,
+      newApplications: newApps,
+      interviewingApplications: interviewingApps,
+      iconnectApplications: iconnectApps,
+      totalEmployees: filteredEmployees.length,
+      newThisWeek: newThisWeek
+    });
+
+    // Calculate employee stats
+    const activeCount = filteredEmployees.filter((e: Employee) => e.status === 'active').length;
+    const new03Count = filteredEmployees.filter((e: Employee) => e.status === 'new_0_3').length;
+    const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
+    const inactiveCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive').length;
+    const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
+    const onLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'on_leave').length;
+    const maternityLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'maternity_leave').length;
+    const teamMemberCount = filteredEmployees.filter((e: Employee) => e.status === 'team_member').length;
+    const totalAgents = filteredEmployees.length;
+    const qualitySum = activeCount + new03Count + inactiveTransactionCount;
+    const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
+
+    setEmployeeStats({
+      active: activeCount,
+      new_0_3: new03Count,
+      inactive_transaction: inactiveTransactionCount,
+      inactive: inactiveCount,
+      active_no_transaction: activeNoTransactionCount,
+      on_leave: onLeaveCount,
+      maternity_leave: maternityLeaveCount,
+      team_member: teamMemberCount,
+      resigned: resignedCount,
+      totalIconnect: iconnectApps,
+      totalAgents: totalAgents,
+      quality: quality
+    });
+
+    // Status distribution for chart
+    const statusCounts = filteredApplications.reduce((acc: Record<string, number>, a: Application) => {
+      acc[a.status] = (acc[a.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const statusColors: Record<string, string> = {
+      'new': '#3B82F6',
+      'interviewing': '#F59E0B',
+      'iconnect': '#10B981',
+      'fireup': '#8B5CF6',
+      'cancelled': '#EF4444'
+    };
+
+    setStatusDistribution(Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count: count as number,
+      color: statusColors[status] || '#6B7280'
+    })));
+
+    setRecentApplications(filteredApplications.slice(0, 5));
+  }, [selectedOffice, allApplications, allEmployees, allResignedAgents]);
+
   const totalForChart = statusDistribution.reduce((sum, item) => sum + item.count, 0);
+
+  // Categorize ranks by expiration status
+  const { expiredRanks, expiringThisMonth, expiringNextMonth } = useMemo(() => {
+    const today = new Date();
+    const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    const thisMonthEndStr = thisMonthEnd.toISOString().split('T')[0];
+    const nextMonthEndStr = nextMonthEnd.toISOString().split('T')[0];
+
+    // Filter by office if needed
+    const filteredRanks = selectedOffice === 'Бүгд' 
+      ? allAgentRanks 
+      : allAgentRanks.filter(rank => {
+          const employee = allEmployees.find(e => e.mls === rank.agentId);
+          return employee && (employee.officeName === selectedOffice || employee.interestedOffice === selectedOffice);
+        });
+
+    const expired: AgentRank[] = [];
+    const thisMonth: AgentRank[] = [];
+    const nextMonth: AgentRank[] = [];
+
+    filteredRanks.forEach(rank => {
+      const endDate = rank.currentEndDate;
+      if (endDate < todayStr) {
+        expired.push(rank);
+      } else if (endDate <= thisMonthEndStr) {
+        thisMonth.push(rank);
+      } else if (endDate <= nextMonthEndStr) {
+        nextMonth.push(rank);
+      }
+    });
+
+    return { expiredRanks: expired, expiringThisMonth: thisMonth, expiringNextMonth: nextMonth };
+  }, [allAgentRanks, allEmployees, selectedOffice]);
 
   if (loading) {
     return (
@@ -136,10 +199,26 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
+      {/* Welcome Header with Office Filter */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">Сайн байна у|у, {user?.fullName || 'Менежер'}! 👋</h1>
-        <p className="mt-2 text-blue-100">Remax HR системийн хяналтын самбар</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Сайн байна у|у, {user?.fullName || 'Менежер'}! 👋</h1>
+            <p className="mt-2 text-blue-100">Remax HR системийн хяналтын самбар</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-blue-100">Оффис:</label>
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office} className="text-gray-900">{office}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Main Stats */}
@@ -414,6 +493,93 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Expiring Ranks Section */}
+      {(expiredRanks.length > 0 || expiringThisMonth.length > 0 || expiringNextMonth.length > 0) && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Цолны хугацаа
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Expired Ranks */}
+            {expiredRanks.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="font-semibold text-red-800">Дууссан ({expiredRanks.length})</h4>
+                </div>
+                <ul className="space-y-2 max-h-32 overflow-y-auto">
+                  {expiredRanks.slice(0, 5).map(rank => (
+                    <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                      <span className="text-red-900 font-medium truncate">{rank.agentName}</span>
+                      <span className="text-red-600 text-xs">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                    </li>
+                  ))}
+                  {expiredRanks.length > 5 && (
+                    <li className="text-xs text-red-600 text-center">+{expiredRanks.length - 5} бусад</li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Expiring This Month */}
+            {expiringThisMonth.length > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h4 className="font-semibold text-orange-800">Энэ сард дуусах ({expiringThisMonth.length})</h4>
+                </div>
+                <ul className="space-y-2 max-h-32 overflow-y-auto">
+                  {expiringThisMonth.slice(0, 5).map(rank => (
+                    <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                      <span className="text-orange-900 font-medium truncate">{rank.agentName}</span>
+                      <span className="text-orange-600 text-xs">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                    </li>
+                  ))}
+                  {expiringThisMonth.length > 5 && (
+                    <li className="text-xs text-orange-600 text-center">+{expiringThisMonth.length - 5} бусад</li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Expiring Next Month */}
+            {expiringNextMonth.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="font-semibold text-yellow-800">Дараа сард дуусах ({expiringNextMonth.length})</h4>
+                </div>
+                <ul className="space-y-2 max-h-32 overflow-y-auto">
+                  {expiringNextMonth.slice(0, 5).map(rank => (
+                    <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                      <span className="text-yellow-900 font-medium truncate">{rank.agentName}</span>
+                      <span className="text-yellow-600 text-xs">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                    </li>
+                  ))}
+                  {expiringNextMonth.length > 5 && (
+                    <li className="text-xs text-yellow-600 text-center">+{expiringNextMonth.length - 5} бусад</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 text-right">
+            <Link to="/ranks" className="text-purple-600 hover:text-purple-800 text-sm font-medium">
+              Бүх цолыг харах →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Charts and Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Status Distribution Chart */}
@@ -463,8 +629,8 @@ export function Dashboard() {
                 <li key={app.id} className="px-4 py-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {app.lastName} {app.firstName}
+                      <p className="text-sm text-gray-900">
+                        <span className="font-bold">{app.firstName}</span> {app.lastName}
                       </p>
                       <p className="text-sm text-gray-500">{app.email}</p>
                     </div>

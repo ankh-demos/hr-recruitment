@@ -176,6 +176,7 @@ CREATE TABLE employees (
   detailed_address TEXT,
   children_count INTEGER DEFAULT 0,
   employment_start_date DATE,
+  office_name TEXT,
   status TEXT CHECK (status IN ('active', 'new_0_3', 'inactive_transaction', 'inactive', 'active_no_transaction', 'on_leave', 'maternity_leave', 'team_member')) DEFAULT 'active',
   hired_date TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -234,6 +235,7 @@ CREATE TABLE resigned_agents (
   children_count INTEGER DEFAULT 0,
   hired_date TIMESTAMPTZ,
   employment_start_date DATE,
+  office_name TEXT,
   -- Resignation specific fields
   worked_months INTEGER DEFAULT 0,
   resigned_date DATE NOT NULL,

@@ -65,6 +65,7 @@ export const resignedAgentModel = {
       childrenCount: employee.childrenCount,
       hiredDate: employee.hiredDate,
       employmentStartDate: employee.employmentStartDate,
+      officeName: employee.officeName,
       // Resignation specific
       workedMonths: resignationData.workedMonths,
       resignedDate: resignationData.resignedDate,

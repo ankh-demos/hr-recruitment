@@ -204,6 +204,7 @@ export interface Employee {
   childrenCount?: number; // Хүүхдийн тоо
   // Employee specific
   employmentStartDate?: string; // Ажилд орсон огноо
+  officeName?: string; // Ажилладаг оффис
   status: 'active' | 'new_0_3' | 'inactive_transaction' | 'inactive' | 'active_no_transaction' | 'on_leave' | 'maternity_leave' | 'team_member';
   hiredDate: string;
   createdAt: string;
@@ -256,6 +257,7 @@ export interface ResignedAgent {
   childrenCount?: number;
   hiredDate: string;
   employmentStartDate?: string; // Ажилд орсон огноо
+  officeName?: string; // Ажилладаг оффис
   // Resignation specific fields
   workedMonths: number; // Ажилласан хугацаа сараар (auto-calculated)
   resignedDate: string; // Гарсан он сар

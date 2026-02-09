@@ -13,6 +13,9 @@ const RANK_COLORS: Record<RankLevel, string> = {
   'Даймонд': 'bg-blue-100 text-blue-800'
 };
 
+// Office options
+const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+
 // Calculate end date as exactly +1 year from start date
 function calculateEndDate(startDate: string): string {
   const date = new Date(startDate);
@@ -32,6 +35,7 @@ export function Ranks() {
   const [loading, setLoading] = useState(true);
   const [selectedRank, setSelectedRank] = useState<AgentRank | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
   // Pagination state
@@ -71,18 +75,53 @@ export function Ranks() {
 
   const filteredRanks = useMemo(() => {
     return agentRanks.filter(rank => {
+      // Office filter - find employee by MLS (agentId) and check their office
+      if (selectedOffice !== 'Бүгд') {
+        const employee = employees.find(e => e.mls === rank.agentId);
+        if (!employee || (employee.officeName !== selectedOffice && employee.interestedOffice !== selectedOffice)) {
+          return false;
+        }
+      }
+      
       const searchLower = searchTerm.toLowerCase();
       return searchTerm === '' || 
         rank.agentName.toLowerCase().includes(searchLower) ||
         rank.agentId.toLowerCase().includes(searchLower);
     });
-  }, [agentRanks, searchTerm]);
+  }, [agentRanks, searchTerm, selectedOffice, employees]);
 
   // Paginated ranks for table view
   const paginatedRanks = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredRanks.slice(start, start + pageSize);
   }, [filteredRanks, currentPage, pageSize]);
+
+  // Categorize ranks by expiration status
+  const { expiredRanks, expiringThisMonth, expiringNextMonth } = useMemo(() => {
+    const today = new Date();
+    const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    const thisMonthEndStr = thisMonthEnd.toISOString().split('T')[0];
+    const nextMonthEndStr = nextMonthEnd.toISOString().split('T')[0];
+
+    const expired: AgentRank[] = [];
+    const thisMonth: AgentRank[] = [];
+    const nextMonth: AgentRank[] = [];
+
+    filteredRanks.forEach(rank => {
+      const endDate = rank.currentEndDate;
+      if (endDate < todayStr) {
+        expired.push(rank);
+      } else if (endDate <= thisMonthEndStr) {
+        thisMonth.push(rank);
+      } else if (endDate <= nextMonthEndStr) {
+        nextMonth.push(rank);
+      }
+    });
+
+    return { expiredRanks: expired, expiringThisMonth: thisMonth, expiringNextMonth: nextMonth };
+  }, [filteredRanks]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
@@ -193,7 +232,7 @@ export function Ranks() {
       setCreateForm({
         ...createForm,
         agentId: mls,
-        agentName: `${employee.lastName} ${employee.firstName}`
+        agentName: `${employee.firstName} ${employee.lastName}`
       });
     }
   }
@@ -288,6 +327,17 @@ export function Ranks() {
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
+          <div className="min-w-[150px]">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex rounded-lg overflow-hidden border border-gray-300">
             <button
               onClick={() => setViewMode('list')}
@@ -307,6 +357,71 @@ export function Ranks() {
           {filteredRanks.length} бүртгэл олдлоо
         </div>
       </div>
+
+      {/* Expiration Status Sections */}
+      {(expiredRanks.length > 0 || expiringThisMonth.length > 0 || expiringNextMonth.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Expired Ranks */}
+          {expiredRanks.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="font-semibold text-red-800">Дууссан ({expiredRanks.length})</h3>
+              </div>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {expiredRanks.map(rank => (
+                  <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                    <span className="text-red-900 font-medium">{rank.agentName}</span>
+                    <span className="text-red-600">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Expiring This Month */}
+          {expiringThisMonth.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="font-semibold text-orange-800">Энэ сард дуусах ({expiringThisMonth.length})</h3>
+              </div>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {expiringThisMonth.map(rank => (
+                  <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                    <span className="text-orange-900 font-medium">{rank.agentName}</span>
+                    <span className="text-orange-600">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Expiring Next Month */}
+          {expiringNextMonth.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="font-semibold text-yellow-800">Дараа сард дуусах ({expiringNextMonth.length})</h3>
+              </div>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {expiringNextMonth.map(rank => (
+                  <li key={rank.id} className="flex justify-between items-center text-sm bg-white rounded px-2 py-1">
+                    <span className="text-yellow-900 font-medium">{rank.agentName}</span>
+                    <span className="text-yellow-600">{new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {viewMode === 'list' ? (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -519,7 +634,7 @@ export function Ranks() {
                   <option value="">Сонгоно уу...</option>
                   {availableEmployees.map(emp => (
                     <option key={emp.mls} value={emp.mls}>
-                      {emp.lastName} {emp.firstName} (MLS: {emp.mls})
+                      {emp.firstName} {emp.lastName} (MLS: {emp.mls})
                     </option>
                   ))}
                 </select>

@@ -37,6 +37,9 @@ const RESIGNATION_REASONS = [
   'Урт хугацааны чөлөө авсан'
 ] as const;
 
+// Office options
+const OFFICES = ['Бүгд', 'Sky', 'Premier', 'Alliance', 'Express'];
+
 function getStatusInfo(status: string) {
   return EMPLOYEE_STATUSES.find(s => s.value === status) || { value: status, label: status, color: 'bg-gray-100 text-gray-800' };
 }
@@ -56,6 +59,7 @@ export function Employees() {
   const [loading, setLoading] = useState(true);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   
@@ -107,6 +111,7 @@ export function Employees() {
     district: '',
     detailedAddress: '',
     childrenCount: 0,
+    officeName: '',
     status: 'active' as Employee['status']
   });
 
@@ -131,6 +136,11 @@ export function Employees() {
   // Filtered employees
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
+      // Office filter
+      if (selectedOffice !== 'Бүгд' && employee.officeName !== selectedOffice && employee.interestedOffice !== selectedOffice) {
+        return false;
+      }
+      
       // Status filter (multi-select)
       if (selectedStatuses.length > 0 && !selectedStatuses.includes(employee.status)) {
         return false;
@@ -146,7 +156,7 @@ export function Employees() {
       
       return matchesSearch;
     });
-  }, [employees, searchTerm, selectedStatuses]);
+  }, [employees, searchTerm, selectedStatuses, selectedOffice]);
 
   // Paginated employees for table view
   const paginatedEmployees = useMemo(() => {
@@ -466,6 +476,7 @@ export function Employees() {
       district: selectedEmployee.district || '',
       detailedAddress: selectedEmployee.detailedAddress || '',
       childrenCount: selectedEmployee.childrenCount || 0,
+      officeName: selectedEmployee.officeName || '',
       status: selectedEmployee.status
     });
     setEditFieldsOpen(true);
@@ -591,6 +602,19 @@ export function Employees() {
             )}
           </div>
           
+          {/* Office Filter */}
+          <div className="min-w-[150px]">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-green-500"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
+              ))}
+            </select>
+          </div>
+          
           {/* View Toggle */}
           <div className="flex rounded-lg overflow-hidden border border-gray-300">
             <button
@@ -661,7 +685,7 @@ export function Employees() {
                       </div>
                     )}
                     <div className="ml-3 flex-1">
-                      <p className="font-medium text-gray-900">{emp.lastName} {emp.firstName}</p>
+                      <p className="text-gray-900"><span className="font-bold">{emp.firstName}</span> {emp.lastName}</p>
                       <p className="text-sm text-gray-500">{emp.interestedOffice || emp.email}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -700,7 +724,7 @@ export function Employees() {
                     </div>
                   )}
                   <div className="ml-5 text-white">
-                    <h2 className="text-2xl font-bold">{selectedEmployee.lastName} {selectedEmployee.firstName}</h2>
+                    <h2 className="text-2xl"><span className="font-bold">{selectedEmployee.firstName}</span> {selectedEmployee.lastName}</h2>
                     <p className="text-green-100">{selectedEmployee.interestedOffice}</p>
                     <span className={`inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusInfo(selectedEmployee.status).color}`}>
                       {getStatusInfo(selectedEmployee.status).label}
@@ -1123,7 +1147,7 @@ export function Employees() {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
             <h3 className="text-lg font-semibold mb-4">Гарсан гэж бүртгэх үү?</h3>
             <p className="text-gray-600 mb-6">
-              {selectedEmployee?.lastName} {selectedEmployee?.firstName}-г гарсан гэж бүртгэхдээ итгэлтэй байна уу?
+              <span className="font-bold">{selectedEmployee?.firstName}</span> {selectedEmployee?.lastName}-г гарсан гэж бүртгэхдээ итгэлтэй байна уу?
             </p>
             <div className="flex gap-3 justify-end">
               <button
@@ -1252,8 +1276,19 @@ export function Employees() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="iConnect дээрх нэр" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Оффис</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Сонирхсон оффис</label>
                 <select value={editFields.interestedOffice} onChange={(e) => setEditFields({ ...editFields, interestedOffice: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="">Сонгох</option>
+                  <option value="Sky">Sky</option>
+                  <option value="Premier">Premier</option>
+                  <option value="Alliance">Alliance</option>
+                  <option value="Express">Express</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ажилладаг оффис</label>
+                <select value={editFields.officeName || ''} onChange={(e) => setEditFields({ ...editFields, officeName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="">Сонгох</option>
                   <option value="Sky">Sky</option>

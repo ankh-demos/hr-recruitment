@@ -48,6 +48,7 @@ export const employeeModel = {
       signatureUrl: application.signatureUrl,
       trainingNumber: application.trainingNumber,
       // Employee specific
+      officeName: application.interestedOffice, // Default to interested office
       status: 'new_0_3', // Default status for new employees
       hiredDate: now,
       createdAt: now,
@@ -100,6 +101,7 @@ export const employeeModel = {
       detailedAddress: resignedAgent.detailedAddress,
       childrenCount: resignedAgent.childrenCount,
       employmentStartDate: resignedAgent.employmentStartDate,
+      officeName: resignedAgent.officeName,
       // Employee specific (reset status)
       status: 'active',
       hiredDate: now, // New hire date when re-joining
