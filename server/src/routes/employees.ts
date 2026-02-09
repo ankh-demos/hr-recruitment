@@ -21,11 +21,9 @@ async function addRankInfo(employee: any) {
 router.get('/', async (req: Request, res: Response) => {
   try {
     const employees = await employeeModel.getAll();
-    // Add rank info to each employee
-    const employeesWithRank = await Promise.all(
-      employees.map(e => addRankInfo({ ...e }))
-    );
-    res.json(employeesWithRank);
+    // Return employees directly - frontend fetches ranks separately
+    // This avoids N+1 query problem (100+ employees = 100+ rank queries)
+    res.json(employees);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch employees' });
   }
