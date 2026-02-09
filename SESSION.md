@@ -1,0 +1,136 @@
+# Development Session State
+**Last Updated:** February 10, 2026
+
+## Project Overview
+Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
+
+## Tech Stack
+- **Frontend:** React + TypeScript + Tailwind CSS
+- **Backend:** Node.js + Express + TypeScript
+- **Database:** Supabase (PostgreSQL)
+- **Hosting:** Vercel (frontend), Render (backend)
+- **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (February 9-10, 2026)
+
+### Completed Features
+
+#### 1. Office Names Fixed
+- Changed from `Sky, Premier, Alliance, Express` to `Гэгээнтэн, Ривер, Даун таун`
+- Updated across all pages: Dashboard, Employees, Applications, Ranks, ResignedAgents
+
+#### 2. Office Filter Logic
+- **Applications page:** Filters by `interestedOffice` field
+- **All other pages:** Filters by `officeName` field
+
+#### 3. Table Column Order
+- Changed to show Нэр (firstName) first, then Овог (lastName)
+- firstName displayed in bold
+
+#### 4. Tab Renamed
+- "Анкетууд" → "Сонгон шалгаруулалт"
+
+#### 5. Application Status Labels Updated
+| Status Value | Label |
+|--------------|-------|
+| `new` | Шинэ анкет |
+| `interviewing` | Ярилцлага хийж байгаа |
+| `fireup` | Fire UP товлосон |
+| `iconnect` | iConnect нээлгэсэн |
+| `cancelled` | Ажиллахаа больсон |
+
+#### 6. fireupDate Field Added
+- New field on Application type to track when Fire UP was scheduled
+- Backend automatically sets date when status changes to 'fireup'
+- Added to: `client/src/types/index.ts`, `server/src/types/index.ts`, `server/supabase-schema.sql`
+
+#### 7. Dashboard Enhancements
+- **Birthday Section:** Shows employees with birthdays this month
+- **Monthly Statistics:** Fire UP товлосон & iConnect нээлгэсэн counts for current month
+- **Rank Expiration:** Already had sections for expired, expiring this month, expiring next month (sorted by date)
+
+#### 8. Default Employee Status
+- New employees created from applications default to `new_0_3` (Шинэ 0-3 сар)
+
+---
+
+## Data Model Summary
+
+### Application Statuses (Sequential Flow)
+```
+Шинэ анкет → Ярилцлага хийж байгаа → Fire UP товлосон → iConnect нээлгэсэн
+                                                    ↓
+                                           (moves to Employees table)
+                                    
+                        or → Ажиллахаа больсон (cancelled)
+```
+
+### Employee Statuses
+- `active` - Идэвхтэй
+- `new_0_3` - Шинэ 0-3 сар (default for new employees)
+- `inactive_transaction` - Идэвхгүй, гүйлгээтэй
+- `inactive` - Идэвхгүй
+- `active_no_transaction` - Идэвхтэй, гүйлгээгүй
+- `on_leave` - Чөлөөтэй
+- `maternity_leave` - Жирэмсний амралт
+- `team_member` - Багийн гишүүн
+
+### Office Names
+- Гэгээнтэн
+- Ривер
+- Даун таун
+
+---
+
+## Key Files Modified This Session
+
+### Frontend (client/src/)
+- `types/index.ts` - Added `fireupDate` to Application interface
+- `pages/Dashboard.tsx` - Birthday section, monthly stats, updated labels
+- `pages/Applications.tsx` - Updated status labels
+- `pages/Employees.tsx` - Office filter uses officeName only
+- `pages/ResignedAgents.tsx` - Office filter uses officeName only
+- `pages/Ranks.tsx` - Office filter uses officeName only, sorted by expiration
+- `components/Layout.tsx` - Renamed tab to "Сонгон шалгаруулалт"
+
+### Backend (server/src/)
+- `types/index.ts` - Added `fireupDate` to Application interface
+- `routes/applications.ts` - Auto-sets fireupDate when status changes to 'fireup'
+- `supabase-schema.sql` - Added `fireup_date` column
+
+---
+
+## Git Commits This Session
+1. `03306d8` - fix: office names, table column order, ranks sorting by expiration
+2. `2dd378a` - fix: dashboard rank sorting, office filter logic, rename tab
+3. `ffe7334` - feat: birthday section, monthly stats, fireupDate tracking, updated status labels
+
+---
+
+## How to Continue
+
+### Start Development
+```bash
+cd c:\hr1
+npm run dev
+```
+
+### Check for Errors
+```bash
+cd client
+npm run build
+```
+
+### Database Changes
+If `fireup_date` column doesn't exist in Supabase:
+```sql
+ALTER TABLE applications ADD COLUMN fireup_date DATE;
+```
+
+---
+
+## Pending/Future Considerations
+- Existing applications with 'fireup' status won't have `fireupDate` set (only new ones will)
+- Consider migrating existing fireup applications to set a date if needed
