@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** February 10, 2026
+**Last Updated:** February 11, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -13,7 +13,33 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 
 ---
 
-## Recent Session Changes (February 9-10, 2026)
+## Recent Session Changes (February 11, 2026)
+
+### Planned Features
+
+#### 1. Monthly Statistics Graphic on Applications Page
+- Add comprehensive statistics table displaying monthly HR metrics per office
+- **Offices**: Sky (Гэгээнтэн), Downtown (Даун таун), River (Ривер)
+- **Metrics to Display**:
+  - Тухайн сард нийт уулзалсан агентын тоо (Total meetings this month)
+  - Тухайн сард Iconnect нээгдсэн агентын тоо (IConnect openings this month)
+  - Fire Up-д бүртгүүлсэн агентын тоо (Fire UP registrations)
+  - In process (Interviewing + Fire UP)
+  - Cancelled (Cancelled applications)
+  - Шилжиж орж ирсэн агент (New hires/transfers this month)
+  - Тухайн сарын өсөлт (Monthly growth)
+  - Чөлөө авсан агент (Agents on leave)
+  - ХАГ цуцалсан агент (Resigned agents)
+  - Цэвэр өсөлт (Net growth = growth - leave - resigned)
+  - НИЙТ ICONNECT (Total active IConnect agents)
+- **Data Sources**:
+  - Applications table: status counts, creation dates
+  - Employees table: hire dates, status counts, office assignments
+  - Resigned agents table: resignation counts by month
+- **Display Format**: Responsive table with metrics as rows, offices as columns
+- **Implementation**: Backend API endpoint `/api/statistics` + frontend table component
+
+---
 
 ### Completed Features
 
@@ -129,8 +155,16 @@ If `fireup_date` column doesn't exist in Supabase:
 ALTER TABLE applications ADD COLUMN fireup_date DATE;
 ```
 
+### Next Priority: Monthly Statistics
+1. Create backend statistics API endpoint
+2. Add statistics table component to Applications page
+3. Test data accuracy and display formatting
+
 ---
 
 ## Pending/Future Considerations
 - Existing applications with 'fireup' status won't have `fireupDate` set (only new ones will)
 - Consider migrating existing fireup applications to set a date if needed
+- Implement monthly statistics graphic on Applications page (backend API + frontend table)
+- Add date range selector for statistics (current month vs custom periods)
+- Consider adding charts/visualizations for statistics data
