@@ -14,6 +14,7 @@ import resignedAgentsRouter from './routes/resignedAgents';
 import agentRanksRouter from './routes/agentRanks';
 import authRouter from './routes/auth';
 import usersRouter from './routes/users';
+import notificationsRouter from './routes/notifications';
 
 const app = express();
 const PORT = config.port;
@@ -55,6 +56,7 @@ app.use('/api/applications', applicationsRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/resigned-agents', resignedAgentsRouter);
 app.use('/api/agent-ranks', agentRanksRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

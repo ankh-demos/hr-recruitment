@@ -322,3 +322,35 @@ export const agentRanksApi = {
   delete: (id: string): Promise<void> =>
     fetch(`${API_BASE}/agent-ranks/${id}`, { method: 'DELETE' }).then(res => handleResponse<void>(res))
 };
+
+// Notifications API
+export const notificationsApi = {
+  getStatus: (): Promise<{ configured: boolean; adminEmails: string[] }> =>
+    fetch(`${API_BASE}/notifications/status`, {
+      headers: getAuthHeaders()
+    }).then(res => handleResponse<{ configured: boolean; adminEmails: string[] }>(res)),
+
+  sendTest: (): Promise<{ success: boolean; message: string }> =>
+    fetch(`${API_BASE}/notifications/test`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    }).then(res => handleResponse<{ success: boolean; message: string }>(res)),
+
+  triggerBirthdays: (): Promise<{ success: boolean; message: string }> =>
+    fetch(`${API_BASE}/notifications/birthdays`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    }).then(res => handleResponse<{ success: boolean; message: string }>(res)),
+
+  triggerExpiringRanks: (): Promise<{ success: boolean; message: string }> =>
+    fetch(`${API_BASE}/notifications/ranks`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    }).then(res => handleResponse<{ success: boolean; message: string }>(res)),
+
+  sendDailySummary: (): Promise<{ success: boolean; message: string }> =>
+    fetch(`${API_BASE}/notifications/summary`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    }).then(res => handleResponse<{ success: boolean; message: string }>(res))
+};

@@ -36,7 +36,7 @@ export function Applications() {
   
   // Statistics state
   const [statistics, setStatistics] = useState<any>({});
-  const [showStatistics, setShowStatistics] = useState(true);
+  const [showStatistics, setShowStatistics] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   
   // Meeting Modal State
@@ -358,78 +358,99 @@ export function Applications() {
       <head>
         <title>Анкет - ${app.firstName} ${app.lastName}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-          h1 { color: #1f2937; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
-          h2 { color: #374151; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .info-item { padding: 5px 0; }
-          .label { color: #6b7280; font-size: 12px; }
-          .value { color: #1f2937; font-size: 14px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; font-size: 12px; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.4; }
+          h1 { color: #1f2937; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 15px; }
+          h2 { color: #374151; margin-top: 25px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; page-break-after: avoid; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+          .info-item { padding: 4px 0; page-break-inside: avoid; }
+          .label { color: #6b7280; font-size: 11px; display: block; }
+          .value { color: #1f2937; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; font-size: 11px; }
           th { background: #f9fafb; }
-          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-          .photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
-          .header { display: flex; align-items: center; gap: 20px; }
-          @media print { body { padding: 0; } }
+          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+          .photo { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; }
+          .header { display: flex; align-items: center; gap: 15px; page-break-inside: avoid; }
+          .section { page-break-inside: avoid; }
+          .footer { margin-top: 25px; font-size: 11px; color: #6b7280; page-break-inside: avoid; }
+          @media print {
+            body { padding: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section { page-break-inside: avoid; }
+            h2 { page-break-after: avoid; }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; }
+          }
+          @page { margin: 1cm; }
         </style>
       </head>
       <body>
-        <div class="header">
+        <div class="header section">
           ${app.photoUrl ? `<img src="${app.photoUrl}" class="photo" />` : ''}
           <div>
-            <h1>${app.familyName || ''} ${app.firstName} ${app.lastName}</h1>
-            <p style="color: #6b7280;">${app.email} | ${app.phone}</p>
+            <h1 style="margin-top: 0;">${app.familyName || ''} ${app.firstName} ${app.lastName}</h1>
+            <p style="color: #6b7280; margin: 5px 0;">${app.email} | ${app.phone}</p>
             <span class="status" style="background: #e0e7ff; color: #3730a3;">${statusLabel}</span>
             ${app.isTransfer ? '<span class="status" style="background: #d1fae5; color: #065f46; margin-left: 5px;">Шилжиж ирсэн</span>' : ''}
           </div>
         </div>
         
-        <h2>Хувийн мэдээлэл</h2>
-        <div class="info-grid">
-          <div class="info-item"><span class="label">Оффис:</span> <span class="value">${app.interestedOffice || '-'}</span></div>
-          <div class="info-item"><span class="label">Ажилд орох огноо:</span> <span class="value">${app.availableDate || '-'}</span></div>
-          <div class="info-item"><span class="label">Төрсөн газар:</span> <span class="value">${app.birthPlace || '-'}</span></div>
-          <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${app.birthDate || '-'}</span></div>
-          <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${app.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
-          <div class="info-item"><span class="label">Регистр:</span> <span class="value">${app.registerNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${app.homeAddress || '-'}</span></div>
-          <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${app.emergencyPhone || '-'}</span></div>
-          <div class="info-item"><span class="label">Facebook:</span> <span class="value">${app.facebook || '-'}</span></div>
-          <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${app.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+        <div class="section">
+          <h2>Хувийн мэдээлэл</h2>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">Оффис:</span> <span class="value">${app.interestedOffice || '-'}</span></div>
+            <div class="info-item"><span class="label">Ажилд орох огноо:</span> <span class="value">${app.availableDate || '-'}</span></div>
+            <div class="info-item"><span class="label">Төрсөн газар:</span> <span class="value">${app.birthPlace || '-'}</span></div>
+            <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${app.birthDate || '-'}</span></div>
+            <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${app.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
+            <div class="info-item"><span class="label">Регистр:</span> <span class="value">${app.registerNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${app.homeAddress || '-'}</span></div>
+            <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${app.emergencyPhone || '-'}</span></div>
+            <div class="info-item"><span class="label">Facebook:</span> <span class="value">${app.facebook || '-'}</span></div>
+            <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${app.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+          </div>
         </div>
         
         ${app.familyMembers && app.familyMembers.length > 0 ? `
-          <h2>Гэр бүлийн байдал</h2>
-          <table>
-            <tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>
-            ${app.familyMembers.map(m => `<tr><td>${m.relationship}</td><td>${m.fullName}</td><td>${m.birthPlace}</td><td>${m.profession}</td><td>${m.phone}</td></tr>`).join('')}
-          </table>
+          <div class="section">
+            <h2>Гэр бүлийн байдал</h2>
+            <table>
+              <tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>
+              ${app.familyMembers.map(m => `<tr><td>${m.relationship || '-'}</td><td>${m.fullName || '-'}</td><td>${m.birthPlace || '-'}</td><td>${m.profession || '-'}</td><td>${m.phone || '-'}</td></tr>`).join('')}
+            </table>
+          </div>
         ` : ''}
         
         ${app.education && app.education.length > 0 ? `
-          <h2>Боловсрол</h2>
-          <table>
-            <tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>
-            ${app.education.map(e => `<tr><td>${e.school}</td><td>${e.enrollmentDate}</td><td>${e.graduationDate}</td><td>${e.major}</td><td>${e.gpa}</td></tr>`).join('')}
-          </table>
+          <div class="section">
+            <h2>Боловсрол</h2>
+            <table>
+              <tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>
+              ${app.education.map(e => `<tr><td>${e.school || '-'}</td><td>${e.enrollmentDate || '-'}</td><td>${e.graduationDate || '-'}</td><td>${e.major || '-'}</td><td>${e.gpa || '-'}</td></tr>`).join('')}
+            </table>
+          </div>
         ` : ''}
         
         ${app.workExperience && app.workExperience.length > 0 ? `
-          <h2>Ажлын туршлага</h2>
-          <table>
-            <tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>
-            ${app.workExperience.map(w => `<tr><td>${w.companyName}</td><td>${w.businessType}</td><td>${w.position}</td><td>${w.startDate}</td><td>${w.endDate}</td></tr>`).join('')}
-          </table>
+          <div class="section">
+            <h2>Ажлын туршлага</h2>
+            <table>
+              <tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>
+              ${app.workExperience.map(w => `<tr><td>${w.companyName || '-'}</td><td>${w.businessType || '-'}</td><td>${w.position || '-'}</td><td>${w.startDate || '-'}</td><td>${w.endDate || '-'}</td></tr>`).join('')}
+            </table>
+          </div>
         ` : ''}
         
         ${app.otherSkills || app.strengthsWeaknesses ? `
-          <h2>Нэмэлт мэдээлэл</h2>
-          ${app.otherSkills ? `<p><strong>Бусад чадвар:</strong> ${app.otherSkills}</p>` : ''}
-          ${app.strengthsWeaknesses ? `<p><strong>Давуу/сул тал:</strong> ${app.strengthsWeaknesses}</p>` : ''}
+          <div class="section">
+            <h2>Нэмэлт мэдээлэл</h2>
+            ${app.otherSkills ? `<p><strong>Бусад чадвар:</strong> ${app.otherSkills}</p>` : ''}
+            ${app.strengthsWeaknesses ? `<p><strong>Давуу/сул тал:</strong> ${app.strengthsWeaknesses}</p>` : ''}
+          </div>
         ` : ''}
         
-        <div style="margin-top: 30px; font-size: 12px; color: #6b7280;">
+        <div class="footer">
           <p>Мэдээлэл авсан эх сурвалж: ${app.referralSource || '-'}</p>
           <p>Бүртгэсэн огноо: ${new Date(app.createdAt).toLocaleString('mn-MN')}</p>
         </div>
@@ -633,8 +654,15 @@ export function Applications() {
               setShowStatistics(!showStatistics);
               if (!showStatistics) loadStatistics(selectedMonth || undefined);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
+              showStatistics 
+                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
             {showStatistics ? 'Статистик нуух' : 'Статистик харуулах'}
           </button>
           <button
@@ -678,16 +706,23 @@ export function Applications() {
       </div>
 
       {showStatistics && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Сарын статистик</h2>
-            <div className="min-w-[150px]">
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg rounded-xl p-6 border border-indigo-100">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Сарын статистик</h2>
+            </div>
+            <div className="min-w-[180px]">
               <select
                 value={selectedMonth}
                 onChange={(e) => {
                   setSelectedMonth(e.target.value);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2.5 border border-indigo-200 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 font-medium text-gray-700"
               >
                 <option value="">Энэ сар</option>
                 {(() => {
@@ -704,82 +739,119 @@ export function Applications() {
               </select>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үзүүлэлт</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэгээнтэн</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ривер</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Даун таун</th>
+          <div className="overflow-x-auto rounded-lg border border-indigo-100">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-indigo-600 to-purple-600">
+                  <th className="px-5 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Үзүүлэлт</th>
+                  <th className="px-5 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3 h-3 bg-blue-300 rounded-full"></span>
+                      Гэгээнтэн
+                    </span>
+                  </th>
+                  <th className="px-5 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3 h-3 bg-green-300 rounded-full"></span>
+                      Ривер
+                    </span>
+                  </th>
+                  <th className="px-5 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3 h-3 bg-orange-300 rounded-full"></span>
+                      Даун таун
+                    </span>
+                  </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сард нийт уулзалсан агентын тоо</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.totalMeetings || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.totalMeetings || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.totalMeetings || 0}</td>
+              <tbody className="divide-y divide-indigo-100">
+                <tr className="bg-white hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-blue-500">📋</span> Тухайн сард нийт уулзалсан
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.totalMeetings || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.totalMeetings || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.totalMeetings || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сард Iconnect нээгдсэн агентын тоо</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.iconnectOpenings || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.iconnectOpenings || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.iconnectOpenings || 0}</td>
+                <tr className="bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-green-500">✅</span> iConnect нээгдсэн
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.iconnectOpenings || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.iconnectOpenings || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.iconnectOpenings || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Fire Up-д бүртгүүлсэн агентын тоо</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.fireupRegistrations || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.fireupRegistrations || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.fireupRegistrations || 0}</td>
+                <tr className="bg-white hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-purple-500">🔥</span> Fire UP бүртгүүлсэн
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.fireupRegistrations || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.fireupRegistrations || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.fireupRegistrations || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">In process</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.inProcess || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.inProcess || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.inProcess || 0}</td>
+                <tr className="bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-yellow-500">⏳</span> In process
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.inProcess || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.inProcess || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.inProcess || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Cancelled</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.cancelled || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.cancelled || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.cancelled || 0}</td>
+                <tr className="bg-white hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-red-500">❌</span> Cancelled
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.cancelled || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.cancelled || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.cancelled || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Шилжиж орж ирсэн агент</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.transfers || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.transfers || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.transfers || 0}</td>
+                <tr className="bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-teal-500">🔄</span> Шилжиж орж ирсэн
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.transfers || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.transfers || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.transfers || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сарын өсөлт</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.monthlyGrowth || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.monthlyGrowth || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.monthlyGrowth || 0}</td>
+                <tr className="bg-white hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-emerald-500">📈</span> Тухайн сарын өсөлт
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.monthlyGrowth || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.monthlyGrowth || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.monthlyGrowth || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Чөлөө авсан агент</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.agentsOnLeave || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.agentsOnLeave || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.agentsOnLeave || 0}</td>
+                <tr className="bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-amber-500">🏖️</span> Чөлөө авсан агент
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.agentsOnLeave || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.agentsOnLeave || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.agentsOnLeave || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">ХАГ цуцалсан агент</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.resigned || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.resigned || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.resigned || 0}</td>
+                <tr className="bg-white hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-rose-500">🚪</span> ХАГ цуцалсан агент
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-blue-600">{statistics['Гэгээнтэн']?.resigned || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-green-600">{statistics['Ривер']?.resigned || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-semibold text-orange-600">{statistics['Даун таун']?.resigned || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Цэвэр өсөлт</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.netGrowth || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.netGrowth || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.netGrowth || 0}</td>
+                <tr className="bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <span className="text-cyan-500">📊</span> Цэвэр өсөлт
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-sm font-bold text-blue-700">{statistics['Гэгээнтэн']?.netGrowth || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-bold text-green-700">{statistics['Ривер']?.netGrowth || 0}</td>
+                  <td className="px-5 py-3.5 text-center text-sm font-bold text-orange-700">{statistics['Даун таун']?.netGrowth || 0}</td>
                 </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">НИЙТ ICONNECT</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.totalIConnect || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.totalIConnect || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.totalIConnect || 0}</td>
+                <tr className="bg-gradient-to-r from-indigo-100 to-purple-100">
+                  <td className="px-5 py-4 text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span className="text-indigo-600">🏆</span> НИЙТ ICONNECT
+                  </td>
+                  <td className="px-5 py-4 text-center text-lg font-bold text-blue-700">{statistics['Гэгээнтэн']?.totalIConnect || 0}</td>
+                  <td className="px-5 py-4 text-center text-lg font-bold text-green-700">{statistics['Ривер']?.totalIConnect || 0}</td>
+                  <td className="px-5 py-4 text-center text-lg font-bold text-orange-700">{statistics['Даун таун']?.totalIConnect || 0}</td>
                 </tr>
               </tbody>
             </table>

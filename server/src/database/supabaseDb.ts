@@ -318,31 +318,58 @@ export const supabaseDatabase = {
     
     const offices = ['Гэгээнтэн', 'Ривер', 'Даун таун'];
     const stats: any = {};
+    
     for (const office of offices) {
-      // Applications created this month for this office
-      const { data: apps, error: appsError } = await supabase
+      // Get all applications for this office to calculate various metrics
+      const { data: allApps, error: allAppsError } = await supabase
         .from('applications')
-        .select('status, is_transfer')
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
+        .select('*')
         .eq('interested_office', office);
-      if (appsError) throw appsError;
-      const totalMeetings = apps.length;
-      const iconnectOpenings = apps.filter(a => a.status === 'iconnect').length;
-      const fireupRegistrations = apps.filter(a => a.status === 'fireup').length;
-      const inProcess = apps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
-      const cancelled = apps.filter(a => a.status === 'cancelled').length;
-      const transfers = apps.filter(a => a.is_transfer === true).length;
-      // Employees hired this month
-      const { data: emps, error: empsError } = await supabase
+      if (allAppsError) throw allAppsError;
+      
+      // totalMeetings: Count applications created in this month (new applications submitted)
+      const totalMeetings = allApps.filter(a => {
+        if (!a.created_at) return false;
+        return a.created_at >= startDate && a.created_at < endDate;
+      }).length;
+      
+      // iconnectOpenings: Count employees created in this month (when app becomes iconnect, employee is created)
+      const { data: iconnectEmps, error: iconnectError } = await supabase
         .from('employees')
         .select('id')
         .gte('created_at', startDate)
         .lt('created_at', endDate)
         .eq('office_name', office);
-      if (empsError) throw empsError;
-      const newHires = emps.length;
+      if (iconnectError) throw iconnectError;
+      const iconnectOpenings = iconnectEmps?.length || 0;
+      
+      // fireupRegistrations: Count applications with fireup_date in this month
+      const fireupRegistrations = allApps.filter(a => {
+        if (!a.fireup_date) return false;
+        return a.fireup_date >= startDate && a.fireup_date < endDate;
+      }).length;
+      
+      // inProcess: Current applications in interviewing or fireup status
+      const inProcess = allApps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
+      
+      // cancelled: Applications cancelled in this month (check updated_at for cancelled status)
+      const cancelled = allApps.filter(a => {
+        if (a.status !== 'cancelled') return false;
+        if (!a.updated_at) return false;
+        return a.updated_at >= startDate && a.updated_at < endDate;
+      }).length;
+      
+      // transfers: Applications marked as transfer created in this month
+      const transfers = allApps.filter(a => {
+        if (!a.is_transfer) return false;
+        if (!a.created_at) return false;
+        return a.created_at >= startDate && a.created_at < endDate;
+      }).length;
+      
+      // Employees hired this month (same as iconnectOpenings)
+      const newHires = iconnectOpenings;
       const monthlyGrowth = newHires;
+      
       // Resigned this month
       const { data: res, error: resError } = await supabase
         .from('resigned_agents')
@@ -351,24 +378,28 @@ export const supabaseDatabase = {
         .lt('resignation_date', endDate)
         .eq('office_name', office);
       if (resError) throw resError;
-      const resigned = res.length;
-      // Current agents on leave
+      const resigned = res?.length || 0;
+      
+      // Current agents on leave (not filtered by month - this is current status)
       const { data: leaveEmps, error: leaveError } = await supabase
         .from('employees')
         .select('id')
         .in('status', ['on_leave', 'maternity_leave'])
         .eq('office_name', office);
       if (leaveError) throw leaveError;
-      const agentsOnLeave = leaveEmps.length;
-      // Net growth
-      const netGrowth = monthlyGrowth - agentsOnLeave - resigned;
-      // Total active IConnect agents - assuming all employees are active IConnect
+      const agentsOnLeave = leaveEmps?.length || 0;
+      
+      // Net growth = new hires - resigned (leave is temporary, not subtracted)
+      const netGrowth = monthlyGrowth - resigned;
+      
+      // Total active IConnect agents - all current employees
       const { data: totalEmps, error: totalError } = await supabase
         .from('employees')
         .select('id')
         .eq('office_name', office);
       if (totalError) throw totalError;
-      const totalIConnect = totalEmps.length;
+      const totalIConnect = totalEmps?.length || 0;
+      
       stats[office] = {
         totalMeetings,
         iconnectOpenings,

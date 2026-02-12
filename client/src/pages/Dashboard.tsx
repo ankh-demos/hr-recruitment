@@ -37,6 +37,7 @@ export function Dashboard() {
   });
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllBirthdays, setShowAllBirthdays] = useState(false);
 
   // Chart data
   const [statusDistribution, setStatusDistribution] = useState<{status: string; count: number; color: string}[]>([]);
@@ -236,14 +237,14 @@ export function Dashboard() {
       ? allEmployees 
       : allEmployees.filter(e => e.officeName === selectedOffice);
     
-    // Fire UP this month (applications with fireup status and fireupDate in current month)
+    // Fire UP this month (applications with fireupDate in current month)
     const fireUpThisMonth = filteredApps.filter(app => {
-      if (app.status !== 'fireup' || !app.fireupDate) return false;
+      if (!app.fireupDate) return false;
       const fireupDate = new Date(app.fireupDate);
       return fireupDate.getMonth() === currentMonth && fireupDate.getFullYear() === currentYear;
     }).length;
     
-    // iConnect this month (employees created this month)
+    // iConnect this month (employees created this month - when app converts to iconnect, employee is created)
     const iConnectThisMonth = filteredEmps.filter(emp => {
       if (!emp.createdAt) return false;
       const createdDate = new Date(emp.createdAt);
@@ -647,12 +648,36 @@ export function Dashboard() {
       {/* Birthday Section */}
       {birthdayEmployees.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-            <span className="text-2xl">🎂</span>
-            Энэ сарын төрсөн өдөр ({birthdayEmployees.length})
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <span className="text-2xl">🎂</span>
+              Энэ сарын төрсөн өдөр ({birthdayEmployees.length})
+            </h3>
+            {birthdayEmployees.length > 8 && (
+              <button
+                onClick={() => setShowAllBirthdays(!showAllBirthdays)}
+                className="flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-800 transition-colors"
+              >
+                {showAllBirthdays ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Хураах
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Бүгдийг харах ({birthdayEmployees.length - 8} бусад)
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {birthdayEmployees.slice(0, 8).map(emp => (
+            {(showAllBirthdays ? birthdayEmployees : birthdayEmployees.slice(0, 8)).map(emp => (
               <div key={emp.id} className="bg-pink-50 border border-pink-200 rounded-lg p-3 flex items-center gap-3">
                 {emp.photoUrl ? (
                   <img src={emp.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -672,9 +697,6 @@ export function Dashboard() {
               </div>
             ))}
           </div>
-          {birthdayEmployees.length > 8 && (
-            <p className="mt-3 text-center text-sm text-gray-500">+{birthdayEmployees.length - 8} бусад</p>
-          )}
         </div>
       )}
 

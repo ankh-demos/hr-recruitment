@@ -420,27 +420,27 @@ export function Employees() {
     let familyTable = '';
     if (emp.familyMembers && emp.familyMembers.length > 0) {
       const rows = emp.familyMembers.map(m => 
-        '<tr><td>' + m.relationship + '</td><td>' + m.fullName + '</td><td>' + m.birthPlace + '</td><td>' + m.profession + '</td><td>' + m.phone + '</td></tr>'
+        '<tr><td>' + (m.relationship || '-') + '</td><td>' + (m.fullName || '-') + '</td><td>' + (m.birthPlace || '-') + '</td><td>' + (m.profession || '-') + '</td><td>' + (m.phone || '-') + '</td></tr>'
       ).join('');
-      familyTable = '<h2>Гэр бүлийн байдал</h2><table><tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>' + rows + '</table>';
+      familyTable = '<div class="section"><h2>Гэр бүлийн байдал</h2><table><tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>' + rows + '</table></div>';
     }
     
     // Build education table
     let eduTable = '';
     if (emp.education && emp.education.length > 0) {
       const rows = emp.education.map(e => 
-        '<tr><td>' + e.school + '</td><td>' + e.enrollmentDate + '</td><td>' + e.graduationDate + '</td><td>' + e.major + '</td><td>' + e.gpa + '</td></tr>'
+        '<tr><td>' + (e.school || '-') + '</td><td>' + (e.enrollmentDate || '-') + '</td><td>' + (e.graduationDate || '-') + '</td><td>' + (e.major || '-') + '</td><td>' + (e.gpa || '-') + '</td></tr>'
       ).join('');
-      eduTable = '<h2>Боловсрол</h2><table><tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>' + rows + '</table>';
+      eduTable = '<div class="section"><h2>Боловсрол</h2><table><tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>' + rows + '</table></div>';
     }
     
     // Build work experience table
     let workTable = '';
     if (emp.workExperience && emp.workExperience.length > 0) {
       const rows = emp.workExperience.map(w => 
-        '<tr><td>' + w.companyName + '</td><td>' + w.businessType + '</td><td>' + w.position + '</td><td>' + w.startDate + '</td><td>' + w.endDate + '</td></tr>'
+        '<tr><td>' + (w.companyName || '-') + '</td><td>' + (w.businessType || '-') + '</td><td>' + (w.position || '-') + '</td><td>' + (w.startDate || '-') + '</td><td>' + (w.endDate || '-') + '</td></tr>'
       ).join('');
-      workTable = '<h2>Ажлын туршлага</h2><table><tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>' + rows + '</table>';
+      workTable = '<div class="section"><h2>Ажлын туршлага</h2><table><tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>' + rows + '</table></div>';
     }
     
     const photoHtml = emp.photoUrl ? '<img src="' + emp.photoUrl + '" class="photo" />' : '';
@@ -452,57 +452,71 @@ export function Employees() {
       <head>
         <title>Ажилтан - ${emp.firstName} ${emp.lastName}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-          h1 { color: #1f2937; border-bottom: 2px solid #10b981; padding-bottom: 10px; }
-          h2 { color: #374151; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .info-item { padding: 5px 0; }
-          .label { color: #6b7280; font-size: 12px; }
-          .value { color: #1f2937; font-size: 14px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; font-size: 12px; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.4; }
+          h1 { color: #1f2937; border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-bottom: 15px; }
+          h2 { color: #374151; margin-top: 25px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; page-break-after: avoid; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+          .info-item { padding: 4px 0; page-break-inside: avoid; }
+          .label { color: #6b7280; font-size: 11px; display: block; }
+          .value { color: #1f2937; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; font-size: 11px; }
           th { background: #f9fafb; }
-          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-          .photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
-          .header { display: flex; align-items: center; gap: 20px; }
-          @media print { body { padding: 0; } }
+          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+          .photo { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; }
+          .header { display: flex; align-items: center; gap: 15px; page-break-inside: avoid; }
+          .section { page-break-inside: avoid; margin-bottom: 15px; }
+          @media print {
+            body { padding: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section { page-break-inside: avoid; }
+            h2 { page-break-after: avoid; }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; }
+          }
+          @page { margin: 1cm; }
         </style>
       </head>
       <body>
-        <div class="header">
+        <div class="header section">
           ${photoHtml}
           <div>
-            <h1>${emp.familyName || ''} ${emp.firstName} ${emp.lastName}</h1>
-            <p style="color: #6b7280;">${emp.email} | ${emp.phone}</p>
+            <h1 style="margin-top: 0;">${emp.familyName || ''} ${emp.firstName} ${emp.lastName}</h1>
+            <p style="color: #6b7280; margin: 5px 0;">${emp.email} | ${emp.phone}</p>
             <span class="status" style="background: #d1fae5; color: #065f46;">${statusInfo.label}</span>
             ${iconnectHtml}
           </div>
         </div>
         
-        <h2>Хувийн мэдээлэл</h2>
-        <div class="info-grid">
-          <div class="info-item"><span class="label">Оффис:</span> <span class="value">${emp.officeName || emp.interestedOffice || '-'}</span></div>
-          <div class="info-item"><span class="label">МЛС:</span> <span class="value">${emp.mls || '-'}</span></div>
-          <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${emp.birthDate || '-'}</span></div>
-          <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${emp.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
-          <div class="info-item"><span class="label">Регистр:</span> <span class="value">${emp.registerNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${emp.homeAddress || '-'}</span></div>
-          <div class="info-item"><span class="label">Утас:</span> <span class="value">${emp.phone || '-'}</span></div>
-          <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${emp.emergencyPhone || '-'}</span></div>
-          <div class="info-item"><span class="label">Ажилд орсон огноо:</span> <span class="value">${emp.employmentStartDate || '-'}</span></div>
-          <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${emp.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+        <div class="section">
+          <h2>Хувийн мэдээлэл</h2>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">Оффис:</span> <span class="value">${emp.officeName || emp.interestedOffice || '-'}</span></div>
+            <div class="info-item"><span class="label">МЛС:</span> <span class="value">${emp.mls || '-'}</span></div>
+            <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${emp.birthDate || '-'}</span></div>
+            <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${emp.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
+            <div class="info-item"><span class="label">Регистр:</span> <span class="value">${emp.registerNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${emp.homeAddress || '-'}</span></div>
+            <div class="info-item"><span class="label">Утас:</span> <span class="value">${emp.phone || '-'}</span></div>
+            <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${emp.emergencyPhone || '-'}</span></div>
+            <div class="info-item"><span class="label">Ажилд орсон огноо:</span> <span class="value">${emp.employmentStartDate || '-'}</span></div>
+            <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${emp.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+          </div>
         </div>
         
-        <h2>Нэмэлт мэдээлэл</h2>
-        <div class="info-grid">
-          <div class="info-item"><span class="label">Certificate дугаар:</span> <span class="value">${emp.certificateNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">Иргэний бүртгэлийн дугаар:</span> <span class="value">${emp.citizenRegistrationNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">СЗХ-ы сертификатын дугаар:</span> <span class="value">${emp.szhCertificateNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">Сертификат авсан огноо:</span> <span class="value">${emp.certificateDate || '-'}</span></div>
-          <div class="info-item"><span class="label">Remax имэйл:</span> <span class="value">${emp.remaxEmail || '-'}</span></div>
-          <div class="info-item"><span class="label">Банк:</span> <span class="value">${emp.bank || '-'}</span></div>
-          <div class="info-item"><span class="label">Дансны дугаар:</span> <span class="value">${emp.accountNumber || '-'}</span></div>
-          <div class="info-item"><span class="label">Хүүхдийн тоо:</span> <span class="value">${emp.childrenCount || 0}</span></div>
+        <div class="section">
+          <h2>Нэмэлт мэдээлэл</h2>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">Certificate дугаар:</span> <span class="value">${emp.certificateNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">Иргэний бүртгэлийн дугаар:</span> <span class="value">${emp.citizenRegistrationNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">СЗХ-ы сертификатын дугаар:</span> <span class="value">${emp.szhCertificateNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">Сертификат авсан огноо:</span> <span class="value">${emp.certificateDate || '-'}</span></div>
+            <div class="info-item"><span class="label">Remax имэйл:</span> <span class="value">${emp.remaxEmail || '-'}</span></div>
+            <div class="info-item"><span class="label">Банк:</span> <span class="value">${emp.bank || '-'}</span></div>
+            <div class="info-item"><span class="label">Дансны дугаар:</span> <span class="value">${emp.accountNumber || '-'}</span></div>
+            <div class="info-item"><span class="label">Хүүхдийн тоо:</span> <span class="value">${emp.childrenCount || 0}</span></div>
+          </div>
         </div>
         
         ${familyTable}
