@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../services/api';
+import { api, notificationsApi } from '../services/api';
 import { User } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Pagination } from '../components/Pagination';
@@ -25,9 +25,76 @@ export function Admin() {
     role: 'manager' as 'admin' | 'manager' | 'recruiter'
   });
 
+  // Email configuration state
+  const [emailStatus, setEmailStatus] = useState<{ configured: boolean; adminEmails: string[] } | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     loadUsers();
+    loadEmailStatus();
   }, []);
+
+  async function loadEmailStatus() {
+    try {
+      const status = await notificationsApi.getStatus();
+      setEmailStatus(status);
+    } catch (error) {
+      console.error('Failed to load email status:', error);
+    }
+  }
+
+  async function handleSendTestEmail() {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const result = await notificationsApi.sendTest();
+      setEmailMessage({ type: 'success', text: result.message });
+    } catch (error: any) {
+      setEmailMessage({ type: 'error', text: error.message || 'Тест имэйл илгээхэд алдаа гарлаа' });
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  async function handleTriggerBirthdays() {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const result = await notificationsApi.triggerBirthdays();
+      setEmailMessage({ type: 'success', text: result.message });
+    } catch (error: any) {
+      setEmailMessage({ type: 'error', text: error.message || 'Төрсөн өдрийн мэдэгдэл илгээхэд алдаа гарлаа' });
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  async function handleTriggerRanks() {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const result = await notificationsApi.triggerExpiringRanks();
+      setEmailMessage({ type: 'success', text: result.message });
+    } catch (error: any) {
+      setEmailMessage({ type: 'error', text: error.message || 'Зэрэг дуусах мэдэгдэл илгээхэд алдаа гарлаа' });
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  async function handleSendSummary() {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const result = await notificationsApi.sendDailySummary();
+      setEmailMessage({ type: 'success', text: result.message });
+    } catch (error: any) {
+      setEmailMessage({ type: 'error', text: error.message || 'Өдрийн тойм илгээхэд алдаа гарлаа' });
+    } finally {
+      setEmailLoading(false);
+    }
+  }
 
   async function loadUsers() {
     try {
@@ -371,6 +438,127 @@ export function Admin() {
           onPageChange={setCurrentPage}
           onPageSizeChange={setPageSize}
         />
+      </div>
+
+      {/* Email Notifications Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Имэйл мэдэгдлийн тохиргоо</h2>
+              <p className="text-sm text-gray-500">Админуудад имэйл мэдэгдэл илгээх</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {/* Status */}
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className={`w-3 h-3 rounded-full ${emailStatus?.configured ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <div>
+              <p className="font-medium text-gray-800">
+                Имэйл серверийн төлөв: {emailStatus?.configured ? 'Тохируулагдсан ✓' : 'Тохируулаагүй ✗'}
+              </p>
+              {emailStatus?.adminEmails && emailStatus.adminEmails.length > 0 && (
+                <p className="text-sm text-gray-500">
+                  Админ имэйлүүд: {emailStatus.adminEmails.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* SMTP Configuration Guide */}
+          {!emailStatus?.configured && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <h3 className="font-medium text-amber-800 mb-2">⚙️ SMTP тохиргоо хийх заавар</h3>
+              <p className="text-sm text-amber-700 mb-3">
+                Серверийн environment variables дээр дараах утгуудыг тохируулна уу:
+              </p>
+              <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-xs overflow-x-auto">
+                <div>SMTP_HOST=smtp.gmail.com</div>
+                <div>SMTP_PORT=587</div>
+                <div>SMTP_USER=your-email@gmail.com</div>
+                <div>SMTP_PASS=your-app-password</div>
+                <div>SMTP_FROM=your-email@gmail.com</div>
+                <div>ADMIN_EMAILS=admin1@example.com,admin2@example.com</div>
+              </div>
+              <p className="text-xs text-amber-600 mt-2">
+                💡 Gmail ашиглаж байгаа бол App Password үүсгэх шаардлагатай
+              </p>
+            </div>
+          )}
+
+          {/* Email Message */}
+          {emailMessage && (
+            <div className={`p-4 rounded-lg flex items-center justify-between ${
+              emailMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <span className={emailMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}>
+                {emailMessage.text}
+              </span>
+              <button onClick={() => setEmailMessage(null)} className={emailMessage.type === 'success' ? 'text-green-500' : 'text-red-500'}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button
+              onClick={handleSendTestEmail}
+              disabled={emailLoading || !emailStatus?.configured}
+              className="flex flex-col items-center gap-2 p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-gray-700">Тест имэйл</span>
+            </button>
+
+            <button
+              onClick={handleTriggerBirthdays}
+              disabled={emailLoading || !emailStatus?.configured}
+              className="flex flex-col items-center gap-2 p-4 bg-pink-100 hover:bg-pink-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="text-2xl">🎂</span>
+              <span className="text-sm font-medium text-pink-700">Төрсөн өдөр</span>
+            </button>
+
+            <button
+              onClick={handleTriggerRanks}
+              disabled={emailLoading || !emailStatus?.configured}
+              className="flex flex-col items-center gap-2 p-4 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="text-2xl">🏅</span>
+              <span className="text-sm font-medium text-amber-700">Зэрэг дуусах</span>
+            </button>
+
+            <button
+              onClick={handleSendSummary}
+              disabled={emailLoading || !emailStatus?.configured}
+              className="flex flex-col items-center gap-2 p-4 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-sm font-medium text-blue-700">Өдрийн тойм</span>
+            </button>
+          </div>
+
+          {emailLoading && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Илгээж байна...</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
