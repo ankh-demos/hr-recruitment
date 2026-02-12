@@ -1,8 +1,8 @@
 # Render.com deployment configuration
 # This file tells Render how to build and run your server
 
-# Build command - use npm ci for cleaner installs, install devDependencies for TypeScript build
-buildCommand: npm ci --include=dev && npm run build
+# Build command - TypeScript and type definitions are now in dependencies
+buildCommand: npm ci && npm run build
 
 # Start command  
 startCommand: npm start
