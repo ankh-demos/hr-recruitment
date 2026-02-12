@@ -147,16 +147,27 @@ export function Employees() {
       }
       
       // Search filter
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = searchTerm === '' || 
-        employee.firstName.toLowerCase().includes(searchLower) ||
-        employee.lastName.toLowerCase().includes(searchLower) ||
-        (employee.familyName && employee.familyName.toLowerCase().includes(searchLower)) ||
-        employee.email.toLowerCase().includes(searchLower) ||
-        (employee.interestedOffice && employee.interestedOffice.toLowerCase().includes(searchLower)) ||
-        (employee.officeName && employee.officeName.toLowerCase().includes(searchLower));
+      if (searchTerm !== '') {
+        const searchLower = searchTerm.toLowerCase();
+        const matchFields = [
+          employee.firstName,
+          employee.lastName,
+          employee.familyName,
+          employee.email,
+          employee.phone,
+          employee.interestedOffice,
+          employee.officeName,
+          employee.registerNumber,
+          employee.iConnectName,
+          employee.mls
+        ];
+        const matchesSearch = matchFields.some(field => 
+          field && field.toLowerCase().includes(searchLower)
+        );
+        if (!matchesSearch) return false;
+      }
       
-      return matchesSearch;
+      return true;
     });
   }, [employees, searchTerm, selectedStatuses, selectedOffice]);
 
@@ -393,6 +404,116 @@ export function Employees() {
     } catch (error) {
       console.error('Failed to update employee:', error);
     }
+  }
+
+  // Print employee profile
+  function printEmployee() {
+    if (!selectedEmployee) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const emp = selectedEmployee;
+    const statusInfo = getStatusInfo(emp.status);
+    
+    // Build family members table
+    let familyTable = '';
+    if (emp.familyMembers && emp.familyMembers.length > 0) {
+      const rows = emp.familyMembers.map(m => 
+        '<tr><td>' + m.relationship + '</td><td>' + m.fullName + '</td><td>' + m.birthPlace + '</td><td>' + m.profession + '</td><td>' + m.phone + '</td></tr>'
+      ).join('');
+      familyTable = '<h2>Гэр бүлийн байдал</h2><table><tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>' + rows + '</table>';
+    }
+    
+    // Build education table
+    let eduTable = '';
+    if (emp.education && emp.education.length > 0) {
+      const rows = emp.education.map(e => 
+        '<tr><td>' + e.school + '</td><td>' + e.enrollmentDate + '</td><td>' + e.graduationDate + '</td><td>' + e.major + '</td><td>' + e.gpa + '</td></tr>'
+      ).join('');
+      eduTable = '<h2>Боловсрол</h2><table><tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>' + rows + '</table>';
+    }
+    
+    // Build work experience table
+    let workTable = '';
+    if (emp.workExperience && emp.workExperience.length > 0) {
+      const rows = emp.workExperience.map(w => 
+        '<tr><td>' + w.companyName + '</td><td>' + w.businessType + '</td><td>' + w.position + '</td><td>' + w.startDate + '</td><td>' + w.endDate + '</td></tr>'
+      ).join('');
+      workTable = '<h2>Ажлын туршлага</h2><table><tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>' + rows + '</table>';
+    }
+    
+    const photoHtml = emp.photoUrl ? '<img src="' + emp.photoUrl + '" class="photo" />' : '';
+    const iconnectHtml = emp.iConnectName ? '<span style="margin-left: 10px; color: #6b7280;">(' + emp.iConnectName + ')</span>' : '';
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Ажилтан - ${emp.firstName} ${emp.lastName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #1f2937; border-bottom: 2px solid #10b981; padding-bottom: 10px; }
+          h2 { color: #374151; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+          .info-item { padding: 5px 0; }
+          .label { color: #6b7280; font-size: 12px; }
+          .value { color: #1f2937; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; font-size: 12px; }
+          th { background: #f9fafb; }
+          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+          .photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+          .header { display: flex; align-items: center; gap: 20px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${photoHtml}
+          <div>
+            <h1>${emp.familyName || ''} ${emp.firstName} ${emp.lastName}</h1>
+            <p style="color: #6b7280;">${emp.email} | ${emp.phone}</p>
+            <span class="status" style="background: #d1fae5; color: #065f46;">${statusInfo.label}</span>
+            ${iconnectHtml}
+          </div>
+        </div>
+        
+        <h2>Хувийн мэдээлэл</h2>
+        <div class="info-grid">
+          <div class="info-item"><span class="label">Оффис:</span> <span class="value">${emp.officeName || emp.interestedOffice || '-'}</span></div>
+          <div class="info-item"><span class="label">МЛС:</span> <span class="value">${emp.mls || '-'}</span></div>
+          <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${emp.birthDate || '-'}</span></div>
+          <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${emp.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
+          <div class="info-item"><span class="label">Регистр:</span> <span class="value">${emp.registerNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${emp.homeAddress || '-'}</span></div>
+          <div class="info-item"><span class="label">Утас:</span> <span class="value">${emp.phone || '-'}</span></div>
+          <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${emp.emergencyPhone || '-'}</span></div>
+          <div class="info-item"><span class="label">Ажилд орсон огноо:</span> <span class="value">${emp.employmentStartDate || '-'}</span></div>
+          <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${emp.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+        </div>
+        
+        <h2>Нэмэлт мэдээлэл</h2>
+        <div class="info-grid">
+          <div class="info-item"><span class="label">Certificate дугаар:</span> <span class="value">${emp.certificateNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">Иргэний бүртгэлийн дугаар:</span> <span class="value">${emp.citizenRegistrationNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">СЗХ-ы сертификатын дугаар:</span> <span class="value">${emp.szhCertificateNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">Сертификат авсан огноо:</span> <span class="value">${emp.certificateDate || '-'}</span></div>
+          <div class="info-item"><span class="label">Remax имэйл:</span> <span class="value">${emp.remaxEmail || '-'}</span></div>
+          <div class="info-item"><span class="label">Банк:</span> <span class="value">${emp.bank || '-'}</span></div>
+          <div class="info-item"><span class="label">Дансны дугаар:</span> <span class="value">${emp.accountNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">Хүүхдийн тоо:</span> <span class="value">${emp.childrenCount || 0}</span></div>
+        </div>
+        
+        ${familyTable}
+        ${eduTable}
+        ${workTable}
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   function handleResignClick() {
@@ -725,13 +846,22 @@ export function Employees() {
                       </span>
                     </div>
                   )}
-                  <div className="ml-5 text-white">
+                  <div className="ml-5 text-white flex-1">
                     <h2 className="text-2xl"><span className="font-bold">{selectedEmployee.firstName}</span> {selectedEmployee.lastName}</h2>
                     <p className="text-green-100">{selectedEmployee.interestedOffice}</p>
                     <span className={`inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusInfo(selectedEmployee.status).color}`}>
                       {getStatusInfo(selectedEmployee.status).label}
                     </span>
                   </div>
+                  <button
+                    onClick={printEmployee}
+                    className="self-start px-3 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Хэвлэх
+                  </button>
                 </div>
               </div>
 

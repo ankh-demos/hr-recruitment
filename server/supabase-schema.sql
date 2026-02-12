@@ -121,6 +121,8 @@ CREATE TABLE applications (
   -- Fire UP training
   training_number TEXT,
   fireup_date DATE,
+  -- Transfer flag
+  is_transfer BOOLEAN DEFAULT false, -- Шилжиж орж ирсэн эсэх
   -- Status
   status TEXT CHECK (status IN ('new', 'interviewing', 'fireup', 'iconnect', 'cancelled')) DEFAULT 'new',
   created_at TIMESTAMPTZ DEFAULT NOW(),

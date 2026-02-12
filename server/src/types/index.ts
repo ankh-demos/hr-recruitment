@@ -151,6 +151,9 @@ export interface Application {
   trainingNumber?: string; // Сургалтын дугаар
   fireupDate?: string; // Fire UP огнои (хэзээ товлосон)
   
+  // Transfer flag
+  isTransfer?: boolean; // Шилжиж орж ирсэн эсэх
+  
   // Metadata
   status: 'new' | 'interviewing' | 'fireup' | 'iconnect' | 'cancelled';
   createdAt: string;

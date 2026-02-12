@@ -322,7 +322,7 @@ export const supabaseDatabase = {
       // Applications created this month for this office
       const { data: apps, error: appsError } = await supabase
         .from('applications')
-        .select('status')
+        .select('status, is_transfer')
         .gte('created_at', startDate)
         .lt('created_at', endDate)
         .eq('interested_office', office);
@@ -332,6 +332,7 @@ export const supabaseDatabase = {
       const fireupRegistrations = apps.filter(a => a.status === 'fireup').length;
       const inProcess = apps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
       const cancelled = apps.filter(a => a.status === 'cancelled').length;
+      const transfers = apps.filter(a => a.is_transfer === true).length;
       // Employees hired this month
       const { data: emps, error: empsError } = await supabase
         .from('employees')
@@ -374,6 +375,7 @@ export const supabaseDatabase = {
         fireupRegistrations,
         inProcess,
         cancelled,
+        transfers,
         newHires,
         monthlyGrowth,
         agentsOnLeave,

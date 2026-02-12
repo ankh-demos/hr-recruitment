@@ -83,16 +83,22 @@ export function Applications() {
         return false;
       }
       // Search filter
-      const searchLower = searchTerm.toLowerCase();
-      if (searchTerm !== '' && !(
-        app.familyName.toLowerCase().includes(searchLower) ||
-        app.firstName.toLowerCase().includes(searchLower) ||
-        app.lastName.toLowerCase().includes(searchLower) ||
-        app.email.toLowerCase().includes(searchLower) ||
-        app.phone.toLowerCase().includes(searchLower) ||
-        (app.interestedOffice && app.interestedOffice.toLowerCase().includes(searchLower))
-      )) {
-        return false;
+      if (searchTerm !== '') {
+        const searchLower = searchTerm.toLowerCase();
+        const matchFields = [
+          app.familyName,
+          app.firstName,
+          app.lastName,
+          app.email,
+          app.phone,
+          app.interestedOffice,
+          app.registerNumber,
+          app.trainingNumber
+        ];
+        const matches = matchFields.some(field => 
+          field && field.toLowerCase().includes(searchLower)
+        );
+        if (!matches) return false;
       }
       return true;
     });
@@ -252,7 +258,8 @@ export function Applications() {
       otherSkills: selectedApplication.otherSkills,
       strengthsWeaknesses: selectedApplication.strengthsWeaknesses,
       referralSource: selectedApplication.referralSource,
-      trainingNumber: selectedApplication.trainingNumber
+      trainingNumber: selectedApplication.trainingNumber,
+      isTransfer: selectedApplication.isTransfer
     });
     setIsEditMode(true);
   }
@@ -333,6 +340,105 @@ export function Applications() {
 
   function getStatusLabel(status: string) {
     return APPLICATION_STATUSES.find(s => s.value === status)?.label || status;
+  }
+
+  // Print application
+  function printApplication() {
+    if (!selectedApplication) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const app = selectedApplication;
+    const statusLabel = getStatusLabel(app.status);
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Анкет - ${app.firstName} ${app.lastName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #1f2937; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
+          h2 { color: #374151; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+          .info-item { padding: 5px 0; }
+          .label { color: #6b7280; font-size: 12px; }
+          .value { color: #1f2937; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; font-size: 12px; }
+          th { background: #f9fafb; }
+          .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+          .photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+          .header { display: flex; align-items: center; gap: 20px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${app.photoUrl ? `<img src="${app.photoUrl}" class="photo" />` : ''}
+          <div>
+            <h1>${app.familyName || ''} ${app.firstName} ${app.lastName}</h1>
+            <p style="color: #6b7280;">${app.email} | ${app.phone}</p>
+            <span class="status" style="background: #e0e7ff; color: #3730a3;">${statusLabel}</span>
+            ${app.isTransfer ? '<span class="status" style="background: #d1fae5; color: #065f46; margin-left: 5px;">Шилжиж ирсэн</span>' : ''}
+          </div>
+        </div>
+        
+        <h2>Хувийн мэдээлэл</h2>
+        <div class="info-grid">
+          <div class="info-item"><span class="label">Оффис:</span> <span class="value">${app.interestedOffice || '-'}</span></div>
+          <div class="info-item"><span class="label">Ажилд орох огноо:</span> <span class="value">${app.availableDate || '-'}</span></div>
+          <div class="info-item"><span class="label">Төрсөн газар:</span> <span class="value">${app.birthPlace || '-'}</span></div>
+          <div class="info-item"><span class="label">Төрсөн огноо:</span> <span class="value">${app.birthDate || '-'}</span></div>
+          <div class="info-item"><span class="label">Хүйс:</span> <span class="value">${app.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</span></div>
+          <div class="info-item"><span class="label">Регистр:</span> <span class="value">${app.registerNumber || '-'}</span></div>
+          <div class="info-item"><span class="label">Гэрийн хаяг:</span> <span class="value">${app.homeAddress || '-'}</span></div>
+          <div class="info-item"><span class="label">Яаралтай холбоо:</span> <span class="value">${app.emergencyPhone || '-'}</span></div>
+          <div class="info-item"><span class="label">Facebook:</span> <span class="value">${app.facebook || '-'}</span></div>
+          <div class="info-item"><span class="label">Жолооны эрх:</span> <span class="value">${app.hasDriverLicense ? 'Тийм' : 'Үгүй'}</span></div>
+        </div>
+        
+        ${app.familyMembers && app.familyMembers.length > 0 ? `
+          <h2>Гэр бүлийн байдал</h2>
+          <table>
+            <tr><th>Хэн болох</th><th>Овог нэр</th><th>Төрсөн газар</th><th>Мэргэжил</th><th>Утас</th></tr>
+            ${app.familyMembers.map(m => `<tr><td>${m.relationship}</td><td>${m.fullName}</td><td>${m.birthPlace}</td><td>${m.profession}</td><td>${m.phone}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+        
+        ${app.education && app.education.length > 0 ? `
+          <h2>Боловсрол</h2>
+          <table>
+            <tr><th>Сургууль</th><th>Элссэн</th><th>Төгссөн</th><th>Мэргэжил</th><th>Голч</th></tr>
+            ${app.education.map(e => `<tr><td>${e.school}</td><td>${e.enrollmentDate}</td><td>${e.graduationDate}</td><td>${e.major}</td><td>${e.gpa}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+        
+        ${app.workExperience && app.workExperience.length > 0 ? `
+          <h2>Ажлын туршлага</h2>
+          <table>
+            <tr><th>Байгууллага</th><th>Төрөл</th><th>Албан тушаал</th><th>Орсон</th><th>Гарсан</th></tr>
+            ${app.workExperience.map(w => `<tr><td>${w.companyName}</td><td>${w.businessType}</td><td>${w.position}</td><td>${w.startDate}</td><td>${w.endDate}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+        
+        ${app.otherSkills || app.strengthsWeaknesses ? `
+          <h2>Нэмэлт мэдээлэл</h2>
+          ${app.otherSkills ? `<p><strong>Бусад чадвар:</strong> ${app.otherSkills}</p>` : ''}
+          ${app.strengthsWeaknesses ? `<p><strong>Давуу/сул тал:</strong> ${app.strengthsWeaknesses}</p>` : ''}
+        ` : ''}
+        
+        <div style="margin-top: 30px; font-size: 12px; color: #6b7280;">
+          <p>Мэдээлэл авсан эх сурвалж: ${app.referralSource || '-'}</p>
+          <p>Бүртгэсэн огноо: ${new Date(app.createdAt).toLocaleString('mn-MN')}</p>
+        </div>
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   // Export to CSV
@@ -584,19 +690,17 @@ export function Applications() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Энэ сар</option>
-                <option value="2026-01">2026-01</option>
-                <option value="2025-12">2025-12</option>
-                <option value="2025-11">2025-11</option>
-                <option value="2025-10">2025-10</option>
-                <option value="2025-09">2025-09</option>
-                <option value="2025-08">2025-08</option>
-                <option value="2025-07">2025-07</option>
-                <option value="2025-06">2025-06</option>
-                <option value="2025-05">2025-05</option>
-                <option value="2025-04">2025-04</option>
-                <option value="2025-03">2025-03</option>
-                <option value="2025-02">2025-02</option>
-                <option value="2025-01">2025-01</option>
+                {(() => {
+                  const options = [];
+                  const now = new Date();
+                  for (let i = 0; i < 24; i++) {
+                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const label = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    options.push(<option key={value} value={value}>{label}</option>);
+                  }
+                  return options;
+                })()}
               </select>
             </div>
           </div>
@@ -643,9 +747,9 @@ export function Applications() {
                 </tr>
                 <tr>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Шилжиж орж ирсэн агент</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.newHires || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.newHires || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.newHires || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.transfers || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.transfers || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.transfers || 0}</td>
                 </tr>
                 <tr>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сарын өсөлт</td>
@@ -877,6 +981,15 @@ export function Applications() {
                     </>
                   ) : (
                     <>
+                      <button
+                        onClick={printApplication}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Хэвлэх
+                      </button>
                       <button
                         onClick={enterEditMode}
                         className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
@@ -1123,6 +1236,16 @@ export function Applications() {
                         <option value="Бусад">Бусад</option>
                       </select>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="isTransfer"
+                        checked={editForm.isTransfer || false} 
+                        onChange={(e) => setEditForm({...editForm, isTransfer: e.target.checked})}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300"
+                      />
+                      <label htmlFor="isTransfer" className="text-gray-700">Шилжиж орж ирсэн</label>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1138,6 +1261,7 @@ export function Applications() {
                     <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
                     <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
                     <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
+                    <div><span className="text-gray-500">Шилжиж орж ирсэн:</span> {selectedApplication.isTransfer ? <span className="text-green-600 font-medium">Тийм</span> : 'Үгүй'}</div>
                   </div>
                 )}
               </section>
