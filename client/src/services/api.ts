@@ -165,6 +165,11 @@ export const applicationsApi = {
   getAll: (): Promise<Application[]> =>
     fetch(`${API_BASE}/applications`).then(res => handleResponse<Application[]>(res)),
 
+  getStatistics: (month?: string): Promise<any> => {
+    const url = month ? `${API_BASE}/applications/statistics?month=${month}` : `${API_BASE}/applications/statistics`;
+    return fetch(url).then(res => handleResponse<any>(res));
+  },
+
   getById: (id: string): Promise<Application> =>
     fetch(`${API_BASE}/applications/${id}`).then(res => handleResponse<Application>(res)),
 
@@ -183,7 +188,14 @@ export const applicationsApi = {
     }).then(res => handleResponse<Application>(res)),
 
   delete: (id: string): Promise<void> =>
-    fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' }).then(res => handleResponse<void>(res))
+    fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' }).then(res => handleResponse<void>(res)),
+
+  bulkCreate: (data: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>[]): Promise<Application[]> =>
+    fetch(`${API_BASE}/applications/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(res => handleResponse<Application[]>(res))
 };
 
 // Employees API

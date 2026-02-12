@@ -33,6 +33,11 @@ export function Applications() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   
+  // Statistics state
+  const [statistics, setStatistics] = useState<any>({});
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  
   // Meeting Modal State
   const [meetingModalOpen, setMeetingModalOpen] = useState(false);
   const [currentMeetingLevel, setCurrentMeetingLevel] = useState<1 | 2 | 3>(1);
@@ -53,6 +58,12 @@ export function Applications() {
   // Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Application>>({});
+
+  // Import state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importData, setImportData] = useState<Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     loadApplications();
@@ -85,6 +96,13 @@ export function Applications() {
     setCurrentPage(1);
   }, [selectedStatuses]);
 
+  // Reload statistics when month changes
+  useEffect(() => {
+    if (showStatistics) {
+      loadStatistics(selectedMonth || undefined);
+    }
+  }, [selectedMonth]);
+
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev => 
       prev.includes(status) 
@@ -111,6 +129,15 @@ export function Applications() {
       console.error('Failed to load applications:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStatistics(month?: string) {
+    try {
+      const stats = await applicationsApi.getStatistics(month);
+      setStatistics(stats);
+    } catch (error) {
+      console.error('Failed to load statistics:', error);
     }
   }
 
@@ -348,6 +375,131 @@ export function Applications() {
     URL.revokeObjectURL(url);
   }
 
+  // CSV Template columns for bulk import
+  const CSV_TEMPLATE_HEADERS = [
+    'familyName', 'lastName', 'firstName', 'interestedOffice', 'email', 'phone', 'emergencyPhone',
+    'registerNumber', 'birthDate', 'gender', 'birthPlace', 'ethnicity',
+    'homeAddress', 'facebook', 'hasDriverLicense', 'otherSkills', 'strengthsWeaknesses', 'referralSource'
+  ];
+
+  // Download CSV template
+  function downloadCSVTemplate() {
+    const headerRow = CSV_TEMPLATE_HEADERS.join(',');
+    const exampleRow = [
+      'Ургийн овог', 'Овог', 'Нэр', 'Оффис', 'email@example.com', '99001122', '99003344',
+      'АА00112233', '1990-01-15', 'male', 'Улаанбаатар', 'Халх',
+      'Хаяг', 'facebook_id', 'true', 'Бусад ур чадвар', 'Давуу тал, сул тал', 'Лавлах эх сурвалж'
+    ].join(',');
+    
+    const csvContent = headerRow + '\n' + exampleRow;
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'applications_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Parse CSV file
+  function parseCSV(text: string): Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[] {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const applications: Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const application: Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'> = {
+        // Required fields with defaults
+        familyName: '',
+        lastName: '',
+        firstName: '',
+        interestedOffice: '',
+        availableDate: '',
+        birthPlace: '',
+        ethnicity: '',
+        gender: 'male' as 'male' | 'female',
+        birthDate: '',
+        registerNumber: '',
+        homeAddress: '',
+        phone: '',
+        emergencyPhone: '',
+        email: '',
+        facebook: '',
+        familyMembers: [],
+        education: [],
+        languages: [],
+        workExperience: [],
+        awards: [],
+        otherSkills: '',
+        strengthsWeaknesses: '',
+        hasDriverLicense: false,
+        photoUrl: '',
+        referralSource: '',
+        signatureUrl: ''
+      };
+      
+      headers.forEach((header, index) => {
+        const value = values[index] || '';
+        if (header === 'hasDriverLicense') {
+          application.hasDriverLicense = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'тийм';
+        } else if (header === 'gender') {
+          application.gender = value.toLowerCase() === 'female' || value.toLowerCase() === 'эмэгтэй' ? 'female' : 'male';
+        } else if (header in application && typeof application[header as keyof typeof application] === 'string') {
+          (application as any)[header] = value;
+        }
+      });
+      
+      applications.push(application);
+    }
+    
+    return applications;
+  }
+
+  // Handle file upload
+  function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setImportError(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const parsed = parseCSV(text);
+        if (parsed.length === 0) {
+          setImportError('CSV файл хоосон эсвэл буруу форматтай байна');
+          return;
+        }
+        setImportData(parsed);
+        setImportModalOpen(true);
+      } catch (error) {
+        setImportError('CSV файлыг унших чадсангүй');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    // Reset input
+    event.target.value = '';
+  }
+
+  // Confirm import
+  async function confirmImport() {
+    setImportLoading(true);
+    setImportError(null);
+    try {
+      await applicationsApi.bulkCreate(importData);
+      setImportModalOpen(false);
+      setImportData([]);
+      loadApplications();
+    } catch (error) {
+      setImportError('Анкетуудыг импортлоход алдаа гарлаа');
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -358,6 +510,15 @@ export function Applications() {
         <h1 className="text-2xl font-bold text-gray-900">Анкетууд ({applications.length})</h1>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => {
+              setShowStatistics(!showStatistics);
+              if (!showStatistics) loadStatistics(selectedMonth || undefined);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {showStatistics ? 'Статистик нуух' : 'Статистик харуулах'}
+          </button>
+          <button
             onClick={exportToCSV}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
           >
@@ -366,6 +527,27 @@ export function Applications() {
             </svg>
             CSV
           </button>
+          <button
+            onClick={downloadCSVTemplate}
+            className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 font-medium flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            CSV загвар
+          </button>
+          <label className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium flex items-center gap-2 cursor-pointer">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            CSV оруулах
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
           <a
             href="/apply"
             target="_blank"
@@ -375,6 +557,118 @@ export function Applications() {
           </a>
         </div>
       </div>
+
+      {showStatistics && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Сарын статистик</h2>
+            <div className="min-w-[150px]">
+              <select
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(e.target.value);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Энэ сар</option>
+                <option value="2026-01">2026-01</option>
+                <option value="2025-12">2025-12</option>
+                <option value="2025-11">2025-11</option>
+                <option value="2025-10">2025-10</option>
+                <option value="2025-09">2025-09</option>
+                <option value="2025-08">2025-08</option>
+                <option value="2025-07">2025-07</option>
+                <option value="2025-06">2025-06</option>
+                <option value="2025-05">2025-05</option>
+                <option value="2025-04">2025-04</option>
+                <option value="2025-03">2025-03</option>
+                <option value="2025-02">2025-02</option>
+                <option value="2025-01">2025-01</option>
+              </select>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үзүүлэлт</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэгээнтэн</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ривер</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Даун таун</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сард нийт уулзалсан агентын тоо</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.totalMeetings || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.totalMeetings || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.totalMeetings || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сард Iconnect нээгдсэн агентын тоо</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.iconnectOpenings || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.iconnectOpenings || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.iconnectOpenings || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Fire Up-д бүртгүүлсэн агентын тоо</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.fireupRegistrations || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.fireupRegistrations || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.fireupRegistrations || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">In process</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.inProcess || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.inProcess || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.inProcess || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Cancelled</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.cancelled || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.cancelled || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.cancelled || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Шилжиж орж ирсэн агент</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.newHires || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.newHires || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.newHires || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Тухайн сарын өсөлт</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.monthlyGrowth || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.monthlyGrowth || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.monthlyGrowth || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Чөлөө авсан агент</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.agentsOnLeave || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.agentsOnLeave || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.agentsOnLeave || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">ХАГ цуцалсан агент</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.resigned || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.resigned || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.resigned || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Цэвэр өсөлт</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.netGrowth || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.netGrowth || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.netGrowth || 0}</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">НИЙТ ICONNECT</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Гэгээнтэн']?.totalIConnect || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Ривер']?.totalIConnect || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{statistics['Даун таун']?.totalIConnect || 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Status Filter */}
       <div className="bg-white shadow rounded-lg p-4">
@@ -1269,6 +1563,78 @@ export function Applications() {
                   Тийм, бүртгэх
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {importModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-semibold">CSV-ээс анкетуудыг оруулах</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {importData.length} анкет оруулахад бэлэн байна
+              </p>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-6">
+              {importError && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+                  {importError}
+                </div>
+              )}
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left">№</th>
+                      <th className="px-3 py-2 text-left">Овог</th>
+                      <th className="px-3 py-2 text-left">Нэр</th>
+                      <th className="px-3 py-2 text-left">Оффис</th>
+                      <th className="px-3 py-2 text-left">Имэйл</th>
+                      <th className="px-3 py-2 text-left">Утас</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importData.map((app, index) => (
+                      <tr key={index} className="border-t hover:bg-gray-50">
+                        <td className="px-3 py-2">{index + 1}</td>
+                        <td className="px-3 py-2">{app.lastName}</td>
+                        <td className="px-3 py-2">{app.firstName}</td>
+                        <td className="px-3 py-2">{app.interestedOffice}</td>
+                        <td className="px-3 py-2">{app.email}</td>
+                        <td className="px-3 py-2">{app.phone}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t flex gap-3 justify-end">
+              <button
+                onClick={() => { setImportModalOpen(false); setImportData([]); setImportError(null); }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={importLoading}
+              >
+                Болих
+              </button>
+              <button
+                onClick={confirmImport}
+                disabled={importLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {importLoading && (
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                Оруулах
+              </button>
             </div>
           </div>
         </div>

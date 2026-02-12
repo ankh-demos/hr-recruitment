@@ -30,5 +30,17 @@ export const applicationModel = {
 
   async delete(id: string): Promise<boolean> {
     return db.deleteApplication(id);
+  },
+
+  async bulkCreate(applications: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>[]): Promise<Application[]> {
+    const now = new Date().toISOString();
+    const applicationsWithDefaults = applications.map(app => ({
+      id: uuidv4(),
+      ...app,
+      status: 'new' as const,
+      createdAt: now,
+      updatedAt: now
+    }));
+    return db.bulkCreateApplications(applicationsWithDefaults);
   }
 };

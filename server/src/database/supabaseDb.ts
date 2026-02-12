@@ -148,6 +148,12 @@ export const supabaseDatabase = {
     return !error;
   },
 
+  bulkCreateApplications: async (applications: Application[]): Promise<Application[]> => {
+    const { data, error } = await supabase.from('applications').insert(applications.map(toSnakeCase)).select();
+    if (error) throw error;
+    return (data || []).map(toCamelCase);
+  },
+
   // ============ USERS ============
   getUsers: async (): Promise<User[]> => {
     const { data, error } = await supabase.from('users').select('*');
@@ -284,5 +290,98 @@ export const supabaseDatabase = {
   deleteAgentRank: async (id: string): Promise<boolean> => {
     const { error } = await supabase.from('agent_ranks').delete().eq('id', id);
     return !error;
+  },
+
+  getStatistics: async (month?: string): Promise<any> => {
+    let startDate: string;
+    let endDate: string;
+    
+    if (month) {
+      // Parse the provided month (format: YYYY-MM)
+      const [yearStr, monthStr] = month.split('-');
+      const year = parseInt(yearStr);
+      const monthNum = parseInt(monthStr);
+      startDate = `${year}-${monthStr.padStart(2, '0')}-01`;
+      const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+      const nextYear = monthNum === 12 ? year + 1 : year;
+      endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+    } else {
+      // Use current month
+      const now = new Date();
+      const year = now.getFullYear();
+      const monthNum = now.getMonth() + 1; // 1-based
+      startDate = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
+      const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+      const nextYear = monthNum === 12 ? year + 1 : year;
+      endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+    }
+    
+    const offices = ['Гэгээнтэн', 'Ривер', 'Даун таун'];
+    const stats: any = {};
+    for (const office of offices) {
+      // Applications created this month for this office
+      const { data: apps, error: appsError } = await supabase
+        .from('applications')
+        .select('status')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .eq('interested_office', office);
+      if (appsError) throw appsError;
+      const totalMeetings = apps.length;
+      const iconnectOpenings = apps.filter(a => a.status === 'iconnect').length;
+      const fireupRegistrations = apps.filter(a => a.status === 'fireup').length;
+      const inProcess = apps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
+      const cancelled = apps.filter(a => a.status === 'cancelled').length;
+      // Employees hired this month
+      const { data: emps, error: empsError } = await supabase
+        .from('employees')
+        .select('id')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .eq('office_name', office);
+      if (empsError) throw empsError;
+      const newHires = emps.length;
+      const monthlyGrowth = newHires;
+      // Resigned this month
+      const { data: res, error: resError } = await supabase
+        .from('resigned_agents')
+        .select('id')
+        .gte('resignation_date', startDate)
+        .lt('resignation_date', endDate)
+        .eq('office_name', office);
+      if (resError) throw resError;
+      const resigned = res.length;
+      // Current agents on leave
+      const { data: leaveEmps, error: leaveError } = await supabase
+        .from('employees')
+        .select('id')
+        .in('status', ['on_leave', 'maternity_leave'])
+        .eq('office_name', office);
+      if (leaveError) throw leaveError;
+      const agentsOnLeave = leaveEmps.length;
+      // Net growth
+      const netGrowth = monthlyGrowth - agentsOnLeave - resigned;
+      // Total active IConnect agents - assuming all employees are active IConnect
+      const { data: totalEmps, error: totalError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('office_name', office);
+      if (totalError) throw totalError;
+      const totalIConnect = totalEmps.length;
+      stats[office] = {
+        totalMeetings,
+        iconnectOpenings,
+        fireupRegistrations,
+        inProcess,
+        cancelled,
+        newHires,
+        monthlyGrowth,
+        agentsOnLeave,
+        resigned,
+        netGrowth,
+        totalIConnect
+      };
+    }
+    return stats;
   }
 };

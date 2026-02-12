@@ -194,6 +194,12 @@ export const database = {
     return true;
   },
 
+  bulkCreateApplications: (applications: Application[]): Application[] => {
+    db.applications.push(...applications);
+    saveDatabase(db);
+    return applications;
+  },
+
   // Users
   getUsers: (): User[] => db.users || [],
   

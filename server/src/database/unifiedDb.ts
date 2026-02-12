@@ -120,6 +120,11 @@ export const db = {
     return jsonDatabase.deleteApplication(id);
   },
 
+  bulkCreateApplications: async (applications: Application[]): Promise<Application[]> => {
+    if (useSupabase) return supabaseDatabase.bulkCreateApplications(applications);
+    return jsonDatabase.bulkCreateApplications(applications);
+  },
+
   // ============ USERS ============
   getUsers: async (): Promise<User[]> => {
     if (useSupabase) return supabaseDatabase.getUsers();
@@ -206,6 +211,12 @@ export const db = {
   deleteResignedAgent: async (id: string): Promise<boolean> => {
     if (useSupabase) return supabaseDatabase.deleteResignedAgent(id);
     return jsonDatabase.deleteResignedAgent(id);
+  },
+
+  // ============ STATISTICS ============
+  getStatistics: async (month?: string): Promise<any> => {
+    if (useSupabase) return supabaseDatabase.getStatistics(month);
+    return {}; // JSON not implemented
   },
 
   // ============ AGENT RANKS ============

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { applicationModel, employeeModel } from '../models';
+import { db } from '../database/unifiedDb';
 
 const router = Router();
 
@@ -10,6 +11,17 @@ router.get('/', async (req: Request, res: Response) => {
     res.json(applications);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// Get statistics
+router.get('/statistics', async (req: Request, res: Response) => {
+  try {
+    const month = req.query.month as string;
+    const stats = await db.getStatistics(month);
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
 
@@ -84,6 +96,20 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete application' });
+  }
+});
+
+// Bulk import applications
+router.post('/bulk', async (req: Request, res: Response) => {
+  try {
+    const applications = req.body;
+    if (!Array.isArray(applications)) {
+      return res.status(400).json({ error: 'Request body must be an array of applications' });
+    }
+    const created = await applicationModel.bulkCreate(applications);
+    res.status(201).json({ success: true, count: created.length, applications: created });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to bulk import applications' });
   }
 });
 
