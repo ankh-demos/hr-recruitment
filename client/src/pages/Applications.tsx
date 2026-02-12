@@ -28,6 +28,7 @@ export function Applications() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +36,7 @@ export function Applications() {
   
   // Statistics state
   const [statistics, setStatistics] = useState<any>({});
-  const [showStatistics, setShowStatistics] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   
   // Meeting Modal State
@@ -70,7 +71,7 @@ export function Applications() {
     loadUsers();
   }, []);
 
-  // Filtered applications based on selected statuses and office
+  // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
       // Office filter
@@ -81,9 +82,21 @@ export function Applications() {
       if (selectedStatuses.length > 0 && !selectedStatuses.includes(app.status)) {
         return false;
       }
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      if (searchTerm !== '' && !(
+        app.familyName.toLowerCase().includes(searchLower) ||
+        app.firstName.toLowerCase().includes(searchLower) ||
+        app.lastName.toLowerCase().includes(searchLower) ||
+        app.email.toLowerCase().includes(searchLower) ||
+        app.phone.toLowerCase().includes(searchLower) ||
+        (app.interestedOffice && app.interestedOffice.toLowerCase().includes(searchLower))
+      )) {
+        return false;
+      }
       return true;
     });
-  }, [applications, selectedStatuses, selectedOffice]);
+  }, [applications, selectedStatuses, selectedOffice, searchTerm]);
 
   // Paginated applications for table view
   const paginatedApplications = useMemo(() => {
@@ -94,7 +107,7 @@ export function Applications() {
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedStatuses]);
+  }, [selectedStatuses, searchTerm]);
 
   // Reload statistics when month changes
   useEffect(() => {
@@ -673,6 +686,23 @@ export function Applications() {
       {/* Status Filter */}
       <div className="bg-white shadow rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Нэр, имэйл, утас, оффисоор хайх..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+          </div>
           <span className="text-sm font-medium text-gray-700">Төлөвөөр шүүх:</span>
           <div className="relative">
             <button
@@ -738,6 +768,11 @@ export function Applications() {
                 ) : null;
               })}
             </div>
+          )}
+          {(searchTerm || selectedStatuses.length > 0) && (
+            <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-indigo-600 hover:text-indigo-800">
+              Цэвэрлэх
+            </button>
           )}
           <div className="ml-auto flex rounded-lg overflow-hidden border border-gray-300">
             <button

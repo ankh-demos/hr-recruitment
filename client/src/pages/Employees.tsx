@@ -151,8 +151,10 @@ export function Employees() {
       const matchesSearch = searchTerm === '' || 
         employee.firstName.toLowerCase().includes(searchLower) ||
         employee.lastName.toLowerCase().includes(searchLower) ||
+        (employee.familyName && employee.familyName.toLowerCase().includes(searchLower)) ||
         employee.email.toLowerCase().includes(searchLower) ||
-        (employee.interestedOffice && employee.interestedOffice.toLowerCase().includes(searchLower));
+        (employee.interestedOffice && employee.interestedOffice.toLowerCase().includes(searchLower)) ||
+        (employee.officeName && employee.officeName.toLowerCase().includes(searchLower));
       
       return matchesSearch;
     });
