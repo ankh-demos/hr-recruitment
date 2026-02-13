@@ -23,7 +23,7 @@ export function Dashboard() {
   });
   const [employeeStats, setEmployeeStats] = useState({
     active: 0,           // Идэвхтэй
-    new_0_3: 0,          // Шинэ 0-3 сар
+    new_0_6: 0,          // Шинэ 0-6 сар
     inactive_transaction: 0, // Идэвхгүй, гүйлгээтэй
     inactive: 0,         // Идэвхгүй
     active_no_transaction: 0, // Идэвхтэй, гүйлгээгүй
@@ -40,7 +40,7 @@ export function Dashboard() {
   const [showAllBirthdays, setShowAllBirthdays] = useState(false);
 
   // Chart data
-  const [statusDistribution, setStatusDistribution] = useState<{status: string; count: number; color: string}[]>([]);
+  const [statusDistribution, setStatusDistribution] = useState<{ status: string; count: number; color: string }[]>([]);
 
   // Load all data once
   useEffect(() => {
@@ -68,14 +68,14 @@ export function Dashboard() {
   // Calculate stats based on selected office filter
   useEffect(() => {
     // Filter by office
-    const filteredEmployees = selectedOffice === 'Бүгд' 
-      ? allEmployees 
+    const filteredEmployees = selectedOffice === 'Бүгд'
+      ? allEmployees
       : allEmployees.filter(e => e.officeName === selectedOffice);
-    
+
     const filteredResignedAgents = selectedOffice === 'Бүгд'
       ? allResignedAgents
       : allResignedAgents.filter(r => r.officeName === selectedOffice);
-    
+
     const filteredApplications = selectedOffice === 'Бүгд'
       ? allApplications
       : allApplications.filter(a => a.interestedOffice === selectedOffice);
@@ -83,7 +83,7 @@ export function Dashboard() {
     // Calculate new applications this week
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const newThisWeek = filteredApplications.filter((a: Application) => 
+    const newThisWeek = filteredApplications.filter((a: Application) =>
       new Date(a.createdAt) >= oneWeekAgo
     ).length;
 
@@ -104,7 +104,7 @@ export function Dashboard() {
 
     // Calculate employee stats
     const activeCount = filteredEmployees.filter((e: Employee) => e.status === 'active').length;
-    const new03Count = filteredEmployees.filter((e: Employee) => e.status === 'new_0_3').length;
+    const new06Count = filteredEmployees.filter((e: Employee) => e.status === 'new_0_6').length;
     const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
     const inactiveCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive').length;
     const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
@@ -112,12 +112,12 @@ export function Dashboard() {
     const maternityLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'maternity_leave').length;
     const teamMemberCount = filteredEmployees.filter((e: Employee) => e.status === 'team_member').length;
     const totalAgents = filteredEmployees.length;
-    const qualitySum = activeCount + new03Count + inactiveTransactionCount;
+    const qualitySum = activeCount + new06Count + inactiveTransactionCount;
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
 
     setEmployeeStats({
       active: activeCount,
-      new_0_3: new03Count,
+      new_0_6: new06Count,
       inactive_transaction: inactiveTransactionCount,
       inactive: inactiveCount,
       active_no_transaction: activeNoTransactionCount,
@@ -165,12 +165,12 @@ export function Dashboard() {
     const nextMonthEndStr = nextMonthEnd.toISOString().split('T')[0];
 
     // Filter by office if needed
-    const filteredRanks = selectedOffice === 'Бүгд' 
-      ? allAgentRanks 
+    const filteredRanks = selectedOffice === 'Бүгд'
+      ? allAgentRanks
       : allAgentRanks.filter(rank => {
-          const employee = allEmployees.find(e => e.mls === rank.agentId);
-          return employee && employee.officeName === selectedOffice;
-        });
+        const employee = allEmployees.find(e => e.mls === rank.agentId);
+        return employee && employee.officeName === selectedOffice;
+      });
 
     const expired: AgentRank[] = [];
     const thisMonth: AgentRank[] = [];
@@ -199,25 +199,25 @@ export function Dashboard() {
   // Birthday employees this month
   const birthdayEmployees = useMemo(() => {
     const currentMonth = new Date().getMonth(); // 0-indexed
-    
+
     // Filter by office if needed
-    const filteredEmployees = selectedOffice === 'Бүгд' 
-      ? allEmployees 
+    const filteredEmployees = selectedOffice === 'Бүгд'
+      ? allEmployees
       : allEmployees.filter(e => e.officeName === selectedOffice);
-    
+
     const birthdays = filteredEmployees.filter(emp => {
       if (!emp.birthDate) return false;
       const birthMonth = new Date(emp.birthDate).getMonth();
       return birthMonth === currentMonth;
     });
-    
+
     // Sort by day of month
     birthdays.sort((a, b) => {
       const dayA = new Date(a.birthDate).getDate();
       const dayB = new Date(b.birthDate).getDate();
       return dayA - dayB;
     });
-    
+
     return birthdays;
   }, [allEmployees, selectedOffice]);
 
@@ -226,31 +226,31 @@ export function Dashboard() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    
+
     // Filter applications by office if needed
-    const filteredApps = selectedOffice === 'Бүгд' 
-      ? allApplications 
+    const filteredApps = selectedOffice === 'Бүгд'
+      ? allApplications
       : allApplications.filter(a => a.interestedOffice === selectedOffice);
-    
+
     // Filter employees by office if needed
-    const filteredEmps = selectedOffice === 'Бүгд' 
-      ? allEmployees 
+    const filteredEmps = selectedOffice === 'Бүгд'
+      ? allEmployees
       : allEmployees.filter(e => e.officeName === selectedOffice);
-    
+
     // Fire UP this month (applications with fireupDate in current month)
     const fireUpThisMonth = filteredApps.filter(app => {
       if (!app.fireupDate) return false;
       const fireupDate = new Date(app.fireupDate);
       return fireupDate.getMonth() === currentMonth && fireupDate.getFullYear() === currentYear;
     }).length;
-    
+
     // iConnect this month (employees created this month - when app converts to iconnect, employee is created)
     const iConnectThisMonth = filteredEmps.filter(emp => {
       if (!emp.createdAt) return false;
       const createdDate = new Date(emp.createdAt);
       return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear;
     }).length;
-    
+
     return { fireUpThisMonth, iConnectThisMonth };
   }, [allApplications, allEmployees, selectedOffice]);
 
@@ -384,8 +384,8 @@ export function Dashboard() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">iConnect хувь</span>
             <span className="text-2xl font-bold text-gray-900">
-              {stats.totalApplications > 0 
-                ? Math.round((stats.iconnectApplications / stats.totalApplications) * 100) 
+              {stats.totalApplications > 0
+                ? Math.round((stats.iconnectApplications / stats.totalApplications) * 100)
                 : 0}%
             </span>
           </div>
@@ -420,8 +420,8 @@ export function Dashboard() {
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_3}</p>
-                <p className="text-xs text-blue-600">Шинэ 0-3 сар</p>
+                <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_6}</p>
+                <p className="text-xs text-blue-600">Шинэ 0-6 сар</p>
               </div>
             </div>
           </div>
@@ -746,17 +746,17 @@ export function Dashboard() {
                   <div className="flex justify-between text-sm mb-1">
                     <span className="capitalize text-gray-600">
                       {item.status === 'new' ? 'Шинэ анкет' :
-                       item.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
-                       item.status === 'iconnect' ? 'iConnect нээлгэсэн' :
-                       item.status === 'fireup' ? 'Fire UP товлосон' :
-                       item.status === 'cancelled' ? 'Ажиллахаа больсон' : item.status}
+                        item.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                          item.status === 'iconnect' ? 'iConnect нээлгэсэн' :
+                            item.status === 'fireup' ? 'Fire UP товлосон' :
+                              item.status === 'cancelled' ? 'Ажиллахаа больсон' : item.status}
                     </span>
                     <span className="font-medium">{item.count}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
+                    <div
                       className="h-3 rounded-full transition-all duration-500"
-                      style={{ 
+                      style={{
                         width: `${(item.count / totalForChart) * 100}%`,
                         backgroundColor: item.color
                       }}
@@ -788,17 +788,16 @@ export function Dashboard() {
                       </p>
                       <p className="text-sm text-gray-500">{app.email}</p>
                     </div>
-                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                      app.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                      app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
-                      app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
-                      app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                        app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                          app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                            app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                              'bg-red-100 text-red-800'
+                      }`}>
                       {app.status === 'new' ? 'Шинэ анкет' :
-                       app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
-                       app.status === 'iconnect' ? 'iConnect нээлгэсэн' :
-                       app.status === 'fireup' ? 'Fire UP товлосон' : 'Ажиллахаа больсон'}
+                        app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                          app.status === 'iconnect' ? 'iConnect нээлгэсэн' :
+                            app.status === 'fireup' ? 'Fire UP товлосон' : 'Ажиллахаа больсон'}
                     </span>
                   </div>
                 </li>
