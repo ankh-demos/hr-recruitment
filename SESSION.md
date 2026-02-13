@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** February 11, 2026
+**Last Updated:** February 13, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,60 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (February 13, 2026)
+
+### Architecture & Methods Used
+- **Frontend**: React functional components with hooks (`useState`, `useEffect`, `useMemo`) for state and filtering.
+- **Backend API**: Express listeners handling CRUD operations.
+- **Email Service**: Hybrid approach merging environment variables (`SMTP_Config`) with Database records (`users` table) for dynamic admin recipients.
+- **Printing**: Hidden `iframe` technique to avoid popups/new tabs.
+- **Synchronization**: `fetch` reload pattern in `Applications.tsx` to ensure client state matches server state after mutations (handling joined fields).
+
+### Completed Fixes & Features (Round 1 & 2)
+
+#### 1. Apply Form Submission
+- **Validation**: Added client-side checks for `gender`, `birthDate`, `email`.
+- **Error Handling**: Server now returns specific error messages which are displayed to the user.
+- **Data**: Added `referredAgentName` to payload (requires DB schema update).
+
+#### 2. Print Functionality
+- **UX Improvement**: Replaced `window.open` with a hidden `iframe` for seamless printing of applications.
+
+#### 3. New Filters
+- **Employees Page**: 
+  - `iConnect` filter (Yes/No/All)
+  - `SZH Training` filter (Yes/No/All) - checks `hasSzhTraining` boolean.
+- **Applications Page**: 
+  - **Office Filter**: Fixed logic to filter by `interestedOffice`.
+  - **Status Filter**: Moved to a dropdown UI to prevent layout disruption.
+
+#### 4. CSV Export
+- **Ranks Page**: Grouped exports by expiration category (Expired, Expiring This Month, Expiring Next Month, Valid) with separator rows.
+
+#### 5. Email Notifications
+- **Dynamic Admins**: `emailService.getAdminEmails()` now fetches all users with `role='admin'` and `isActive=true` from DB, merging them with `ADMIN_EMAILS` env var.
+- **Configuration**: Updated `/api/notifications/status` to return the merged list of recipients.
+- **UI**: Admin page instructions updated to reflect this automation.
+
+#### 6. Employee Detail View
+- **Visibility**: Added missing fields to the Employee Detail modal/view:
+  - SZH Training status, date, formatting.
+  - Assistant status (`isAssistant`, `assistantOf`).
+
+### Manual Actions Required
+**Database Schema Updates (Supabase):**
+```sql
+-- For Fix 1
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS referred_agent_name text;
+
+-- For Fix 3 & 6
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_szh_training boolean DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_training_date text;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_official_letter_number text;
+```
 
 ---
 
