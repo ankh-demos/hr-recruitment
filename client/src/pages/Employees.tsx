@@ -119,7 +119,10 @@ export function Employees() {
     status: 'active' as Employee['status'],
     hasIConnect: false,
     isAssistant: false,
-    assistantOf: ''
+    assistantOf: '',
+    hasSzhTraining: false,
+    szhTrainingDate: '',
+    szhOfficialLetterNumber: ''
   });
 
   // CSV Import state
@@ -226,7 +229,8 @@ export function Employees() {
       'Certificate дугаар', 'Иргэний бүртгэлийн дугаар', 'СЗХ сертификатын дугаар',
       'Сертификат авсан огноо', 'Remax имэйл', 'MLS', 'Банк', 'Дансны дугаар',
       'Хүүхдийн тоо', 'Ажилд орсон огноо', 'Төлөв', 'Цол',
-      'iConnect', 'Туслах эсэх', 'Хэний туслах'
+      'iConnect', 'Туслах эсэх', 'Хэний туслах',
+      'СЗХ сургалт', 'СЗХ сургалт огноо', 'СЗХ албан бичгийн дугаар'
     ];
 
     const rows = filteredEmployees.map(emp => {
@@ -263,7 +267,10 @@ export function Employees() {
         rank?.currentRank || '',
         emp.hasIConnect ? 'Тийм' : 'Үгүй',
         emp.isAssistant ? 'Тийм' : 'Үгүй',
-        emp.assistantOf || ''
+        emp.assistantOf || '',
+        emp.hasSzhTraining ? 'Тийм' : 'Үгүй',
+        emp.szhTrainingDate || '',
+        emp.szhOfficialLetterNumber || ''
       ];
     });
 
@@ -288,7 +295,8 @@ export function Employees() {
     'certificateNumber', 'citizenRegistrationNumber', 'szhCertificateNumber',
     'certificateDate', 'remaxEmail', 'mls', 'bank', 'accountNumber',
     'childrenCount', 'employmentStartDate', 'status',
-    'hasIConnect', 'isAssistant', 'assistantOf'
+    'hasIConnect', 'isAssistant', 'assistantOf',
+    'hasSzhTraining', 'szhTrainingDate', 'szhOfficialLetterNumber'
   ];
 
   // Download CSV template
@@ -301,7 +309,8 @@ export function Employees() {
       'CERT001', 'REG001', 'SZH001',
       '2024-01-01', 'remax@email.com', 'MLS001', 'Хаан банк', '5000123456',
       '2', '2024-01-01', 'active',
-      'true', 'false', ''
+      'true', 'false', '',
+      'true', '2024-06-01', 'SZH-001'
     ].join(',');
 
     const csvContent = headerRow + '\n' + exampleRow;
@@ -341,7 +350,7 @@ export function Employees() {
 
       headers.forEach((header, index) => {
         const value = values[index] || '';
-        if (header === 'hasDriverLicense' || header === 'hasIConnect' || header === 'isAssistant') {
+        if (header === 'hasDriverLicense' || header === 'hasIConnect' || header === 'isAssistant' || header === 'hasSzhTraining') {
           (employee as any)[header] = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'тийм';
         } else if (header === 'childrenCount') {
           (employee as any)[header] = parseInt(value) || 0;
@@ -423,9 +432,6 @@ export function Employees() {
   function printEmployee() {
     if (!selectedEmployee) return;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
     const emp = selectedEmployee;
     const statusInfo = getStatusInfo(emp.status);
 
@@ -459,7 +465,7 @@ export function Employees() {
     const photoHtml = emp.photoUrl ? '<img src="' + emp.photoUrl + '" class="photo" />' : '';
     const iconnectHtml = emp.iConnectName ? '<span style="margin-left: 10px; color: #6b7280;">(' + emp.iConnectName + ')</span>' : '';
 
-    printWindow.document.write(`
+    const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -532,18 +538,43 @@ export function Employees() {
             <div class="info-item"><span class="label">iConnect эрх:</span> <span class="value">${emp.hasIConnect ? 'Тийм' : 'Үгүй'}</span></div>
             <div class="info-item"><span class="label">Туслах эсэх:</span> <span class="value">${emp.isAssistant ? 'Тийм' : 'Үгүй'}</span></div>
             ${emp.isAssistant ? `<div class="info-item"><span class="label">Хэний туслах:</span> <span class="value">${emp.assistantOf || '-'}</span></div>` : ''}
+            <div class="info-item"><span class="label">СЗХ сургалт:</span> <span class="value">${emp.hasSzhTraining ? 'Тийм' : 'Үгүй'}</span></div>
+            ${emp.hasSzhTraining ? `<div class="info-item"><span class="label">СЗХ сургалт огноо:</span> <span class="value">${emp.szhTrainingDate || '-'}</span></div>` : ''}
+            ${emp.hasSzhTraining ? `<div class="info-item"><span class="label">СЗХ албан бичгийн дугаар:</span> <span class="value">${emp.szhOfficialLetterNumber || '-'}</span></div>` : ''}
           </div>
         </div>
         
         ${familyTable}
         ${eduTable}
         ${workTable}
-        
-        <script>window.onload = function() { window.print(); }</script>
       </body>
       </html>
-    `);
-    printWindow.document.close();
+    `;
+
+    // Use hidden iframe instead of window.open to avoid new tab
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(printContent);
+      iframeDoc.close();
+
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+        // Clean up iframe after print dialog closes
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+    }
   }
 
   function handleResignClick() {
@@ -633,7 +664,10 @@ export function Employees() {
       status: selectedEmployee.status,
       hasIConnect: selectedEmployee.hasIConnect || false,
       isAssistant: selectedEmployee.isAssistant || false,
-      assistantOf: selectedEmployee.assistantOf || ''
+      assistantOf: selectedEmployee.assistantOf || '',
+      hasSzhTraining: selectedEmployee.hasSzhTraining || false,
+      szhTrainingDate: selectedEmployee.szhTrainingDate || '',
+      szhOfficialLetterNumber: selectedEmployee.szhOfficialLetterNumber || ''
     });
     setEditFieldsOpen(true);
   }
@@ -1022,6 +1056,9 @@ export function Employees() {
                       <div><span className="text-gray-500">iConnect:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.hasIConnect ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.hasIConnect ? 'Тийм' : 'Үгүй'}</span></div>
                       <div><span className="text-gray-500">Туслах эсэх:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.isAssistant ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.isAssistant ? 'Тийм' : 'Үгүй'}</span></div>
                       {selectedEmployee.isAssistant && <div><span className="text-gray-500">Хэний туслах:</span> <span className="font-medium">{selectedEmployee.assistantOf || '-'}</span></div>}
+                      <div><span className="text-gray-500">СЗХ сургалт:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.hasSzhTraining ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.hasSzhTraining ? 'Тийм' : 'Үгүй'}</span></div>
+                      {selectedEmployee.hasSzhTraining && <div><span className="text-gray-500">СЗХ сургалт огноо:</span> <span className="font-medium">{selectedEmployee.szhTrainingDate ? new Date(selectedEmployee.szhTrainingDate).toLocaleDateString('mn-MN') : '-'}</span></div>}
+                      {selectedEmployee.hasSzhTraining && <div><span className="text-gray-500">СЗХ албан бичгийн дугаар:</span> <span className="font-medium">{selectedEmployee.szhOfficialLetterNumber || '-'}</span></div>}
                     </div>
                   </section>
 
@@ -1627,6 +1664,28 @@ export function Employees() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Хэний туслах</label>
                   <input type="text" value={editFields.assistantOf || ''} onChange={(e) => setEditFields({ ...editFields, assistantOf: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Нэр оруулах" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">СЗХ сургалт суусан эсэх</label>
+                <select value={editFields.hasSzhTraining ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, hasSzhTraining: e.target.value === 'yes' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="yes">Тийм</option>
+                  <option value="no">Үгүй</option>
+                </select>
+              </div>
+              {editFields.hasSzhTraining && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">СЗХ сургалт суусан огноо</label>
+                  <input type="date" value={editFields.szhTrainingDate || ''} onChange={(e) => setEditFields({ ...editFields, szhTrainingDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
+                </div>
+              )}
+              {editFields.hasSzhTraining && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">СЗХ албан бичгийн дугаар</label>
+                  <input type="text" value={editFields.szhOfficialLetterNumber || ''} onChange={(e) => setEditFields({ ...editFields, szhOfficialLetterNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Дугаар оруулах" />
                 </div>
               )}
             </div>

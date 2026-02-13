@@ -37,12 +37,63 @@ function compressImage(dataUrl: string, maxWidth = 800, quality = 0.7): Promise<
   });
 }
 
+// Helper: section card wrapper (defined outside component to prevent re-creation on render)
+function SectionCard({ title, icon, children, id }: { title: string; icon: string; children: React.ReactNode; id?: string }) {
+  return (
+    <section id={id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md">
+      <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
+        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <span className="text-xl">{icon}</span>
+          {title}
+        </h2>
+      </div>
+      <div className="p-6">{children}</div>
+    </section>
+  );
+}
+
+// Helper: input field with validation state (defined outside component to prevent re-creation on render)
+function FormField({ label, required, error, id, children }: { label: string; required?: boolean; error?: string; id?: string; children: React.ReactNode }) {
+  return (
+    <div id={id}>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
+      {error && (
+        <p className="mt-1.5 text-red-500 text-xs flex items-center gap-1">
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const inputClass = (hasError: boolean) =>
+  `w-full border rounded-xl px-4 py-2.5 text-sm transition-all duration-200 outline-none ${hasError
+    ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 focus:border-red-500'
+    : 'border-gray-200 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 hover:border-gray-300'
+  }`;
+
+const selectClass = (hasError: boolean) =>
+  `w-full border rounded-xl px-4 py-2.5 text-sm transition-all duration-200 outline-none appearance-none bg-white ${hasError
+    ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 focus:border-red-500'
+    : 'border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 hover:border-gray-300'
+  }`;
+
+const addButtonClass = "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors";
+const removeButtonClass = "text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors";
+const dynamicItemInputClass = "w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all hover:border-gray-300";
+
 export function Apply() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -117,7 +168,7 @@ export function Apply() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     let x, y;
     if ('touches' in e) {
@@ -301,7 +352,7 @@ export function Apply() {
   // Validate form before submit
   const validateForm = (): Record<string, string> => {
     const errors: Record<string, string> = {};
-    
+
     // Validate Cyrillic fields
     const cyrillicFields = [
       { field: 'familyName', name: 'Ургийн овог' },
@@ -310,56 +361,56 @@ export function Apply() {
       { field: 'birthPlace', name: 'Төрсөн газар' },
       { field: 'ethnicity', name: 'Үндэс угсаа' }
     ];
-    
+
     // Validate homeAddress - required but allows all characters
     if (!formData.homeAddress.trim()) {
       errors.homeAddress = 'Гэрийн хаяг оруулна уу';
     }
-    
+
     // Validate optional Cyrillic fields only if they have a value
     const optionalCyrillicFields = [
       { field: 'otherSkills', name: 'Бусад ур чадвар' },
       { field: 'strengthsWeaknesses', name: 'Давуу болон сул тал' }
     ];
-    
+
     for (const { field, name } of cyrillicFields) {
       const err = validateCyrillicField(formData[field as keyof typeof formData] as string, name);
       if (err) errors[field] = err;
     }
-    
+
     for (const { field, name } of optionalCyrillicFields) {
       const value = formData[field as keyof typeof formData] as string;
       if (value && value.trim() && !MONGOLIAN_CYRILLIC_REGEX.test(value)) {
         errors[field] = `${name} зөвхөн Монгол кирилл үсэг оруулна уу`;
       }
     }
-    
+
     // Validate register number
     const regErr = validateRegisterNumber(formData.registerNumber);
     if (regErr) errors.registerNumber = regErr;
-    
+
     // Validate phone numbers
     const phoneErr = validatePhone(formData.phone);
     if (phoneErr) errors.phone = phoneErr;
-    
+
     const emergencyPhoneErr = validatePhone(formData.emergencyPhone);
     if (emergencyPhoneErr) errors.emergencyPhone = emergencyPhoneErr;
-    
+
     // Validate office selection
     if (!formData.interestedOffice) errors.interestedOffice = 'Оффис сонгоно уу';
-    
+
     // Validate signature
     if (!formData.signatureUrl) errors.signatureUrl = 'Гарын үсэг зурна уу';
-    
+
     return errors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const errors = validateForm();
     setValidationErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       setError('Бүх талбарыг зөв бөглөнө үү.');
       // Scroll to first error field
@@ -375,7 +426,7 @@ export function Apply() {
       }, 100);
       return;
     }
-    
+
     setSubmitting(true);
     setError('');
 
@@ -432,54 +483,7 @@ export function Apply() {
     );
   }
 
-  // Helper: section card wrapper
-  const SectionCard = ({ title, icon, children, id }: { title: string; icon: string; children: React.ReactNode; id?: string }) => (
-    <section id={id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md">
-      <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-          <span className="text-xl">{icon}</span>
-          {title}
-        </h2>
-      </div>
-      <div className="p-6">{children}</div>
-    </section>
-  );
 
-  // Helper: input field with validation state
-  const FormField = ({ label, required, error, id, children }: { label: string; required?: boolean; error?: string; id?: string; children: React.ReactNode }) => (
-    <div id={id}>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      {children}
-      {error && (
-        <p className="mt-1.5 text-red-500 text-xs flex items-center gap-1">
-          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-
-  const inputClass = (hasError: boolean) =>
-    `w-full border rounded-xl px-4 py-2.5 text-sm transition-all duration-200 outline-none ${
-      hasError
-        ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 focus:border-red-500'
-        : 'border-gray-200 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 hover:border-gray-300'
-    }`;
-
-  const selectClass = (hasError: boolean) =>
-    `w-full border rounded-xl px-4 py-2.5 text-sm transition-all duration-200 outline-none appearance-none bg-white ${
-      hasError
-        ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 focus:border-red-500'
-        : 'border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 hover:border-gray-300'
-    }`;
-
-  const addButtonClass = "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors";
-  const removeButtonClass = "text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors";
-  const dynamicItemInputClass = "w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all hover:border-gray-300";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -887,13 +891,12 @@ export function Apply() {
           {/* ═══════ Photo Upload ═══════ */}
           <SectionCard title="Цээж зураг" icon="📷" id="field-photoUrl">
             <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                formData.photoUrl
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${formData.photoUrl
                   ? 'border-green-300 bg-green-50'
                   : validationErrors.photoUrl
                     ? 'border-red-300 bg-red-50'
                     : 'border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
-              }`}
+                }`}
               onClick={() => photoInputRef.current?.click()}
             >
               {formData.photoUrl ? (
@@ -942,7 +945,7 @@ export function Apply() {
               <option value="Вебсайт">Вебсайт</option>
               <option value="Бусад">Бусад</option>
             </select>
-            
+
             {formData.referralSource === 'Найз танил' && (
               <div className="mt-4">
                 <FormField label="Санал болгосон агентын нэр">

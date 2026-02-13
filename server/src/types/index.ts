@@ -213,6 +213,9 @@ export interface Employee {
   hasIConnect?: boolean; // iConnect-тэй эсэх
   isAssistant?: boolean; // Туслах эсэх
   assistantOf?: string; // Хэний туслах
+  hasSzhTraining?: boolean; // СЗХ сургалт суусан эсэх
+  szhTrainingDate?: string; // Суусан огноо
+  szhOfficialLetterNumber?: string; // СЗХ албан бичгийн дугаар
   hiredDate: string;
   createdAt: string;
   updatedAt: string;

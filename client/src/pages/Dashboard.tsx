@@ -24,12 +24,16 @@ export function Dashboard() {
   const [employeeStats, setEmployeeStats] = useState({
     active: 0,           // Идэвхтэй
     new_0_6: 0,          // Шинэ 0-6 сар
+    month_6_12: 0,       // 6-12 сар
+    experienced_1_3: 0,  // 1-3 жил
+    over_3_years: 0,     // 3+ жил
     inactive_transaction: 0, // Идэвхгүй, гүйлгээтэй
     inactive: 0,         // Идэвхгүй
     active_no_transaction: 0, // Идэвхтэй, гүйлгээгүй
     on_leave: 0,         // Чөлөөтэй
     maternity_leave: 0,  // Жирэмсний амралт
     team_member: 0,      // Багийн гишүүн
+    top: 0,              // Топ
     resigned: 0,         // Гарсан
     totalIconnect: 0,    // Нийт iConnect
     totalAgents: 0,      // Нийт агент
@@ -105,25 +109,33 @@ export function Dashboard() {
     // Calculate employee stats
     const activeCount = filteredEmployees.filter((e: Employee) => e.status === 'active').length;
     const new06Count = filteredEmployees.filter((e: Employee) => e.status === 'new_0_6').length;
+    const month612Count = filteredEmployees.filter((e: Employee) => e.status === 'month_6_12').length;
+    const experienced13Count = filteredEmployees.filter((e: Employee) => e.status === 'experienced_1_3').length;
+    const over3YearsCount = filteredEmployees.filter((e: Employee) => e.status === 'over_3_years').length;
     const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
     const inactiveCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive').length;
     const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
     const onLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'on_leave').length;
     const maternityLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'maternity_leave').length;
     const teamMemberCount = filteredEmployees.filter((e: Employee) => e.status === 'team_member').length;
+    const topCount = filteredEmployees.filter((e: Employee) => e.status === 'top').length;
     const totalAgents = filteredEmployees.length;
-    const qualitySum = activeCount + new06Count + inactiveTransactionCount;
+    const qualitySum = activeCount + new06Count + month612Count + experienced13Count + over3YearsCount + inactiveTransactionCount + topCount;
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
 
     setEmployeeStats({
       active: activeCount,
       new_0_6: new06Count,
+      month_6_12: month612Count,
+      experienced_1_3: experienced13Count,
+      over_3_years: over3YearsCount,
       inactive_transaction: inactiveTransactionCount,
       inactive: inactiveCount,
       active_no_transaction: activeNoTransactionCount,
       on_leave: onLeaveCount,
       maternity_leave: maternityLeaveCount,
       team_member: teamMemberCount,
+      top: topCount,
       resigned: resignedCount,
       totalIconnect: iconnectApps,
       totalAgents: totalAgents,
@@ -503,6 +515,58 @@ export function Dashboard() {
               </div>
             </div>
           </div>
+          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-cyan-700">{employeeStats.month_6_12}</p>
+                <p className="text-xs text-cyan-600">6-12 сар</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-lime-50 border-l-4 border-lime-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-lime-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-lime-700">{employeeStats.experienced_1_3}</p>
+                <p className="text-xs text-lime-600">1-3 жил</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-700">{employeeStats.over_3_years}</p>
+                <p className="text-xs text-amber-600">3+ жил</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-rose-700">{employeeStats.top}</p>
+                <p className="text-xs text-rose-600">Топ</p>
+              </div>
+            </div>
+          </div>
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
@@ -789,10 +853,10 @@ export function Dashboard() {
                       <p className="text-sm text-gray-500">{app.email}</p>
                     </div>
                     <span className={`px-3 py-1 text-xs rounded-full font-medium ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                        app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
-                          app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
-                            app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
-                              'bg-red-100 text-red-800'
+                      app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                        app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                          app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                            'bg-red-100 text-red-800'
                       }`}>
                       {app.status === 'new' ? 'Шинэ анкет' :
                         app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
