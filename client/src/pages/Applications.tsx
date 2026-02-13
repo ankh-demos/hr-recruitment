@@ -141,6 +141,7 @@ export function Applications() {
 
   async function loadApplications() {
     try {
+      setLoading(true);
       const response = await fetch(`${API_BASE}/applications`);
       const data = await response.json();
       setApplications(data);
@@ -271,6 +272,7 @@ export function Applications() {
   }
 
   // Save edited application
+  // Save edited application
   async function saveApplication() {
     if (!selectedApplication) return;
     try {
@@ -279,9 +281,21 @@ export function Applications() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
       });
+
+      // Reload all applications to ensure we have fresh data
       await loadApplications();
-      // Update selected application with new data
-      setSelectedApplication({ ...selectedApplication, ...editForm } as Application);
+
+      // Update selected application from the reloaded list
+      // We need to fetch the fresh list first (which loadApplications does), 
+      // then find the updated application to set as selected
+      const response = await fetch(`${API_BASE}/applications`);
+      const data = await response.json();
+      const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
+
+      if (updatedApp) {
+        setSelectedApplication(updatedApp);
+      }
+
       setIsEditMode(false);
       setEditForm({});
     } catch (error) {
@@ -673,8 +687,8 @@ export function Applications() {
               if (!showStatistics) loadStatistics(selectedMonth || undefined);
             }}
             className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${showStatistics
-                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -950,18 +964,49 @@ export function Applications() {
               ))}
             </select>
           </div>
-          {selectedStatuses.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {selectedStatuses.map(s => {
-                const status = APPLICATION_STATUSES.find(st => st.value === s);
-                return status ? (
-                  <span key={s} className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
-                    {status.label}
-                  </span>
-                ) : null;
-              })}
-            </div>
-          )}
+
+          {/* Status Filter Dropdown */}
+          <div className="relative min-w-[200px]">
+            <button
+              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-between gap-2"
+            >
+              <span className="truncate">{selectedStatuses.length === 0 ? 'Бүх төлөв' : `${selectedStatuses.length} сонгосон`}</span>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {statusFilterOpen && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  {APPLICATION_STATUSES.map(status => (
+                    <label
+                      key={status.value}
+                      className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatuses.includes(status.value)}
+                        onChange={() => toggleStatusFilter(status.value)}
+                        className="rounded text-indigo-600"
+                      />
+                      <span className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="border-t p-2">
+                  <button
+                    onClick={() => { setSelectedStatuses([]); setStatusFilterOpen(false); }}
+                    className="w-full text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    Цэвэрлэх
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           {(searchTerm || selectedStatuses.length > 0) && (
             <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-indigo-600 hover:text-indigo-800">
               Цэвэрлэх
@@ -1013,10 +1058,10 @@ export function Applications() {
                         </p>
                       </div>
                       <span className={`px-2 py-1 text-xs rounded-full ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                          app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
-                            app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
-                              app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
-                                'bg-red-100 text-red-800'
+                        app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                          app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                            app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                              'bg-red-100 text-red-800'
                         }`}>
                         {app.status === 'new' ? 'Шинэ' :
                           app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
@@ -1138,8 +1183,8 @@ export function Applications() {
                     <button
                       onClick={() => openMeetingModal(1)}
                       className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting1) === 'filled'
-                          ? 'bg-green-100 border-green-500 text-green-800'
-                          : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
                         }`}
                     >
                       Уулзалт 1
@@ -1150,8 +1195,8 @@ export function Applications() {
                     <button
                       onClick={() => openMeetingModal(2)}
                       className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting2) === 'filled'
-                          ? 'bg-green-100 border-green-500 text-green-800'
-                          : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
                         }`}
                     >
                       Уулзалт 2
@@ -1162,8 +1207,8 @@ export function Applications() {
                     <button
                       onClick={() => openMeetingModal(3)}
                       className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting3) === 'filled'
-                          ? 'bg-green-100 border-green-500 text-green-800'
-                          : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
                         }`}
                     >
                       Уулзалт 3

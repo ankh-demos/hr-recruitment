@@ -12,11 +12,11 @@ export function Admin() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -175,7 +175,7 @@ export function Admin() {
 
   async function handleDelete(id: string) {
     if (!confirm('Энэ хэрэглэгчийг устгахдаа итгэлтэй байна уу?')) return;
-    
+
     try {
       await api.delete(`/users/${id}`);
       setSuccess('Хэрэглэгч устгагдлаа');
@@ -248,7 +248,7 @@ export function Admin() {
           </button>
         </div>
       )}
-      
+
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
           <span>{success}</span>
@@ -269,7 +269,7 @@ export function Admin() {
                 {editingUser ? 'Хэрэглэгч засах' : 'Шинэ хэрэглэгч'}
               </h2>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Хэрэглэгчийн нэр</label>
@@ -282,7 +282,7 @@ export function Admin() {
                   className="block w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {editingUser ? 'Шинэ нууц үг (хоосон бол хэвээр)' : 'Нууц үг'}
@@ -295,7 +295,7 @@ export function Admin() {
                   className="block w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Бүтэн нэр</label>
                 <input
@@ -306,7 +306,7 @@ export function Admin() {
                   className="block w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Имэйл</label>
                 <input
@@ -317,7 +317,7 @@ export function Admin() {
                   className="block w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Эрх</label>
                 <select
@@ -330,7 +330,7 @@ export function Admin() {
                   <option value="admin">Админ</option>
                 </select>
               </div>
-              
+
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
@@ -388,23 +388,21 @@ export function Admin() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                      user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                        user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
                       {user.role === 'admin' ? 'Админ' :
-                       user.role === 'manager' ? 'Менежер' : 'Рекрутер'}
+                        user.role === 'manager' ? 'Менежер' : 'Рекрутер'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
                       onClick={() => handleToggleActive(user)}
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        user.isActive 
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${user.isActive
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
                           : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      }`}
+                        }`}
                     >
                       <span className={`w-2 h-2 rounded-full mr-2 ${user.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
                       {user.isActive ? 'Идэвхтэй' : 'Идэвхгүй'}
@@ -455,7 +453,7 @@ export function Admin() {
             </div>
           </div>
         </div>
-        
+
         <div className="p-6 space-y-6">
           {/* Status */}
           <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
@@ -485,19 +483,20 @@ export function Admin() {
                 <div>SMTP_USER=your-email@gmail.com</div>
                 <div>SMTP_PASS=your-app-password</div>
                 <div>SMTP_FROM=your-email@gmail.com</div>
-                <div>ADMIN_EMAILS=admin1@example.com,admin2@example.com</div>
               </div>
               <p className="text-xs text-amber-600 mt-2">
                 💡 Gmail ашиглаж байгаа бол App Password үүсгэх шаардлагатай
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                📧 Админ имэйлүүд автоматаар админ хэрэглэгчдийн имэйлээс авагдана
               </p>
             </div>
           )}
 
           {/* Email Message */}
           {emailMessage && (
-            <div className={`p-4 rounded-lg flex items-center justify-between ${
-              emailMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-            }`}>
+            <div className={`p-4 rounded-lg flex items-center justify-between ${emailMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+              }`}>
               <span className={emailMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}>
                 {emailMessage.text}
               </span>
