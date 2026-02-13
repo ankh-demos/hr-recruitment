@@ -399,6 +399,17 @@ export function Apply() {
     // Validate office selection
     if (!formData.interestedOffice) errors.interestedOffice = 'Оффис сонгоно уу';
 
+    // Validate gender selection
+    if (!formData.gender) errors.gender = 'Хүйс сонгоно уу';
+
+    // Validate birthDate
+    if (!formData.birthDate) errors.birthDate = 'Төрсөн огноо оруулна уу';
+
+    // Validate email (optional but if provided must be valid)
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Зөв имэйл хаяг оруулна уу';
+    }
+
     // Validate signature
     if (!formData.signatureUrl) errors.signatureUrl = 'Гарын үсэг зурна уу';
 
@@ -448,12 +459,12 @@ export function Apply() {
       });
 
       if (!response.ok) {
-        const errData = await response.text();
+        const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Submit error:', response.status, errData);
         if (response.status === 413) {
           throw new Error('Зураг хэт том байна. Жижиг зураг оруулна уу.');
         }
-        throw new Error('Failed to submit application');
+        throw new Error(errData?.error || 'Анкет илгээхэд алдаа гарлаа');
       }
 
       setSubmitted(true);
@@ -892,10 +903,10 @@ export function Apply() {
           <SectionCard title="Цээж зураг" icon="📷" id="field-photoUrl">
             <div
               className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${formData.photoUrl
-                  ? 'border-green-300 bg-green-50'
-                  : validationErrors.photoUrl
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+                ? 'border-green-300 bg-green-50'
+                : validationErrors.photoUrl
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
                 }`}
               onClick={() => photoInputRef.current?.click()}
             >

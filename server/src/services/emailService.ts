@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { Employee, Application, AgentRank } from '../types';
+import { database } from '../database';
 
 // Email configuration - will use environment variables
 const createTransporter = () => {
@@ -26,14 +27,31 @@ const createTransporter = () => {
   });
 };
 
-// Get admin emails from environment or use default
-const getAdminEmails = (): string[] => {
-  const adminEmails = process.env.ADMIN_EMAILS || '';
-  if (!adminEmails) {
-    console.warn('ADMIN_EMAILS environment variable not set. Notifications will not be sent.');
-    return [];
+// Get admin emails from environment AND from database admin users
+const getAdminEmails = async (): Promise<string[]> => {
+  const emails: Set<string> = new Set();
+
+  // 1. From environment variable
+  const envEmails = process.env.ADMIN_EMAILS || '';
+  if (envEmails) {
+    envEmails.split(',').map((e: string) => e.trim()).filter((e: string) => e).forEach((e: string) => emails.add(e.toLowerCase()));
   }
-  return adminEmails.split(',').map(email => email.trim()).filter(email => email);
+
+  // 2. From database admin users
+  try {
+    const users = await database.getUsers();
+    users
+      .filter(u => u.role === 'admin' && u.isActive && u.email)
+      .forEach(u => emails.add(u.email.toLowerCase()));
+  } catch (error) {
+    console.error('Failed to fetch admin users from DB for email notifications:', error);
+  }
+
+  if (emails.size === 0) {
+    console.warn('No admin emails found (env or DB). Notifications will not be sent.');
+  }
+
+  return Array.from(emails);
 };
 
 // Email templates
@@ -196,8 +214,8 @@ export const emailService = {
   // Send email to admins
   sendToAdmins: async (subject: string, html: string): Promise<boolean> => {
     const transporter = createTransporter();
-    const adminEmails = getAdminEmails();
-    
+    const adminEmails = await getAdminEmails();
+
     if (!transporter || adminEmails.length === 0) {
       console.log('Email not sent: Service not configured');
       return false;
@@ -258,7 +276,11 @@ export const emailService = {
     const smtpHost = process.env.SMTP_HOST || '';
     const smtpUser = process.env.SMTP_USER || '';
     const smtpPass = process.env.SMTP_PASS || '';
-    const adminEmails = process.env.ADMIN_EMAILS || '';
-    return !!(smtpHost && smtpUser && smtpPass && adminEmails);
+    return !!(smtpHost && smtpUser && smtpPass);
+  },
+
+  // Get admin emails (for status endpoint)
+  getAdminEmails: async (): Promise<string[]> => {
+    return getAdminEmails();
   }
 };

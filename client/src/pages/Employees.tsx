@@ -67,6 +67,10 @@ export function Employees() {
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
 
+  // New filters
+  const [iConnectFilter, setIConnectFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [szhFilter, setSzhFilter] = useState<'all' | 'yes' | 'no'>('all');
+
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -156,6 +160,14 @@ export function Employees() {
         return false;
       }
 
+      // iConnect filter
+      if (iConnectFilter === 'yes' && !employee.hasIConnect) return false;
+      if (iConnectFilter === 'no' && employee.hasIConnect) return false;
+
+      // SZH training filter
+      if (szhFilter === 'yes' && !employee.hasSzhTraining) return false;
+      if (szhFilter === 'no' && employee.hasSzhTraining) return false;
+
       // Search filter
       if (searchTerm !== '') {
         const searchLower = searchTerm.toLowerCase();
@@ -179,7 +191,7 @@ export function Employees() {
 
       return true;
     });
-  }, [employees, searchTerm, selectedStatuses, selectedOffice]);
+  }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter]);
 
   // Paginated employees for table view
   const paginatedEmployees = useMemo(() => {
@@ -802,6 +814,32 @@ export function Employees() {
               {OFFICES.map(office => (
                 <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
               ))}
+            </select>
+          </div>
+
+          {/* iConnect Filter */}
+          <div className="min-w-[130px]">
+            <select
+              value={iConnectFilter}
+              onChange={(e) => setIConnectFilter(e.target.value as 'all' | 'yes' | 'no')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">iConnect бүгд</option>
+              <option value="yes">iConnect тийм</option>
+              <option value="no">iConnect үгүй</option>
+            </select>
+          </div>
+
+          {/* SZH Training Filter */}
+          <div className="min-w-[130px]">
+            <select
+              value={szhFilter}
+              onChange={(e) => setSzhFilter(e.target.value as 'all' | 'yes' | 'no')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">СЗХ бүгд</option>
+              <option value="yes">СЗХ тийм</option>
+              <option value="no">СЗХ үгүй</option>
             </select>
           </div>
 

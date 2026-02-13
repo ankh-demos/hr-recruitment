@@ -43,15 +43,17 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const application = await applicationModel.create(req.body);
-    
+
     // Send email notification to admins (async, don't wait)
     emailService.notifyNewApplication(application).catch(err => {
       console.error('Failed to send new application notification:', err);
     });
-    
+
     res.status(201).json(application);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create application' });
+  } catch (error: any) {
+    console.error('Failed to create application:', error);
+    const message = error?.message || 'Failed to create application';
+    res.status(500).json({ error: message });
   }
 });
 
@@ -60,7 +62,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { status, ...rest } = req.body;
     const currentApplication = await applicationModel.getById(req.params.id);
-    
+
     if (!currentApplication) {
       return res.status(404).json({ error: 'Application not found' });
     }

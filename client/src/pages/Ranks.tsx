@@ -37,11 +37,11 @@ export function Ranks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  
+
   // Create/Add modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -51,14 +51,14 @@ export function Ranks() {
     rank: 'Стандарт' as RankLevel,
     startDate: ''
   });
-  
+
   // Upgrade rank modal
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeForm, setUpgradeForm] = useState({
     rank: 'Стандарт' as RankLevel,
     startDate: ''
   });
-  
+
   // Edit rank modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -82,9 +82,9 @@ export function Ranks() {
           return false;
         }
       }
-      
+
       const searchLower = searchTerm.toLowerCase();
-      return searchTerm === '' || 
+      return searchTerm === '' ||
         rank.agentName.toLowerCase().includes(searchLower) ||
         rank.agentId.toLowerCase().includes(searchLower);
     });
@@ -195,8 +195,8 @@ export function Ranks() {
     if (!selectedRank) return;
     // Suggest next rank level
     const currentIndex = RANK_LEVELS.indexOf(selectedRank.currentRank);
-    const nextRank = currentIndex < RANK_LEVELS.length - 1 
-      ? RANK_LEVELS[currentIndex + 1] 
+    const nextRank = currentIndex < RANK_LEVELS.length - 1
+      ? RANK_LEVELS[currentIndex + 1]
       : selectedRank.currentRank;
     setUpgradeForm({
       rank: nextRank,
@@ -246,11 +246,12 @@ export function Ranks() {
   // Export to CSV
   function exportToCSV() {
     const headers = [
-      'Агентын нэр', 'ID (MLS)', 'Гэрээний дугаар', 'Одоогийн цол',
+      'Ангилал', 'Агентын нэр', 'ID (MLS)', 'Гэрээний дугаар', 'Одоогийн цол',
       'Гэрээ эхэлсэн', 'Гэрээ дуусах', 'Төлөв', 'Түүхийн тоо', 'Бүртгэсэн огноо'
     ];
-    
-    const rows = filteredRanks.map(rank => [
+
+    const rankToRow = (rank: AgentRank, category: string) => [
+      category,
       rank.agentName || '',
       rank.agentId || '',
       rank.contractNumber || '',
@@ -260,12 +261,59 @@ export function Ranks() {
       isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан',
       rank.rankHistory?.length.toString() || '0',
       rank.createdAt ? new Date(rank.createdAt).toLocaleDateString('mn-MN') : ''
-    ]);
+    ];
+
+    // Group by expiration category
+    const today = new Date();
+    const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    const thisMonthEndStr = thisMonthEnd.toISOString().split('T')[0];
+    const nextMonthEndStr = nextMonthEnd.toISOString().split('T')[0];
+
+    const expired: AgentRank[] = [];
+    const thisMonth: AgentRank[] = [];
+    const nextMonth: AgentRank[] = [];
+    const valid: AgentRank[] = [];
+
+    filteredRanks.forEach(rank => {
+      const endDate = rank.currentEndDate;
+      if (endDate < todayStr) {
+        expired.push(rank);
+      } else if (endDate <= thisMonthEndStr) {
+        thisMonth.push(rank);
+      } else if (endDate <= nextMonthEndStr) {
+        nextMonth.push(rank);
+      } else {
+        valid.push(rank);
+      }
+    });
+
+    const sortByDate = (a: AgentRank, b: AgentRank) => a.currentEndDate.localeCompare(b.currentEndDate);
+    expired.sort(sortByDate);
+    thisMonth.sort(sortByDate);
+    nextMonth.sort(sortByDate);
+    valid.sort(sortByDate);
+
+    const rows: string[][] = [];
+
+    if (expired.length > 0) {
+      expired.forEach(r => rows.push(rankToRow(r, 'Дууссан')));
+    }
+    if (thisMonth.length > 0) {
+      thisMonth.forEach(r => rows.push(rankToRow(r, 'Энэ сард дуусах')));
+    }
+    if (nextMonth.length > 0) {
+      nextMonth.forEach(r => rows.push(rankToRow(r, 'Дараа сард дуусах')));
+    }
+    if (valid.length > 0) {
+      valid.forEach(r => rows.push(rankToRow(r, 'Хүчинтэй')));
+    }
 
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
-    
+
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -430,198 +478,196 @@ export function Ranks() {
       )}
 
       {viewMode === 'list' ? (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Ranks List */}
-        <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h2 className="font-medium text-gray-900">Цолны жагсаалт</h2>
-          </div>
-          <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
-            {filteredRanks.length === 0 ? (
-              <li className="px-4 py-8 text-gray-500 text-center">
-                Цолны бүртгэл байхгүй
-              </li>
-            ) : (
-              filteredRanks.map((rank) => (
-                <li
-                  key={rank.id}
-                  onClick={() => setSelectedRank(rank)}
-                  className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                    selectedRank?.id === rank.id ? 'bg-purple-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{rank.agentName}</p>
-                      <p className="text-sm text-gray-500">ID: {rank.agentId}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Ranks List */}
+          <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <h2 className="font-medium text-gray-900">Цолны жагсаалт</h2>
+            </div>
+            <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+              {filteredRanks.length === 0 ? (
+                <li className="px-4 py-8 text-gray-500 text-center">
+                  Цолны бүртгэл байхгүй
+                </li>
+              ) : (
+                filteredRanks.map((rank) => (
+                  <li
+                    key={rank.id}
+                    onClick={() => setSelectedRank(rank)}
+                    className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${selectedRank?.id === rank.id ? 'bg-purple-50' : ''
+                      }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">{rank.agentName}</p>
+                        <p className="text-sm text-gray-500">ID: {rank.agentId}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
+                          {rank.currentRank}
+                        </span>
+                        <p className={`text-xs mt-1 ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                          {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
-                        {rank.currentRank}
-                      </span>
-                      <p className={`text-xs mt-1 ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
-                        {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+
+          {/* Rank Details */}
+          <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+            {selectedRank ? (
+              <div className="p-6 max-h-[700px] overflow-y-auto">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedRank.agentName}</h2>
+                    <p className="text-gray-500">Агентын ID: {selectedRank.agentId}</p>
+                    {selectedRank.contractNumber && (
+                      <p className="text-gray-500">Гэрээний дугаар: {selectedRank.contractNumber}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={openEditModal}
+                      className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
+                    >
+                      Засах
+                    </button>
+                    <button
+                      onClick={openUpgradeModal}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    >
+                      Цол өөрчлөх
+                    </button>
+                  </div>
+                </div>
+
+                {/* Current Rank */}
+                <section className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border-2 ${RANK_BADGE_COLORS[selectedRank.currentRank]}">
+                  <h3 className="font-semibold text-purple-800 mb-3">Одоогийн цол</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-sm text-purple-600">Цол:</span>
+                      <p className="font-bold text-lg">{selectedRank.currentRank}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-purple-600">Гэрээ эхэлсэн:</span>
+                      <p className="font-medium">{new Date(selectedRank.currentStartDate).toLocaleDateString('mn-MN')}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-purple-600">Гэрээ дуусах:</span>
+                      <p className={`font-medium ${isRankValid(selectedRank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Date(selectedRank.currentEndDate).toLocaleDateString('mn-MN')}
                       </p>
                     </div>
                   </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
+                </section>
 
-        {/* Rank Details */}
-        <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
-          {selectedRank ? (
-            <div className="p-6 max-h-[700px] overflow-y-auto">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedRank.agentName}</h2>
-                  <p className="text-gray-500">Агентын ID: {selectedRank.agentId}</p>
-                  {selectedRank.contractNumber && (
-                    <p className="text-gray-500">Гэрээний дугаар: {selectedRank.contractNumber}</p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={openEditModal}
-                    className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
-                  >
-                    Засах
-                  </button>
-                  <button
-                    onClick={openUpgradeModal}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    Цол өөрчлөх
-                  </button>
-                </div>
-              </div>
-
-              {/* Current Rank */}
-              <section className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border-2 ${RANK_BADGE_COLORS[selectedRank.currentRank]}">
-                <h3 className="font-semibold text-purple-800 mb-3">Одоогийн цол</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <span className="text-sm text-purple-600">Цол:</span>
-                    <p className="font-bold text-lg">{selectedRank.currentRank}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-purple-600">Гэрээ эхэлсэн:</span>
-                    <p className="font-medium">{new Date(selectedRank.currentStartDate).toLocaleDateString('mn-MN')}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-purple-600">Гэрээ дуусах:</span>
-                    <p className={`font-medium ${isRankValid(selectedRank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
-                      {new Date(selectedRank.currentEndDate).toLocaleDateString('mn-MN')}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Rank History */}
-              <section>
-                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Цолын түүх</h3>
-                <div className="space-y-3">
-                  {[...selectedRank.rankHistory].reverse().map((history, i) => (
-                    <div 
-                      key={i} 
-                      className={`p-3 rounded-lg border-l-4 ${
-                        i === 0 ? 'bg-purple-50 border-purple-500' : 'bg-gray-50 border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[history.rank]}`}>
-                            {history.rank}
+                {/* Rank History */}
+                <section>
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Цолын түүх</h3>
+                  <div className="space-y-3">
+                    {[...selectedRank.rankHistory].reverse().map((history, i) => (
+                      <div
+                        key={i}
+                        className={`p-3 rounded-lg border-l-4 ${i === 0 ? 'bg-purple-50 border-purple-500' : 'bg-gray-50 border-gray-300'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[history.rank]}`}>
+                              {history.rank}
+                            </span>
+                            {i === 0 && (
+                              <span className="text-xs text-purple-600 font-medium">Одоогийн</span>
+                            )}
+                          </div>
+                          <span className={`text-xs ${isRankValid(history.endDate) ? 'text-green-600' : 'text-gray-500'}`}>
+                            {isRankValid(history.endDate) ? 'Хүчинтэй' : 'Дууссан'}
                           </span>
-                          {i === 0 && (
-                            <span className="text-xs text-purple-600 font-medium">Одоогийн</span>
-                          )}
                         </div>
-                        <span className={`text-xs ${isRankValid(history.endDate) ? 'text-green-600' : 'text-gray-500'}`}>
-                          {isRankValid(history.endDate) ? 'Хүчинтэй' : 'Дууссан'}
-                        </span>
+                        <div className="mt-2 text-sm text-gray-600 grid grid-cols-2 gap-2">
+                          <div>Эхэлсэн: {new Date(history.startDate).toLocaleDateString('mn-MN')}</div>
+                          <div>Дуусах: {new Date(history.endDate).toLocaleDateString('mn-MN')}</div>
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-gray-600 grid grid-cols-2 gap-2">
-                        <div>Эхэлсэн: {new Date(history.startDate).toLocaleDateString('mn-MN')}</div>
-                        <div>Дуусах: {new Date(history.endDate).toLocaleDateString('mn-MN')}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500">
-              Агент сонгоно уу
-            </div>
-          )}
+                    ))}
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                Агент сонгоно уу
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       ) : (
-      /* Table View */
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Агентын нэр</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID (MLS)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээний дугаар</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Цол</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ эхэлсэн</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ дуусах</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedRanks.length === 0 ? (
+        /* Table View */
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    Цолны бүртгэл байхгүй
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Агентын нэр</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID (MLS)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээний дугаар</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Цол</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ эхэлсэн</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Гэрээ дуусах</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
                 </tr>
-              ) : (
-                paginatedRanks.map((rank) => (
-                  <tr 
-                    key={rank.id} 
-                    onClick={() => { setSelectedRank(rank); setViewMode('list'); }}
-                    className="hover:bg-gray-50 cursor-pointer"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{rank.agentName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.agentId}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.contractNumber || '-'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
-                        {rank.currentRank}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                      {new Date(rank.currentStartDate).toLocaleDateString('mn-MN')}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                      {new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs font-medium ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
-                        {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
-                      </span>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedRanks.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                      Цолны бүртгэл байхгүй
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  paginatedRanks.map((rank) => (
+                    <tr
+                      key={rank.id}
+                      onClick={() => { setSelectedRank(rank); setViewMode('list'); }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{rank.agentName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.agentId}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{rank.contractNumber || '-'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RANK_COLORS[rank.currentRank]}`}>
+                          {rank.currentRank}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                        {new Date(rank.currentStartDate).toLocaleDateString('mn-MN')}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                        {new Date(rank.currentEndDate).toLocaleDateString('mn-MN')}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-xs font-medium ${isRankValid(rank.currentEndDate) ? 'text-green-600' : 'text-red-600'}`}>
+                          {isRankValid(rank.currentEndDate) ? 'Хүчинтэй' : 'Дууссан'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            totalItems={filteredRanks.length}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
-        <Pagination
-          totalItems={filteredRanks.length}
-          currentPage={currentPage}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-        />
-      </div>
       )}
 
       {/* Create Modal */}
