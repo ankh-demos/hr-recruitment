@@ -110,51 +110,51 @@ export interface Application {
   emergencyPhone: string; // Яаралтай үед холбоо барих дугаар
   email: string; // Имэйл
   facebook: string; // Facebook хаяг
-  
+
   // Family Members
   familyMembers: FamilyMember[];
-  
+
   // Education
   education: Education[];
-  
+
   // Languages
   languages: Language[];
-  
+
   // Work Experience
   workExperience: WorkExperience[];
-  
+
   // Additional Info
   otherSkills: string; // Үндсэн мэргэжлээсээ гадна...
   strengthsWeaknesses: string; // Таны давуу болон сул тал
-  
+
   // Awards
   awards: Award[];
-  
+
   // Driver's License
   hasDriverLicense: boolean; // Та жолооны эрхтэй юу?
-  
+
   // Photo
   photoUrl: string; // Цээж зураг
-  
+
   // How did you hear about us
   referralSource: string; // Оффисын талаар мэдээлэл хаанаас авсан бэ?
   referredAgentName?: string; // Санал болгосон агентын нэр (Найз танил сонгосон үед)
-  
+
   // Signature
   signatureUrl: string; // Гарын үсэг
-  
+
   // Meetings (3-level interviews)
   meeting1?: ApplicationMeeting; // Уулзалт 1
   meeting2?: ApplicationMeeting; // Уулзалт 2
   meeting3?: ApplicationMeeting; // Уулзалт 3
-  
+
   // Fire UP training number
   trainingNumber?: string; // Сургалтын дугаар
   fireupDate?: string; // Fire UP огнои (хэзээ товлосон)
-  
+
   // Transfer flag
   isTransfer?: boolean; // Шилжиж орж ирсэн эсэх
-  
+
   // Metadata
   status: 'new' | 'interviewing' | 'fireup' | 'iconnect' | 'cancelled';
   createdAt: string;
@@ -209,7 +209,14 @@ export interface Employee {
   // Employee specific
   employmentStartDate?: string; // Ажилд орсон огноо
   officeName?: string; // Ажилладаг оффис
-  status: 'active' | 'new_0_3' | 'inactive_transaction' | 'inactive' | 'active_no_transaction' | 'on_leave' | 'maternity_leave' | 'team_member';
+  status: 'active' | 'new_0_6' | 'month_6_12' | 'experienced_1_3' | 'over_3_years' | 'inactive_transaction' | 'inactive' | 'active_no_transaction' | 'on_leave' | 'maternity_leave' | 'team_member' | 'top';
+  // Additional tag fields
+  hasIConnect?: boolean; // iConnect-тэй эсэх
+  isAssistant?: boolean; // Туслах эсэх
+  assistantOf?: string; // Хэний туслах
+  hasSzhTraining?: boolean; // СЗХ сургалт суусан эсэх
+  szhTrainingDate?: string; // Суусан огноо
+  szhOfficialLetterNumber?: string; // СЗХ албан бичгийн дугаар
   hiredDate: string;
   createdAt: string;
   updatedAt: string;

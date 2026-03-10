@@ -49,7 +49,7 @@ export const employeeModel = {
       trainingNumber: application.trainingNumber,
       // Employee specific
       officeName: application.interestedOffice, // Default to interested office
-      status: 'new_0_3', // Default status for new employees
+      status: 'new_0_6', // Default status for new employees
       hiredDate: now,
       createdAt: now,
       updatedAt: now

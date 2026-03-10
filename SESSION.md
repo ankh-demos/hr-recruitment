@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** February 12, 2026
+**Last Updated:** February 13, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,60 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (February 13, 2026)
+
+### Architecture & Methods Used
+- **Frontend**: React functional components with hooks (`useState`, `useEffect`, `useMemo`) for state and filtering.
+- **Backend API**: Express listeners handling CRUD operations.
+- **Email Service**: Hybrid approach merging environment variables (`SMTP_Config`) with Database records (`users` table) for dynamic admin recipients.
+- **Printing**: Hidden `iframe` technique to avoid popups/new tabs.
+- **Synchronization**: `fetch` reload pattern in `Applications.tsx` to ensure client state matches server state after mutations (handling joined fields).
+
+### Completed Fixes & Features (Round 1 & 2)
+
+#### 1. Apply Form Submission
+- **Validation**: Added client-side checks for `gender`, `birthDate`, `email`.
+- **Error Handling**: Server now returns specific error messages which are displayed to the user.
+- **Data**: Added `referredAgentName` to payload (requires DB schema update).
+
+#### 2. Print Functionality
+- **UX Improvement**: Replaced `window.open` with a hidden `iframe` for seamless printing of applications.
+
+#### 3. New Filters
+- **Employees Page**: 
+  - `iConnect` filter (Yes/No/All)
+  - `SZH Training` filter (Yes/No/All) - checks `hasSzhTraining` boolean.
+- **Applications Page**: 
+  - **Office Filter**: Fixed logic to filter by `interestedOffice`.
+  - **Status Filter**: Moved to a dropdown UI to prevent layout disruption.
+
+#### 4. CSV Export
+- **Ranks Page**: Grouped exports by expiration category (Expired, Expiring This Month, Expiring Next Month, Valid) with separator rows.
+
+#### 5. Email Notifications
+- **Dynamic Admins**: `emailService.getAdminEmails()` now fetches all users with `role='admin'` and `isActive=true` from DB, merging them with `ADMIN_EMAILS` env var.
+- **Configuration**: Updated `/api/notifications/status` to return the merged list of recipients.
+- **UI**: Admin page instructions updated to reflect this automation.
+
+#### 6. Employee Detail View
+- **Visibility**: Added missing fields to the Employee Detail modal/view:
+  - SZH Training status, date, formatting.
+  - Assistant status (`isAssistant`, `assistantOf`).
+
+### Manual Actions Required
+**Database Schema Updates (Supabase):**
+```sql
+-- For Fix 1
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS referred_agent_name text;
+
+-- For Fix 3 & 6
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_szh_training boolean DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_training_date text;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_official_letter_number text;
+```
 
 ---
 
@@ -41,7 +95,7 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 
 ---
 
-### Completed Features (as of Feb 12, 2026)
+### Completed Features
 
 #### 1. Office Names Fixed
 - Changed from `Sky, Premier, Alliance, Express` to `Гэгээнтэн, Ривер, Даун таун`
@@ -80,111 +134,7 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 #### 8. Default Employee Status
 - New employees created from applications default to `new_0_3` (Шинэ 0-3 сар)
 
-#### 9. Statistics Data Accuracy Fixes
-- Fixed backend to use correct date columns for monthly stats (fireup_date, employees.created_at, updated_at)
-- Dashboard and Applications page now show real-time, accurate stats
-
-#### 10. Print Multi-Page Support
-- Improved print CSS for Applications and Employees pages (no content cut-off)
-
-#### 11. Statistics Section Styling
-- Applications page stats section is hidden by default, now styled with gradient, icons, and color
-
-#### 12. Birthday Expand Feature
-- Dashboard birthday section now has "Бүгдийг харах" toggle to show all birthdays
-
-#### 13. Edit/Save & Admin Creation Verified
-- Edit/save fields and admin creation tested and confirmed working
-
-#### 14. Email Notification System
-- Backend: Added nodemailer, emailService.ts, notifications API endpoints
-- Fixed nodemailer TypeScript error for Render by moving @types/nodemailer to dependencies
-- Frontend: Added email notification config UI to Admin page (shows SMTP status, setup guide, test/send buttons)
-- Admins can now configure SMTP server and trigger test/birthday/rank/summary emails from UI
-
 ---
-
-### Build & Recent Actions (Feb 12, 2026)
-
-- Installed `nodemailer` and adjusted types to avoid TypeScript errors on Render:
-  - Moved `@types/nodemailer` into `dependencies` so the type declarations are available at runtime.
-  - Ran `npm install` in `server` to add `nodemailer`.
-- Built projects locally to verify no TypeScript errors:
-  - `cd server && npm run build` — TypeScript compile succeeded.
-  - `cd client && npm run build` — client build (Vite) succeeded.
-- Added Admin UI for email configuration and notification triggers (`client/src/pages/Admin.tsx`).
-- Added backend email service and routes (`server/src/services/emailService.ts`, `server/src/routes/notifications.ts`).
-
-Recent terminal commands run locally:
-```
-cd c:\remaxHR\server
-npm install nodemailer
-npm run build
-
-cd c:\remaxHR\client
-npm run build
-```
-
----
-
-## Quick Overview — What was done & how to run on another machine
-
-- **Short summary of completed work:**
-  - Fixed monthly statistics accuracy (use correct date columns: `fireup_date`, `employees.created_at`, `updated_at`).
-  - Fixed print CSS so Applications and Employees print across pages without cutting off.
-  - Hid the Applications statistics panel by default and styled it (gradient, icons, colors).
-  - Added birthday expand toggle on Dashboard (`Бүгдийг харах`).
-  - Confirmed edit/save and admin creation flows work.
-  - Implemented email notification system (backend `emailService.ts`, `notifications` routes) and Admin UI to trigger/test emails.
-  - Resolved `nodemailer` TypeScript issue on Render by making types available at runtime.
-
-- **If you need to open this project on another machine (step-by-step):**
-  1. Clone the repo: `git clone https://github.com/ankhbileg01/remaxskymn.git` and `cd remaxHR`.
-  2. Install server deps and build:
-     ```powershell
-     cd server
-     npm install
-     npm run build
-     ```
-  3. Install client deps and build:
-     ```powershell
-     cd ..\client
-     npm install
-     npm run build
-     ```
-  4. Configure environment variables (see list below). In production (Render/Vercel), add these in the service's env settings.
-  5. Ensure the database schema includes the `fireup_date` column (Supabase SQL):
-     ```sql
-     ALTER TABLE applications ADD COLUMN IF NOT EXISTS fireup_date DATE;
-     ```
-  6. Start dev mode (optional):
-     - Server: `cd server && npm run dev`
-     - Client: `cd client && npm run dev`
-
-- **Required environment variables** (minimum for email + DB):
-  - `DATABASE_URL` or Supabase connection variables (as already configured)
-  - `JWT_SECRET`
-  - `SMTP_HOST` (e.g. smtp.gmail.com)
-  - `SMTP_PORT` (e.g. 587)
-  - `SMTP_USER` (sender email)
-  - `SMTP_PASS` (app password / SMTP password)
-  - `SMTP_FROM` (display from address)
-  - `ADMIN_EMAILS` (comma-separated admin emails)
-
-- **How to verify email notifications locally**:
-  - Set the SMTP env vars locally (or use a dev SMTP service like Mailtrap).
-  - Start the server and open the Admin page at the client; the Email section shows whether SMTP is configured.
-  - Use the Admin UI buttons to send a Test email, trigger Birthdays, trigger Rank expiry notices, or send the Daily summary.
-  - Alternatively, call the backend endpoints (authenticated):
-    - `POST /api/notifications/test`
-    - `POST /api/notifications/birthdays`
-    - `POST /api/notifications/ranks`
-    - `POST /api/notifications/summary`
-
-- **Quick troubleshooting**:
-  - If TypeScript complains about `nodemailer` types during deployment, ensure `@types/nodemailer` is available in `dependencies` (we moved it there) and re-run `npm install` on the server host.
-  - For Gmail SMTP, create an App Password and use it as `SMTP_PASS`.
-
 
 ## Data Model Summary
 

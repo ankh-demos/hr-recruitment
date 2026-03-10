@@ -8,11 +8,13 @@ const router = Router();
 router.get('/status', async (req: Request, res: Response) => {
   try {
     const isConfigured = emailService.isConfigured();
+    const adminEmails = await emailService.getAdminEmails();
     res.json({
       configured: isConfigured,
-      message: isConfigured 
-        ? 'Email service is configured and ready' 
-        : 'Email service is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, and ADMIN_EMAILS environment variables.'
+      adminEmails,
+      message: isConfigured
+        ? 'Email service is configured and ready'
+        : 'Email service is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS environment variables.'
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to check email status' });
@@ -40,7 +42,7 @@ router.post('/test', async (req: Request, res: Response) => {
         </div>
       `
     );
-    
+
     if (success) {
       res.json({ success: true, message: 'Test email sent successfully' });
     } else {
@@ -58,18 +60,18 @@ router.post('/birthdays', async (req: Request, res: Response) => {
     const today = new Date();
     const todayMonth = today.getMonth();
     const todayDay = today.getDate();
-    
+
     // Filter employees with birthday today
     const birthdayEmployees = employees.filter(emp => {
       if (!emp.birthDate) return false;
       const birthDate = new Date(emp.birthDate);
       return birthDate.getMonth() === todayMonth && birthDate.getDate() === todayDay;
     });
-    
+
     if (birthdayEmployees.length === 0) {
       return res.json({ success: true, message: 'No birthdays today', count: 0 });
     }
-    
+
     const success = await emailService.notifyBirthdays(birthdayEmployees);
     res.json({
       success,
@@ -87,7 +89,7 @@ router.post('/ranks', async (req: Request, res: Response) => {
     const ranks = await db.getAgentRanks();
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
     // Get ranks expiring within 30 days or already expired
     const expiringRanks = ranks
       .filter(rank => {
@@ -104,11 +106,11 @@ router.post('/ranks', async (req: Request, res: Response) => {
         return { rank, daysLeft };
       })
       .sort((a, b) => a.daysLeft - b.daysLeft);
-    
+
     if (expiringRanks.length === 0) {
       return res.json({ success: true, message: 'No expiring ranks', count: 0 });
     }
-    
+
     const success = await emailService.notifyExpiringRanks(expiringRanks);
     res.json({
       success,
@@ -125,7 +127,7 @@ router.post('/summary', async (req: Request, res: Response) => {
   try {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-    
+
     // Get today's applications
     const applications = await db.getApplications();
     const newApplications = applications.filter(app => {
@@ -133,7 +135,7 @@ router.post('/summary', async (req: Request, res: Response) => {
       const createdDate = new Date(app.createdAt);
       return createdDate >= new Date(todayStart);
     }).length;
-    
+
     // Get today's birthdays
     const employees = await db.getEmployees();
     const todayMonth = today.getMonth();
@@ -143,7 +145,7 @@ router.post('/summary', async (req: Request, res: Response) => {
       const birthDate = new Date(emp.birthDate);
       return birthDate.getMonth() === todayMonth && birthDate.getDate() === todayDay;
     });
-    
+
     // Get expiring ranks (within 14 days)
     const ranks = await db.getAgentRanks();
     const expiringRanks = ranks
@@ -161,13 +163,13 @@ router.post('/summary', async (req: Request, res: Response) => {
         return { rank, daysLeft };
       })
       .sort((a, b) => a.daysLeft - b.daysLeft);
-    
+
     const success = await emailService.sendDailySummary({
       newApplications,
       birthdays,
       expiringRanks
     });
-    
+
     res.json({
       success,
       data: {

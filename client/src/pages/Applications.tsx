@@ -23,22 +23,22 @@ export function Applications() {
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
-  
+
   // Status Filter State (multi-select)
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  
+
   // Statistics state
   const [statistics, setStatistics] = useState<any>({});
   const [showStatistics, setShowStatistics] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
-  
+
   // Meeting Modal State
   const [meetingModalOpen, setMeetingModalOpen] = useState(false);
   const [currentMeetingLevel, setCurrentMeetingLevel] = useState<1 | 2 | 3>(1);
@@ -48,14 +48,14 @@ export function Applications() {
     interviewerName: '',
     notes: ''
   });
-  
+
   // Fire UP Modal State
   const [fireUpModalOpen, setFireUpModalOpen] = useState(false);
   const [trainingNumber, setTrainingNumber] = useState('');
-  
+
   // iConnect Confirmation State
   const [iconnectConfirmOpen, setIconnectConfirmOpen] = useState(false);
-  
+
   // Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Application>>({});
@@ -95,7 +95,7 @@ export function Applications() {
           app.registerNumber,
           app.trainingNumber
         ];
-        const matches = matchFields.some(field => 
+        const matches = matchFields.some(field =>
           field && field.toLowerCase().includes(searchLower)
         );
         if (!matches) return false;
@@ -123,8 +123,8 @@ export function Applications() {
   }, [selectedMonth]);
 
   function toggleStatusFilter(status: string) {
-    setSelectedStatuses(prev => 
-      prev.includes(status) 
+    setSelectedStatuses(prev =>
+      prev.includes(status)
         ? prev.filter(s => s !== status)
         : [...prev, status]
     );
@@ -141,6 +141,7 @@ export function Applications() {
 
   async function loadApplications() {
     try {
+      setLoading(true);
       const response = await fetch(`${API_BASE}/applications`);
       const data = await response.json();
       setApplications(data);
@@ -271,6 +272,7 @@ export function Applications() {
   }
 
   // Save edited application
+  // Save edited application
   async function saveApplication() {
     if (!selectedApplication) return;
     try {
@@ -279,9 +281,21 @@ export function Applications() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
       });
+
+      // Reload all applications to ensure we have fresh data
       await loadApplications();
-      // Update selected application with new data
-      setSelectedApplication({ ...selectedApplication, ...editForm } as Application);
+
+      // Update selected application from the reloaded list
+      // We need to fetch the fresh list first (which loadApplications does), 
+      // then find the updated application to set as selected
+      const response = await fetch(`${API_BASE}/applications`);
+      const data = await response.json();
+      const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
+
+      if (updatedApp) {
+        setSelectedApplication(updatedApp);
+      }
+
       setIsEditMode(false);
       setEditForm({});
     } catch (error) {
@@ -291,11 +305,11 @@ export function Applications() {
 
   function openMeetingModal(level: 1 | 2 | 3) {
     if (!selectedApplication) return;
-    
+
     const existingMeeting = level === 1 ? selectedApplication.meeting1 :
-                            level === 2 ? selectedApplication.meeting2 :
-                            selectedApplication.meeting3;
-    
+      level === 2 ? selectedApplication.meeting2 :
+        selectedApplication.meeting3;
+
     setCurrentMeetingLevel(level);
     setMeetingForm(existingMeeting || {
       date: '',
@@ -308,18 +322,18 @@ export function Applications() {
 
   async function saveMeeting() {
     if (!selectedApplication) return;
-    
+
     const selectedUser = users.find(u => u.id === meetingForm.interviewerId);
     const meetingData: ApplicationMeeting = {
       ...meetingForm,
       interviewerName: selectedUser?.fullName || ''
     };
-    
+
     const updateData: Partial<Application> = {};
     if (currentMeetingLevel === 1) updateData.meeting1 = meetingData;
     else if (currentMeetingLevel === 2) updateData.meeting2 = meetingData;
     else updateData.meeting3 = meetingData;
-    
+
     try {
       await applicationsApi.update(selectedApplication.id, updateData);
       await loadApplications();
@@ -345,14 +359,11 @@ export function Applications() {
   // Print application
   function printApplication() {
     if (!selectedApplication) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
+
     const app = selectedApplication;
     const statusLabel = getStatusLabel(app.status);
-    
-    printWindow.document.write(`
+
+    const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -454,12 +465,33 @@ export function Applications() {
           <p>Мэдээлэл авсан эх сурвалж: ${app.referralSource || '-'}</p>
           <p>Бүртгэсэн огноо: ${new Date(app.createdAt).toLocaleString('mn-MN')}</p>
         </div>
-        
-        <script>window.onload = function() { window.print(); }</script>
       </body>
       </html>
-    `);
-    printWindow.document.close();
+    `;
+
+    // Use hidden iframe instead of window.open to avoid new tab
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(printContent);
+      iframeDoc.close();
+
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+    }
   }
 
   // Export to CSV
@@ -471,7 +503,7 @@ export function Applications() {
       'Мэдээллийн эх сурвалж', 'Уулзалт 1 огноо', 'Уулзалт 1 хийсэн', 'Уулзалт 2 огноо', 'Уулзалт 2 хийсэн',
       'Уулзалт 3 огноо', 'Уулзалт 3 хийсэн', 'Сургалтын дугаар', 'Төлөв', 'Бүртгэсэн огноо'
     ];
-    
+
     const rows = filteredApplications.map(app => [
       app.lastName || '',
       app.firstName || '',
@@ -505,7 +537,7 @@ export function Applications() {
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
-    
+
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -530,7 +562,7 @@ export function Applications() {
       'АА00112233', '1990-01-15', 'male', 'Улаанбаатар', 'Халх',
       'Хаяг', 'facebook_id', 'true', 'Бусад ур чадвар', 'Давуу тал, сул тал', 'Лавлах эх сурвалж'
     ].join(',');
-    
+
     const csvContent = headerRow + '\n' + exampleRow;
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -545,10 +577,10 @@ export function Applications() {
   function parseCSV(text: string): Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[] {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
-    
+
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     const applications: Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[] = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       const application: Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'> = {
@@ -580,7 +612,7 @@ export function Applications() {
         referralSource: '',
         signatureUrl: ''
       };
-      
+
       headers.forEach((header, index) => {
         const value = values[index] || '';
         if (header === 'hasDriverLicense') {
@@ -591,10 +623,10 @@ export function Applications() {
           (application as any)[header] = value;
         }
       });
-      
+
       applications.push(application);
     }
-    
+
     return applications;
   }
 
@@ -602,7 +634,7 @@ export function Applications() {
   function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     setImportError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -654,11 +686,10 @@ export function Applications() {
               setShowStatistics(!showStatistics);
               if (!showStatistics) loadStatistics(selectedMonth || undefined);
             }}
-            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${
-              showStatistics 
-                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${showStatistics
+              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -933,18 +964,49 @@ export function Applications() {
               ))}
             </select>
           </div>
-          {selectedStatuses.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {selectedStatuses.map(s => {
-                const status = APPLICATION_STATUSES.find(st => st.value === s);
-                return status ? (
-                  <span key={s} className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
-                    {status.label}
-                  </span>
-                ) : null;
-              })}
-            </div>
-          )}
+
+          {/* Status Filter Dropdown */}
+          <div className="relative min-w-[200px]">
+            <button
+              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-between gap-2"
+            >
+              <span className="truncate">{selectedStatuses.length === 0 ? 'Бүх төлөв' : `${selectedStatuses.length} сонгосон`}</span>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {statusFilterOpen && (
+              <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  {APPLICATION_STATUSES.map(status => (
+                    <label
+                      key={status.value}
+                      className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatuses.includes(status.value)}
+                        onChange={() => toggleStatusFilter(status.value)}
+                        className="rounded text-indigo-600"
+                      />
+                      <span className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="border-t p-2">
+                  <button
+                    onClick={() => { setSelectedStatuses([]); setStatusFilterOpen(false); }}
+                    className="w-full text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    Цэвэрлэх
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           {(searchTerm || selectedStatuses.length > 0) && (
             <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-indigo-600 hover:text-indigo-800">
               Цэвэрлэх
@@ -968,653 +1030,648 @@ export function Applications() {
       </div>
 
       {viewMode === 'list' ? (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Applications List */}
-        <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h2 className="font-medium text-gray-900">Өргөдлүүд ({filteredApplications.length}/{applications.length})</h2>
-          </div>
-          <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
-            {filteredApplications.length === 0 ? (
-              <li className="px-4 py-4 text-gray-500 text-center">Анкет байхгүй</li>
-            ) : (
-              filteredApplications.map((app) => (
-                <li
-                  key={app.id}
-                  onClick={() => setSelectedApplication(app)}
-                  className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                    selectedApplication?.id === app.id ? 'bg-indigo-50' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-gray-900">
-                        <span className="font-bold">{app.firstName}</span> {app.lastName}
-                      </p>
-                      <p className="text-sm text-gray-500">{app.email}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(app.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      app.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                      app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
-                      app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
-                      app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {app.status === 'new' ? 'Шинэ' :
-                       app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
-                       app.status === 'iconnect' ? 'iConnect' :
-                       app.status === 'fireup' ? 'Fire UP' : 'Цуцалсан'}
-                    </span>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-
-        {/* Application Details */}
-        <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
-          {selectedApplication ? (
-            <div className="p-6 max-h-[700px] overflow-y-auto">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
-                  {selectedApplication.photoUrl && (
-                    <img
-                      src={selectedApplication.photoUrl}
-                      alt="Photo"
-                      className="w-20 h-20 rounded-full object-cover"
-                    />
-                  )}
-                  <div>
-                    <h2 className="text-xl text-gray-900">
-                      {selectedApplication.familyName} <span className="font-bold">{selectedApplication.firstName}</span> {selectedApplication.lastName}
-                    </h2>
-                    <p className="text-gray-500">{selectedApplication.email}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {isEditMode ? (
-                    <>
-                      <button
-                        onClick={saveApplication}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Хадгалах
-                      </button>
-                      <button
-                        onClick={cancelEditMode}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                      >
-                        Болих
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={printApplication}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-1"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        Хэвлэх
-                      </button>
-                      <button
-                        onClick={enterEditMode}
-                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                      >
-                        Засах
-                      </button>
-                      <button
-                        onClick={() => deleteApplication(selectedApplication.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Устгах
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Actions */}
-              <div className="mb-6 flex flex-wrap gap-2">
-                <button
-                  onClick={() => updateStatus(selectedApplication.id, 'new')}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-                >
-                  Шинэ
-                </button>
-                <button
-                  onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
-                  className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
-                >
-                  Ярилцлага хийж байгаа
-                </button>
-                <button
-                  onClick={openFireUpModal}
-                  className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
-                >
-                  Fire UP
-                  {selectedApplication.trainingNumber && (
-                    <span className="ml-1 text-xs">({selectedApplication.trainingNumber})</span>
-                  )}
-                </button>
-                <button
-                  onClick={openIconnectConfirm}
-                  className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
-                >
-                  iConnect
-                </button>
-                <button
-                  onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
-                  className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
-                >
-                  Цуцлах
-                </button>
-              </div>
-
-              {/* Meeting Buttons */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Уулзалтууд</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => openMeetingModal(1)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      getMeetingStatus(selectedApplication.meeting1) === 'filled'
-                        ? 'bg-green-100 border-green-500 text-green-800'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
-                    }`}
-                  >
-                    Уулзалт 1
-                    {selectedApplication.meeting1?.date && (
-                      <span className="ml-2 text-xs">✓</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openMeetingModal(2)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      getMeetingStatus(selectedApplication.meeting2) === 'filled'
-                        ? 'bg-green-100 border-green-500 text-green-800'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
-                    }`}
-                  >
-                    Уулзалт 2
-                    {selectedApplication.meeting2?.date && (
-                      <span className="ml-2 text-xs">✓</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openMeetingModal(3)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      getMeetingStatus(selectedApplication.meeting3) === 'filled'
-                        ? 'bg-green-100 border-green-500 text-green-800'
-                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
-                    }`}
-                  >
-                    Уулзалт 3
-                    {selectedApplication.meeting3?.date && (
-                      <span className="ml-2 text-xs">✓</span>
-                    )}
-                  </button>
-                </div>
-                {/* Display meeting info if exists */}
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                  {selectedApplication.meeting1?.date && (
-                    <div className="p-2 bg-gray-50 rounded">
-                      <p className="font-medium">Уулзалт 1</p>
-                      <p className="text-gray-600">{selectedApplication.meeting1.date}</p>
-                      <p className="text-gray-600">{selectedApplication.meeting1.interviewerName}</p>
-                    </div>
-                  )}
-                  {selectedApplication.meeting2?.date && (
-                    <div className="p-2 bg-gray-50 rounded">
-                      <p className="font-medium">Уулзалт 2</p>
-                      <p className="text-gray-600">{selectedApplication.meeting2.date}</p>
-                      <p className="text-gray-600">{selectedApplication.meeting2.interviewerName}</p>
-                    </div>
-                  )}
-                  {selectedApplication.meeting3?.date && (
-                    <div className="p-2 bg-gray-50 rounded">
-                      <p className="font-medium">Уулзалт 3</p>
-                      <p className="text-gray-600">{selectedApplication.meeting3.date}</p>
-                      <p className="text-gray-600">{selectedApplication.meeting3.interviewerName}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Personal Info */}
-              <section className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Хувийн мэдээлэл</h3>
-                {isEditMode ? (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <label className="block text-gray-500 mb-1">Ургийн овог</label>
-                      <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({...editForm, familyName: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Овог</label>
-                      <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Нэр</label>
-                      <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Оффис</label>
-                      <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({...editForm, interestedOffice: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1">
-                        <option value="">Сонгох</option>
-                        <option value="Гэгээнтэн">Гэгээнтэн</option>
-                        <option value="Ривер">Ривер</option>
-                        <option value="Даун таун">Даун таун</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Ажилд орох огноо</label>
-                      <input type="date" value={editForm.availableDate || ''} onChange={(e) => setEditForm({...editForm, availableDate: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Төрсөн газар</label>
-                      <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({...editForm, birthPlace: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Үндэс угсаа</label>
-                      <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({...editForm, ethnicity: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Хүйс</label>
-                      <select value={editForm.gender || ''} onChange={(e) => setEditForm({...editForm, gender: e.target.value as 'male' | 'female'})}
-                        className="w-full border border-gray-300 rounded px-2 py-1">
-                        <option value="male">Эрэгтэй</option>
-                        <option value="female">Эмэгтэй</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Төрсөн огноо</label>
-                      <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({...editForm, birthDate: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Регистр</label>
-                      <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({...editForm, registerNumber: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-gray-500 mb-1">Гэрийн хаяг</label>
-                      <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({...editForm, homeAddress: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Имэйл</label>
-                      <input type="email" value={editForm.email || ''} onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Утас</label>
-                      <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Яаралтай холбоо</label>
-                      <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({...editForm, emergencyPhone: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Facebook</label>
-                      <input type="text" value={editForm.facebook || ''} onChange={(e) => setEditForm({...editForm, facebook: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Жолооны эрх</label>
-                      <select value={editForm.hasDriverLicense ? 'yes' : 'no'} onChange={(e) => setEditForm({...editForm, hasDriverLicense: e.target.value === 'yes'})}
-                        className="w-full border border-gray-300 rounded px-2 py-1">
-                        <option value="yes">Тийм</option>
-                        <option value="no">Үгүй</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Сургалтын дугаар</label>
-                      <input type="text" value={editForm.trainingNumber || ''} onChange={(e) => setEditForm({...editForm, trainingNumber: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-gray-500 mb-1">Бусад чадвар</label>
-                      <textarea value={editForm.otherSkills || ''} onChange={(e) => setEditForm({...editForm, otherSkills: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-gray-500 mb-1">Давуу/сул тал</label>
-                      <textarea value={editForm.strengthsWeaknesses || ''} onChange={(e) => setEditForm({...editForm, strengthsWeaknesses: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
-                    </div>
-                    <div>
-                      <label className="block text-gray-500 mb-1">Мэдээллийн эх сурвалж</label>
-                      <select value={editForm.referralSource || ''} onChange={(e) => setEditForm({...editForm, referralSource: e.target.value})}
-                        className="w-full border border-gray-300 rounded px-2 py-1">
-                        <option value="">Сонгох</option>
-                        <option value="Facebook хуудас">Facebook хуудас</option>
-                        <option value="Найз танил">Найз танил</option>
-                        <option value="Вебсайт">Вебсайт</option>
-                        <option value="Бусад">Бусад</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        id="isTransfer"
-                        checked={editForm.isTransfer || false} 
-                        onChange={(e) => setEditForm({...editForm, isTransfer: e.target.checked})}
-                        className="w-4 h-4 text-indigo-600 rounded border-gray-300"
-                      />
-                      <label htmlFor="isTransfer" className="text-gray-700">Шилжиж орж ирсэн</label>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="text-gray-500">Оффис:</span> {selectedApplication.interestedOffice}</div>
-                    <div><span className="text-gray-500">Ажилд орох огноо:</span> {selectedApplication.availableDate}</div>
-                    <div><span className="text-gray-500">Төрсөн газар:</span> {selectedApplication.birthPlace}</div>
-                    <div><span className="text-gray-500">Үндэс угсаа:</span> {selectedApplication.ethnicity}</div>
-                    <div><span className="text-gray-500">Хүйс:</span> {selectedApplication.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</div>
-                    <div><span className="text-gray-500">Төрсөн огноо:</span> {selectedApplication.birthDate}</div>
-                    <div><span className="text-gray-500">Регистр:</span> {selectedApplication.registerNumber}</div>
-                    <div><span className="text-gray-500">Гэрийн хаяг:</span> {selectedApplication.homeAddress}</div>
-                    <div><span className="text-gray-500">Утас:</span> {selectedApplication.phone}</div>
-                    <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
-                    <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
-                    <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
-                    <div><span className="text-gray-500">Шилжиж орж ирсэн:</span> {selectedApplication.isTransfer ? <span className="text-green-600 font-medium">Тийм</span> : 'Үгүй'}</div>
-                  </div>
-                )}
-              </section>
-
-              {/* Family Members */}
-              {selectedApplication.familyMembers.length > 0 && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гэр бүлийн байдал</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Хэн болох</th>
-                          <th className="px-3 py-2 text-left">Овог нэр</th>
-                          <th className="px-3 py-2 text-left">Төрсөн газар</th>
-                          <th className="px-3 py-2 text-left">Мэргэжил</th>
-                          <th className="px-3 py-2 text-left">Утас</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedApplication.familyMembers.map((member, i) => (
-                          <tr key={i} className="border-b">
-                            <td className="px-3 py-2">{member.relationship}</td>
-                            <td className="px-3 py-2">{member.fullName}</td>
-                            <td className="px-3 py-2">{member.birthPlace}</td>
-                            <td className="px-3 py-2">{member.profession}</td>
-                            <td className="px-3 py-2">{member.phone}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-
-              {/* Education */}
-              {selectedApplication.education.length > 0 && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Боловсрол</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Сургууль</th>
-                          <th className="px-3 py-2 text-left">Элссэн</th>
-                          <th className="px-3 py-2 text-left">Төгссөн</th>
-                          <th className="px-3 py-2 text-left">Мэргэжил</th>
-                          <th className="px-3 py-2 text-left">Голч</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedApplication.education.map((edu, i) => (
-                          <tr key={i} className="border-b">
-                            <td className="px-3 py-2">{edu.school}</td>
-                            <td className="px-3 py-2">{edu.enrollmentDate}</td>
-                            <td className="px-3 py-2">{edu.graduationDate}</td>
-                            <td className="px-3 py-2">{edu.major}</td>
-                            <td className="px-3 py-2">{edu.gpa}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-
-              {/* Languages */}
-              {selectedApplication.languages.length > 0 && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гадаад хэл</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedApplication.languages.map((lang, i) => (
-                      <span key={i} className="px-3 py-1 bg-gray-100 rounded text-sm">
-                        {lang.language} - {lang.level}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Work Experience */}
-              {selectedApplication.workExperience.length > 0 && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Ажлын туршлага</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Байгууллага</th>
-                          <th className="px-3 py-2 text-left">Төрөл</th>
-                          <th className="px-3 py-2 text-left">Албан тушаал</th>
-                          <th className="px-3 py-2 text-left">Орсон</th>
-                          <th className="px-3 py-2 text-left">Гарсан</th>
-                          <th className="px-3 py-2 text-left">Цалин</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedApplication.workExperience.map((work, i) => (
-                          <tr key={i} className="border-b">
-                            <td className="px-3 py-2">{work.companyName}</td>
-                            <td className="px-3 py-2">{work.businessType}</td>
-                            <td className="px-3 py-2">{work.position}</td>
-                            <td className="px-3 py-2">{work.startDate}</td>
-                            <td className="px-3 py-2">{work.endDate}</td>
-                            <td className="px-3 py-2">{work.salary}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-
-              {/* Additional Info */}
-              {(selectedApplication.otherSkills || selectedApplication.strengthsWeaknesses) && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Нэмэлт мэдээлэл</h3>
-                  {selectedApplication.otherSkills && (
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-500 mb-1">Бусад чадвар:</p>
-                      <p className="text-sm">{selectedApplication.otherSkills}</p>
-                    </div>
-                  )}
-                  {selectedApplication.strengthsWeaknesses && (
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Давуу/сул тал:</p>
-                      <p className="text-sm">{selectedApplication.strengthsWeaknesses}</p>
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {/* Awards */}
-              {selectedApplication.awards.length > 0 && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Шагнал</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Байгууллага</th>
-                          <th className="px-3 py-2 text-left">Он</th>
-                          <th className="px-3 py-2 text-left">Шагналын нэр</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedApplication.awards.map((award, i) => (
-                          <tr key={i} className="border-b">
-                            <td className="px-3 py-2">{award.organization}</td>
-                            <td className="px-3 py-2">{award.year}</td>
-                            <td className="px-3 py-2">{award.awardName}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-
-              {/* Signature */}
-              {selectedApplication.signatureUrl && (
-                <section className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гарын үсэг</h3>
-                  <img src={selectedApplication.signatureUrl} alt="Signature" className="max-h-16" />
-                </section>
-              )}
-
-              <div className="text-sm text-gray-500 pt-4 border-t">
-                <p>Мэдээлэл авсан эх сурвалж: {selectedApplication.referralSource}</p>
-                <p>Огноо: {new Date(selectedApplication.createdAt).toLocaleString()}</p>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Applications List */}
+          <div className="lg:col-span-1 bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <h2 className="font-medium text-gray-900">Өргөдлүүд ({filteredApplications.length}/{applications.length})</h2>
             </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500">
-              Анкет сонгоно уу
-            </div>
-          )}
-        </div>
-      </div>
-      ) : (
-      /* Table View */
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ургийн овог</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Утас</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Яаралтай</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Регистр</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрсөн</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хүйс</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 1</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 2</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 3</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сургалт №</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Бүртгэсэн</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedApplications.length === 0 ? (
-                <tr>
-                  <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
-                    Анкет байхгүй
-                  </td>
-                </tr>
+            <ul className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+              {filteredApplications.length === 0 ? (
+                <li className="px-4 py-4 text-gray-500 text-center">Анкет байхгүй</li>
               ) : (
-                paginatedApplications.map((app) => {
-                  const statusInfo = APPLICATION_STATUSES.find(s => s.value === app.status);
-                  return (
-                    <tr 
-                      key={app.id} 
-                      onClick={() => { setSelectedApplication(app); setViewMode('list'); }}
-                      className="hover:bg-gray-50 cursor-pointer"
-                    >
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {app.photoUrl ? (
-                          <img src={app.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-indigo-600">
-                              {app.firstName?.charAt(0) || ''}{app.lastName?.charAt(0) || ''}
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{app.firstName || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-900">{app.lastName || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.familyName || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.interestedOffice || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.email || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.phone || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.emergencyPhone || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.registerNumber || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.birthDate ? new Date(app.birthDate).toLocaleDateString('mn-MN') : '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.gender === 'male' ? 'Эр' : 'Эм'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {app.meeting1?.date ? (
-                          <span className="text-green-600 text-xs">{new Date(app.meeting1.date).toLocaleDateString('mn-MN')}</span>
-                        ) : <span className="text-gray-400">-</span>}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {app.meeting2?.date ? (
-                          <span className="text-green-600 text-xs">{new Date(app.meeting2.date).toLocaleDateString('mn-MN')}</span>
-                        ) : <span className="text-gray-400">-</span>}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {app.meeting3?.date ? (
-                          <span className="text-green-600 text-xs">{new Date(app.meeting3.date).toLocaleDateString('mn-MN')}</span>
-                        ) : <span className="text-gray-400">-</span>}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.trainingNumber || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}>
-                          {statusInfo?.label || app.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">
-                        {app.createdAt ? new Date(app.createdAt).toLocaleDateString('mn-MN') : '-'}
-                      </td>
-                    </tr>
-                  );
-                })
+                filteredApplications.map((app) => (
+                  <li
+                    key={app.id}
+                    onClick={() => setSelectedApplication(app)}
+                    className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${selectedApplication?.id === app.id ? 'bg-indigo-50' : ''
+                      }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-gray-900">
+                          <span className="font-bold">{app.firstName}</span> {app.lastName}
+                        </p>
+                        <p className="text-sm text-gray-500">{app.email}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(app.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded-full ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                        app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
+                          app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
+                            app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
+                              'bg-red-100 text-red-800'
+                        }`}>
+                        {app.status === 'new' ? 'Шинэ' :
+                          app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
+                            app.status === 'iconnect' ? 'iConnect' :
+                              app.status === 'fireup' ? 'Fire UP' : 'Цуцалсан'}
+                      </span>
+                    </div>
+                  </li>
+                ))
               )}
-            </tbody>
-          </table>
+            </ul>
+          </div>
+
+          {/* Application Details */}
+          <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+            {selectedApplication ? (
+              <div className="p-6 max-h-[700px] overflow-y-auto">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-4">
+                    {selectedApplication.photoUrl && (
+                      <img
+                        src={selectedApplication.photoUrl}
+                        alt="Photo"
+                        className="w-20 h-20 rounded-full object-cover"
+                      />
+                    )}
+                    <div>
+                      <h2 className="text-xl text-gray-900">
+                        {selectedApplication.familyName} <span className="font-bold">{selectedApplication.firstName}</span> {selectedApplication.lastName}
+                      </h2>
+                      <p className="text-gray-500">{selectedApplication.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {isEditMode ? (
+                      <>
+                        <button
+                          onClick={saveApplication}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Хадгалах
+                        </button>
+                        <button
+                          onClick={cancelEditMode}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        >
+                          Болих
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={printApplication}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                          </svg>
+                          Хэвлэх
+                        </button>
+                        <button
+                          onClick={enterEditMode}
+                          className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                        >
+                          Засах
+                        </button>
+                        <button
+                          onClick={() => deleteApplication(selectedApplication.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Устгах
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Actions */}
+                <div className="mb-6 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => updateStatus(selectedApplication.id, 'new')}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                  >
+                    Шинэ
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
+                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                  >
+                    Ярилцлага хийж байгаа
+                  </button>
+                  <button
+                    onClick={openFireUpModal}
+                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                  >
+                    Fire UP
+                    {selectedApplication.trainingNumber && (
+                      <span className="ml-1 text-xs">({selectedApplication.trainingNumber})</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={openIconnectConfirm}
+                    className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
+                  >
+                    iConnect
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
+                    className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                  >
+                    Цуцлах
+                  </button>
+                </div>
+
+                {/* Meeting Buttons */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Уулзалтууд</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => openMeetingModal(1)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting1) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        }`}
+                    >
+                      Уулзалт 1
+                      {selectedApplication.meeting1?.date && (
+                        <span className="ml-2 text-xs">✓</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openMeetingModal(2)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting2) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        }`}
+                    >
+                      Уулзалт 2
+                      {selectedApplication.meeting2?.date && (
+                        <span className="ml-2 text-xs">✓</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openMeetingModal(3)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-all ${getMeetingStatus(selectedApplication.meeting3) === 'filled'
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-400'
+                        }`}
+                    >
+                      Уулзалт 3
+                      {selectedApplication.meeting3?.date && (
+                        <span className="ml-2 text-xs">✓</span>
+                      )}
+                    </button>
+                  </div>
+                  {/* Display meeting info if exists */}
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    {selectedApplication.meeting1?.date && (
+                      <div className="p-2 bg-gray-50 rounded">
+                        <p className="font-medium">Уулзалт 1</p>
+                        <p className="text-gray-600">{selectedApplication.meeting1.date}</p>
+                        <p className="text-gray-600">{selectedApplication.meeting1.interviewerName}</p>
+                      </div>
+                    )}
+                    {selectedApplication.meeting2?.date && (
+                      <div className="p-2 bg-gray-50 rounded">
+                        <p className="font-medium">Уулзалт 2</p>
+                        <p className="text-gray-600">{selectedApplication.meeting2.date}</p>
+                        <p className="text-gray-600">{selectedApplication.meeting2.interviewerName}</p>
+                      </div>
+                    )}
+                    {selectedApplication.meeting3?.date && (
+                      <div className="p-2 bg-gray-50 rounded">
+                        <p className="font-medium">Уулзалт 3</p>
+                        <p className="text-gray-600">{selectedApplication.meeting3.date}</p>
+                        <p className="text-gray-600">{selectedApplication.meeting3.interviewerName}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Personal Info */}
+                <section className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Хувийн мэдээлэл</h3>
+                  {isEditMode ? (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <label className="block text-gray-500 mb-1">Ургийн овог</label>
+                        <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({ ...editForm, familyName: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Овог</label>
+                        <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Нэр</label>
+                        <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Оффис</label>
+                        <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({ ...editForm, interestedOffice: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1">
+                          <option value="">Сонгох</option>
+                          <option value="Гэгээнтэн">Гэгээнтэн</option>
+                          <option value="Ривер">Ривер</option>
+                          <option value="Даун таун">Даун таун</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Ажилд орох огноо</label>
+                        <input type="date" value={editForm.availableDate || ''} onChange={(e) => setEditForm({ ...editForm, availableDate: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Төрсөн газар</label>
+                        <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({ ...editForm, birthPlace: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Үндэс угсаа</label>
+                        <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({ ...editForm, ethnicity: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Хүйс</label>
+                        <select value={editForm.gender || ''} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value as 'male' | 'female' })}
+                          className="w-full border border-gray-300 rounded px-2 py-1">
+                          <option value="male">Эрэгтэй</option>
+                          <option value="female">Эмэгтэй</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Төрсөн огноо</label>
+                        <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Регистр</label>
+                        <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({ ...editForm, registerNumber: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-gray-500 mb-1">Гэрийн хаяг</label>
+                        <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({ ...editForm, homeAddress: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Имэйл</label>
+                        <input type="email" value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Утас</label>
+                        <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Яаралтай холбоо</label>
+                        <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({ ...editForm, emergencyPhone: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Facebook</label>
+                        <input type="text" value={editForm.facebook || ''} onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Жолооны эрх</label>
+                        <select value={editForm.hasDriverLicense ? 'yes' : 'no'} onChange={(e) => setEditForm({ ...editForm, hasDriverLicense: e.target.value === 'yes' })}
+                          className="w-full border border-gray-300 rounded px-2 py-1">
+                          <option value="yes">Тийм</option>
+                          <option value="no">Үгүй</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Сургалтын дугаар</label>
+                        <input type="text" value={editForm.trainingNumber || ''} onChange={(e) => setEditForm({ ...editForm, trainingNumber: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-gray-500 mb-1">Бусад чадвар</label>
+                        <textarea value={editForm.otherSkills || ''} onChange={(e) => setEditForm({ ...editForm, otherSkills: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-gray-500 mb-1">Давуу/сул тал</label>
+                        <textarea value={editForm.strengthsWeaknesses || ''} onChange={(e) => setEditForm({ ...editForm, strengthsWeaknesses: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" rows={2} />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Мэдээллийн эх сурвалж</label>
+                        <select value={editForm.referralSource || ''} onChange={(e) => setEditForm({ ...editForm, referralSource: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1">
+                          <option value="">Сонгох</option>
+                          <option value="Facebook хуудас">Facebook хуудас</option>
+                          <option value="Найз танил">Найз танил</option>
+                          <option value="Вебсайт">Вебсайт</option>
+                          <option value="Бусад">Бусад</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isTransfer"
+                          checked={editForm.isTransfer || false}
+                          onChange={(e) => setEditForm({ ...editForm, isTransfer: e.target.checked })}
+                          className="w-4 h-4 text-indigo-600 rounded border-gray-300"
+                        />
+                        <label htmlFor="isTransfer" className="text-gray-700">Шилжиж орж ирсэн</label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div><span className="text-gray-500">Оффис:</span> {selectedApplication.interestedOffice}</div>
+                      <div><span className="text-gray-500">Ажилд орох огноо:</span> {selectedApplication.availableDate}</div>
+                      <div><span className="text-gray-500">Төрсөн газар:</span> {selectedApplication.birthPlace}</div>
+                      <div><span className="text-gray-500">Үндэс угсаа:</span> {selectedApplication.ethnicity}</div>
+                      <div><span className="text-gray-500">Хүйс:</span> {selectedApplication.gender === 'male' ? 'Эрэгтэй' : 'Эмэгтэй'}</div>
+                      <div><span className="text-gray-500">Төрсөн огноо:</span> {selectedApplication.birthDate}</div>
+                      <div><span className="text-gray-500">Регистр:</span> {selectedApplication.registerNumber}</div>
+                      <div><span className="text-gray-500">Гэрийн хаяг:</span> {selectedApplication.homeAddress}</div>
+                      <div><span className="text-gray-500">Утас:</span> {selectedApplication.phone}</div>
+                      <div><span className="text-gray-500">Яаралтай холбоо:</span> {selectedApplication.emergencyPhone}</div>
+                      <div><span className="text-gray-500">Facebook:</span> {selectedApplication.facebook}</div>
+                      <div><span className="text-gray-500">Жолооны эрх:</span> {selectedApplication.hasDriverLicense ? 'Тийм' : 'Үгүй'}</div>
+                      <div><span className="text-gray-500">Шилжиж орж ирсэн:</span> {selectedApplication.isTransfer ? <span className="text-green-600 font-medium">Тийм</span> : 'Үгүй'}</div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Family Members */}
+                {selectedApplication.familyMembers.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гэр бүлийн байдал</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Хэн болох</th>
+                            <th className="px-3 py-2 text-left">Овог нэр</th>
+                            <th className="px-3 py-2 text-left">Төрсөн газар</th>
+                            <th className="px-3 py-2 text-left">Мэргэжил</th>
+                            <th className="px-3 py-2 text-left">Утас</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedApplication.familyMembers.map((member, i) => (
+                            <tr key={i} className="border-b">
+                              <td className="px-3 py-2">{member.relationship}</td>
+                              <td className="px-3 py-2">{member.fullName}</td>
+                              <td className="px-3 py-2">{member.birthPlace}</td>
+                              <td className="px-3 py-2">{member.profession}</td>
+                              <td className="px-3 py-2">{member.phone}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {/* Education */}
+                {selectedApplication.education.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Боловсрол</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Сургууль</th>
+                            <th className="px-3 py-2 text-left">Элссэн</th>
+                            <th className="px-3 py-2 text-left">Төгссөн</th>
+                            <th className="px-3 py-2 text-left">Мэргэжил</th>
+                            <th className="px-3 py-2 text-left">Голч</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedApplication.education.map((edu, i) => (
+                            <tr key={i} className="border-b">
+                              <td className="px-3 py-2">{edu.school}</td>
+                              <td className="px-3 py-2">{edu.enrollmentDate}</td>
+                              <td className="px-3 py-2">{edu.graduationDate}</td>
+                              <td className="px-3 py-2">{edu.major}</td>
+                              <td className="px-3 py-2">{edu.gpa}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {/* Languages */}
+                {selectedApplication.languages.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гадаад хэл</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedApplication.languages.map((lang, i) => (
+                        <span key={i} className="px-3 py-1 bg-gray-100 rounded text-sm">
+                          {lang.language} - {lang.level}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Work Experience */}
+                {selectedApplication.workExperience.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Ажлын туршлага</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Байгууллага</th>
+                            <th className="px-3 py-2 text-left">Төрөл</th>
+                            <th className="px-3 py-2 text-left">Албан тушаал</th>
+                            <th className="px-3 py-2 text-left">Орсон</th>
+                            <th className="px-3 py-2 text-left">Гарсан</th>
+                            <th className="px-3 py-2 text-left">Цалин</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedApplication.workExperience.map((work, i) => (
+                            <tr key={i} className="border-b">
+                              <td className="px-3 py-2">{work.companyName}</td>
+                              <td className="px-3 py-2">{work.businessType}</td>
+                              <td className="px-3 py-2">{work.position}</td>
+                              <td className="px-3 py-2">{work.startDate}</td>
+                              <td className="px-3 py-2">{work.endDate}</td>
+                              <td className="px-3 py-2">{work.salary}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {/* Additional Info */}
+                {(selectedApplication.otherSkills || selectedApplication.strengthsWeaknesses) && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Нэмэлт мэдээлэл</h3>
+                    {selectedApplication.otherSkills && (
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-500 mb-1">Бусад чадвар:</p>
+                        <p className="text-sm">{selectedApplication.otherSkills}</p>
+                      </div>
+                    )}
+                    {selectedApplication.strengthsWeaknesses && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Давуу/сул тал:</p>
+                        <p className="text-sm">{selectedApplication.strengthsWeaknesses}</p>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Awards */}
+                {selectedApplication.awards.length > 0 && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Шагнал</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Байгууллага</th>
+                            <th className="px-3 py-2 text-left">Он</th>
+                            <th className="px-3 py-2 text-left">Шагналын нэр</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedApplication.awards.map((award, i) => (
+                            <tr key={i} className="border-b">
+                              <td className="px-3 py-2">{award.organization}</td>
+                              <td className="px-3 py-2">{award.year}</td>
+                              <td className="px-3 py-2">{award.awardName}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {/* Signature */}
+                {selectedApplication.signatureUrl && (
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Гарын үсэг</h3>
+                    <img src={selectedApplication.signatureUrl} alt="Signature" className="max-h-16" />
+                  </section>
+                )}
+
+                <div className="text-sm text-gray-500 pt-4 border-t">
+                  <p>Мэдээлэл авсан эх сурвалж: {selectedApplication.referralSource}</p>
+                  <p>Огноо: {new Date(selectedApplication.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                Анкет сонгоно уу
+              </div>
+            )}
+          </div>
         </div>
-        <Pagination
-          totalItems={filteredApplications.length}
-          currentPage={currentPage}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-        />
-      </div>
+      ) : (
+        /* Table View */
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Овог</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ургийн овог</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оффис</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имэйл</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Утас</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Яаралтай</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Регистр</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрсөн</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хүйс</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 1</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 2</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уулзалт 3</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сургалт №</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Бүртгэсэн</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={17} className="px-4 py-8 text-center text-gray-500">
+                      Анкет байхгүй
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedApplications.map((app) => {
+                    const statusInfo = APPLICATION_STATUSES.find(s => s.value === app.status);
+                    return (
+                      <tr
+                        key={app.id}
+                        onClick={() => { setSelectedApplication(app); setViewMode('list'); }}
+                        className="hover:bg-gray-50 cursor-pointer"
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {app.photoUrl ? (
+                            <img src={app.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-indigo-600">
+                                {app.firstName?.charAt(0) || ''}{app.lastName?.charAt(0) || ''}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{app.firstName || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-900">{app.lastName || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.familyName || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.interestedOffice || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.email || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.phone || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.emergencyPhone || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.registerNumber || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.birthDate ? new Date(app.birthDate).toLocaleDateString('mn-MN') : '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.gender === 'male' ? 'Эр' : 'Эм'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {app.meeting1?.date ? (
+                            <span className="text-green-600 text-xs">{new Date(app.meeting1.date).toLocaleDateString('mn-MN')}</span>
+                          ) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {app.meeting2?.date ? (
+                            <span className="text-green-600 text-xs">{new Date(app.meeting2.date).toLocaleDateString('mn-MN')}</span>
+                          ) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {app.meeting3?.date ? (
+                            <span className="text-green-600 text-xs">{new Date(app.meeting3.date).toLocaleDateString('mn-MN')}</span>
+                          ) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.trainingNumber || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}>
+                            {statusInfo?.label || app.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">
+                          {app.createdAt ? new Date(app.createdAt).toLocaleDateString('mn-MN') : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            totalItems={filteredApplications.length}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       )}
 
       {/* Meeting Modal */}
@@ -1809,14 +1866,14 @@ export function Applications() {
                 {importData.length} анкет оруулахад бэлэн байна
               </p>
             </div>
-            
+
             <div className="flex-1 overflow-auto p-6">
               {importError && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
                   {importError}
                 </div>
               )}
-              
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
@@ -1844,7 +1901,7 @@ export function Applications() {
                 </table>
               </div>
             </div>
-            
+
             <div className="p-6 border-t flex gap-3 justify-end">
               <button
                 onClick={() => { setImportModalOpen(false); setImportData([]); setImportError(null); }}
