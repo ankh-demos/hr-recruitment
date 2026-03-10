@@ -13,7 +13,56 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 
 ---
 
-## Recent Session Changes (March 10, 2026)
+## Recent Session Changes (March 10, 2026) - Part 2
+
+### Fixed: Dropdown and Field Updates Not Reflecting in Statistics
+
+#### Problem
+Changes made in Employees page (like changing office, status) were not reflected in Dashboard numbers when navigating back. Each page loaded data once on mount and didn't refresh on subsequent visits.
+
+#### Solution
+Implemented automatic data refresh for all main pages:
+- **Dashboard.tsx**: Added `useLocation` hook and visibility/focus event listeners
+- **Employees.tsx**: Added `useLocation` hook and visibility/focus event listeners  
+- **Applications.tsx**: Added `useLocation` hook and visibility/focus event listeners
+
+#### Changes Made
+1. Data reloads when navigating to a page (`location.pathname` dependency)
+2. Data reloads when window/tab regains focus (`focus` event)
+3. Data reloads when page becomes visible (`visibilitychange` event)
+4. Converted `loadData` functions to `useCallback` for consistent references
+
+#### Key Code Pattern
+```tsx
+// Load data function - reusable
+const loadData = useCallback(async () => {
+  // ... fetch data
+}, []);
+
+// Reload on navigation
+useEffect(() => {
+  loadData();
+}, [location.pathname, loadData]);
+
+// Reload on visibility/focus
+useEffect(() => {
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') loadData();
+  };
+  const handleFocus = () => loadData();
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('focus', handleFocus);
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleFocus);
+  };
+}, [loadData]);
+```
+
+---
+
+## Recent Session Changes (March 10, 2026) - Part 1
 
 ### Completed Features
 

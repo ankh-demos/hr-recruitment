@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { applicationsApi, employeesApi, resignedAgentsApi, agentRanksApi } from '../services/api';
 import { Application, Employee, ResignedAgent, AgentRank } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун та�
 
 export function Dashboard() {
   const { user } = useAuth();
+  const location = useLocation();
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
@@ -46,28 +47,52 @@ export function Dashboard() {
   // Chart data
   const [statusDistribution, setStatusDistribution] = useState<{ status: string; count: number; color: string }[]>([]);
 
-  // Load all data once
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [applications, employees, resignedAgents, agentRanks] = await Promise.all([
-          applicationsApi.getAll(),
-          employeesApi.getAll(),
-          resignedAgentsApi.getAll(),
-          agentRanksApi.getAll()
-        ]);
-        setAllApplications(applications);
-        setAllEmployees(employees);
-        setAllResignedAgents(resignedAgents);
-        setAllAgentRanks(agentRanks);
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+  // Load all data - reusable function
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [applications, employees, resignedAgents, agentRanks] = await Promise.all([
+        applicationsApi.getAll(),
+        employeesApi.getAll(),
+        resignedAgentsApi.getAll(),
+        agentRanksApi.getAll()
+      ]);
+      setAllApplications(applications);
+      setAllEmployees(employees);
+      setAllResignedAgents(resignedAgents);
+      setAllAgentRanks(agentRanks);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
-    loadData();
   }, []);
+
+  // Load data when component mounts or when navigating to this page
+  useEffect(() => {
+    loadData();
+  }, [location.pathname, loadData]);
+
+  // Reload data when window/tab regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    
+    const handleFocus = () => {
+      loadData();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadData]);
 
   // Calculate stats based on selected office filter
   useEffect(() => {

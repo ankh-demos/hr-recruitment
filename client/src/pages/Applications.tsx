@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Application, ApplicationMeeting, User } from '../types';
 import { usersApi, applicationsApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
@@ -18,6 +19,7 @@ const APPLICATION_STATUSES = [
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 export function Applications() {
+  const location = useLocation();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
@@ -69,10 +71,46 @@ export function Applications() {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
+  // Load applications function - reusable
+  const loadApplications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/applications`);
+      const data = await response.json();
+      setApplications(data);
+    } catch (error) {
+      console.error('Failed to load applications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load data on mount and when navigating to this page
   useEffect(() => {
     loadApplications();
     loadUsers();
-  }, []);
+  }, [location.pathname, loadApplications]);
+
+  // Reload data when window/tab regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadApplications();
+      }
+    };
+    
+    const handleFocus = () => {
+      loadApplications();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadApplications]);
 
   // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
@@ -139,19 +177,6 @@ export function Applications() {
       setUsers(data);
     } catch (error) {
       console.error('Failed to load users:', error);
-    }
-  }
-
-  async function loadApplications() {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE}/applications`);
-      const data = await response.json();
-      setApplications(data);
-    } catch (error) {
-      console.error('Failed to load applications:', error);
-    } finally {
-      setLoading(false);
     }
   }
 

@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Employee, RankLevel, AgentRank } from '../types';
 import { resignedAgentsApi, agentRanksApi, employeesApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
@@ -58,6 +59,7 @@ function calculateMonthsDiff(startDate: string, endDate: string): number {
 }
 
 export function Employees() {
+  const location = useLocation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [agentRanks, setAgentRanks] = useState<AgentRank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,9 +137,49 @@ export function Employees() {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
+  // Load data function - reusable
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [employeesResponse, ranksData] = await Promise.all([
+        fetch(`${API_BASE}/employees`),
+        agentRanksApi.getAll()
+      ]);
+      const data = await employeesResponse.json();
+      setEmployees(data);
+      setAgentRanks(ranksData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load data on mount and when navigating to this page
   useEffect(() => {
     loadData();
-  }, []);
+  }, [location.pathname, loadData]);
+
+  // Reload data when window/tab regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    
+    const handleFocus = () => {
+      loadData();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadData]);
 
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev =>
@@ -203,22 +245,6 @@ export function Employees() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedStatuses]);
-
-  async function loadData() {
-    try {
-      const [employeesResponse, ranksData] = await Promise.all([
-        fetch(`${API_BASE}/employees`),
-        agentRanksApi.getAll()
-      ]);
-      const data = await employeesResponse.json();
-      setEmployees(data);
-      setAgentRanks(ranksData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // Get current valid rank for an employee by MLS
   function getCurrentRankForEmployee(mls: string | undefined): AgentRank | null {
