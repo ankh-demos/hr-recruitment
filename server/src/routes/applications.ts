@@ -19,7 +19,8 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/statistics', async (req: Request, res: Response) => {
   try {
     const month = req.query.month as string;
-    const stats = await db.getStatistics(month);
+    const period = req.query.period as 'monthly' | 'quarterly' | 'yearly' | undefined;
+    const stats = await db.getStatistics(month, period);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch statistics' });

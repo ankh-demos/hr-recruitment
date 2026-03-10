@@ -292,28 +292,63 @@ export const supabaseDatabase = {
     return !error;
   },
 
-  getStatistics: async (month?: string): Promise<any> => {
+  getStatistics: async (month?: string, period?: 'monthly' | 'quarterly' | 'yearly'): Promise<any> => {
     let startDate: string;
     let endDate: string;
+    const periodType = period || 'monthly';
     
-    if (month) {
-      // Parse the provided month (format: YYYY-MM)
-      const [yearStr, monthStr] = month.split('-');
-      const year = parseInt(yearStr);
-      const monthNum = parseInt(monthStr);
-      startDate = `${year}-${monthStr.padStart(2, '0')}-01`;
-      const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
-      const nextYear = monthNum === 12 ? year + 1 : year;
-      endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+    if (periodType === 'yearly') {
+      // Yearly statistics
+      let year: number;
+      if (month) {
+        year = parseInt(month);
+      } else {
+        year = new Date().getFullYear();
+      }
+      startDate = `${year}-01-01`;
+      endDate = `${year + 1}-01-01`;
+    } else if (periodType === 'quarterly') {
+      // Quarterly statistics (month format: YYYY-Q1, YYYY-Q2, etc.)
+      let year: number;
+      let quarter: number;
+      if (month && month.includes('Q')) {
+        const [yearStr, quarterStr] = month.split('-Q');
+        year = parseInt(yearStr);
+        quarter = parseInt(quarterStr);
+      } else {
+        const now = new Date();
+        year = now.getFullYear();
+        quarter = Math.floor(now.getMonth() / 3) + 1;
+      }
+      const startMonth = (quarter - 1) * 3 + 1;
+      const endMonth = quarter * 3 + 1;
+      startDate = `${year}-${startMonth.toString().padStart(2, '0')}-01`;
+      if (endMonth > 12) {
+        endDate = `${year + 1}-01-01`;
+      } else {
+        endDate = `${year}-${endMonth.toString().padStart(2, '0')}-01`;
+      }
     } else {
-      // Use current month
-      const now = new Date();
-      const year = now.getFullYear();
-      const monthNum = now.getMonth() + 1; // 1-based
-      startDate = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
-      const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
-      const nextYear = monthNum === 12 ? year + 1 : year;
-      endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+      // Monthly statistics (default)
+      if (month) {
+        // Parse the provided month (format: YYYY-MM)
+        const [yearStr, monthStr] = month.split('-');
+        const year = parseInt(yearStr);
+        const monthNum = parseInt(monthStr);
+        startDate = `${year}-${monthStr.padStart(2, '0')}-01`;
+        const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+        const nextYear = monthNum === 12 ? year + 1 : year;
+        endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+      } else {
+        // Use current month
+        const now = new Date();
+        const year = now.getFullYear();
+        const monthNum = now.getMonth() + 1; // 1-based
+        startDate = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
+        const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+        const nextYear = monthNum === 12 ? year + 1 : year;
+        endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+      }
     }
     
     const offices = ['Гэгээнтэн', 'Ривер', 'Даун таун'];
@@ -327,13 +362,13 @@ export const supabaseDatabase = {
         .eq('interested_office', office);
       if (allAppsError) throw allAppsError;
       
-      // totalMeetings: Count applications created in this month (new applications submitted)
+      // totalMeetings: Count applications created in this period (new applications submitted)
       const totalMeetings = allApps.filter(a => {
         if (!a.created_at) return false;
         return a.created_at >= startDate && a.created_at < endDate;
       }).length;
       
-      // iconnectOpenings: Count employees created in this month (when app becomes iconnect, employee is created)
+      // iconnectOpenings: Count employees created in this period (when app becomes iconnect, employee is created)
       const { data: iconnectEmps, error: iconnectError } = await supabase
         .from('employees')
         .select('id')
@@ -343,7 +378,7 @@ export const supabaseDatabase = {
       if (iconnectError) throw iconnectError;
       const iconnectOpenings = iconnectEmps?.length || 0;
       
-      // fireupRegistrations: Count applications with fireup_date in this month
+      // fireupRegistrations: Count applications with fireup_date in this period
       const fireupRegistrations = allApps.filter(a => {
         if (!a.fireup_date) return false;
         return a.fireup_date >= startDate && a.fireup_date < endDate;
@@ -352,25 +387,25 @@ export const supabaseDatabase = {
       // inProcess: Current applications in interviewing or fireup status
       const inProcess = allApps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
       
-      // cancelled: Applications cancelled in this month (check updated_at for cancelled status)
+      // cancelled: Applications cancelled in this period (check updated_at for cancelled status)
       const cancelled = allApps.filter(a => {
         if (a.status !== 'cancelled') return false;
         if (!a.updated_at) return false;
         return a.updated_at >= startDate && a.updated_at < endDate;
       }).length;
       
-      // transfers: Applications marked as transfer created in this month
+      // transfers: Applications marked as transfer created in this period
       const transfers = allApps.filter(a => {
         if (!a.is_transfer) return false;
         if (!a.created_at) return false;
         return a.created_at >= startDate && a.created_at < endDate;
       }).length;
       
-      // Employees hired this month (same as iconnectOpenings)
+      // Employees hired this period (same as iconnectOpenings)
       const newHires = iconnectOpenings;
       const monthlyGrowth = newHires;
       
-      // Resigned this month
+      // Resigned this period
       const { data: res, error: resError } = await supabase
         .from('resigned_agents')
         .select('id')
@@ -380,7 +415,7 @@ export const supabaseDatabase = {
       if (resError) throw resError;
       const resigned = res?.length || 0;
       
-      // Current agents on leave (not filtered by month - this is current status)
+      // Current agents on leave (not filtered by period - this is current status)
       const { data: leaveEmps, error: leaveError } = await supabase
         .from('employees')
         .select('id')

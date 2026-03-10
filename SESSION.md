@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** February 13, 2026
+**Last Updated:** March 10, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,36 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (March 10, 2026)
+
+### Completed Features
+
+#### 1. Fire UP Modal - Training Date Fields
+- Added `trainingStartDate` and `trainingEndDate` fields to the Fire UP popup
+- Updated Application type in both client and server to include these fields
+- Edit form now includes training date fields for existing applications
+
+#### 2. Statistics Period Selection (Monthly/Quarterly/Yearly)
+- Added period selector (Сар/Улирал/Жил) to the statistics section on Applications page
+- Frontend: Period toggle buttons with corresponding date selectors
+- Backend: Updated statistics API to support `period` query parameter
+- Quarterly format: YYYY-Q1, YYYY-Q2, etc.
+- Yearly format: YYYY
+
+#### 3. Ranks Page - Group by Rank with Counts
+- Added "Цолоор бүлэглэсэн" section displaying count of each rank level
+- Shows counts for: Стандарт, Силвер, Голд, Платиниум, Даймонд
+- Uses color-coded badges matching the rank colors
+
+### Database Schema Updates
+```sql
+-- No new columns required, but ensure these exist:
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS training_start_date DATE;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS training_end_date DATE;
+```
 
 ---
 

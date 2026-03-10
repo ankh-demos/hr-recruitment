@@ -214,8 +214,8 @@ export const db = {
   },
 
   // ============ STATISTICS ============
-  getStatistics: async (month?: string): Promise<any> => {
-    if (useSupabase) return supabaseDatabase.getStatistics(month);
+  getStatistics: async (month?: string, period?: 'monthly' | 'quarterly' | 'yearly'): Promise<any> => {
+    if (useSupabase) return supabaseDatabase.getStatistics(month, period);
     return {}; // JSON not implemented
   },
 

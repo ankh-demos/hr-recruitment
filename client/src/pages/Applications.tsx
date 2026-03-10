@@ -38,6 +38,7 @@ export function Applications() {
   const [statistics, setStatistics] = useState<any>({});
   const [showStatistics, setShowStatistics] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [statsPeriod, setStatsPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
 
   // Meeting Modal State
   const [meetingModalOpen, setMeetingModalOpen] = useState(false);
@@ -52,6 +53,8 @@ export function Applications() {
   // Fire UP Modal State
   const [fireUpModalOpen, setFireUpModalOpen] = useState(false);
   const [trainingNumber, setTrainingNumber] = useState('');
+  const [trainingStartDate, setTrainingStartDate] = useState('');
+  const [trainingEndDate, setTrainingEndDate] = useState('');
 
   // iConnect Confirmation State
   const [iconnectConfirmOpen, setIconnectConfirmOpen] = useState(false);
@@ -115,12 +118,12 @@ export function Applications() {
     setCurrentPage(1);
   }, [selectedStatuses, searchTerm]);
 
-  // Reload statistics when month changes
+  // Reload statistics when month or period changes
   useEffect(() => {
     if (showStatistics) {
-      loadStatistics(selectedMonth || undefined);
+      loadStatistics(selectedMonth || undefined, statsPeriod);
     }
-  }, [selectedMonth]);
+  }, [selectedMonth, statsPeriod]);
 
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev =>
@@ -152,9 +155,9 @@ export function Applications() {
     }
   }
 
-  async function loadStatistics(month?: string) {
+  async function loadStatistics(month?: string, period?: 'monthly' | 'quarterly' | 'yearly') {
     try {
-      const stats = await applicationsApi.getStatistics(month);
+      const stats = await applicationsApi.getStatistics(month, period);
       setStatistics(stats);
     } catch (error) {
       console.error('Failed to load statistics:', error);
@@ -178,6 +181,8 @@ export function Applications() {
   function openFireUpModal() {
     if (!selectedApplication) return;
     setTrainingNumber(selectedApplication.trainingNumber || '');
+    setTrainingStartDate(selectedApplication.trainingStartDate || '');
+    setTrainingEndDate(selectedApplication.trainingEndDate || '');
     setFireUpModalOpen(true);
   }
 
@@ -188,13 +193,15 @@ export function Applications() {
       await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'fireup', trainingNumber })
+        body: JSON.stringify({ status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate })
       });
       setFireUpModalOpen(false);
       setTrainingNumber('');
+      setTrainingStartDate('');
+      setTrainingEndDate('');
       loadApplications();
       // Update selected application
-      setSelectedApplication({ ...selectedApplication, status: 'fireup', trainingNumber });
+      setSelectedApplication({ ...selectedApplication, status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate });
     } catch (error) {
       console.error('Failed to update to Fire UP:', error);
     }
@@ -260,6 +267,8 @@ export function Applications() {
       strengthsWeaknesses: selectedApplication.strengthsWeaknesses,
       referralSource: selectedApplication.referralSource,
       trainingNumber: selectedApplication.trainingNumber,
+      trainingStartDate: selectedApplication.trainingStartDate,
+      trainingEndDate: selectedApplication.trainingEndDate,
       isTransfer: selectedApplication.isTransfer
     });
     setIsEditMode(true);
@@ -684,7 +693,7 @@ export function Applications() {
           <button
             onClick={() => {
               setShowStatistics(!showStatistics);
-              if (!showStatistics) loadStatistics(selectedMonth || undefined);
+              if (!showStatistics) loadStatistics(selectedMonth || undefined, statsPeriod);
             }}
             className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${showStatistics
               ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
@@ -745,29 +754,71 @@ export function Applications() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-gray-800">Сарын статистик</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {statsPeriod === 'monthly' ? 'Сарын статистик' : statsPeriod === 'quarterly' ? 'Улирлын статистик' : 'Жилийн статистик'}
+              </h2>
             </div>
-            <div className="min-w-[180px]">
-              <select
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value);
-                }}
-                className="w-full px-4 py-2.5 border border-indigo-200 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 font-medium text-gray-700"
-              >
-                <option value="">Энэ сар</option>
-                {(() => {
-                  const options = [];
-                  const now = new Date();
-                  for (let i = 0; i < 24; i++) {
-                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    const label = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    options.push(<option key={value} value={value}>{label}</option>);
-                  }
-                  return options;
-                })()}
-              </select>
+            <div className="flex items-center gap-3">
+              {/* Period selector */}
+              <div className="flex rounded-lg overflow-hidden border border-indigo-200">
+                <button
+                  onClick={() => setStatsPeriod('monthly')}
+                  className={`px-3 py-2 text-sm font-medium ${statsPeriod === 'monthly' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                >
+                  Сар
+                </button>
+                <button
+                  onClick={() => setStatsPeriod('quarterly')}
+                  className={`px-3 py-2 text-sm font-medium ${statsPeriod === 'quarterly' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                >
+                  Улирал
+                </button>
+                <button
+                  onClick={() => setStatsPeriod('yearly')}
+                  className={`px-3 py-2 text-sm font-medium ${statsPeriod === 'yearly' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                >
+                  Жил
+                </button>
+              </div>
+              {/* Date selector */}
+              <div className="min-w-[180px]">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                  }}
+                  className="w-full px-4 py-2.5 border border-indigo-200 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 font-medium text-gray-700"
+                >
+                  <option value="">{statsPeriod === 'monthly' ? 'Энэ сар' : statsPeriod === 'quarterly' ? 'Энэ улирал' : 'Энэ жил'}</option>
+                  {(() => {
+                    const options = [];
+                    const now = new Date();
+                    if (statsPeriod === 'monthly') {
+                      for (let i = 0; i < 24; i++) {
+                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        const label = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        options.push(<option key={value} value={value}>{label}</option>);
+                      }
+                    } else if (statsPeriod === 'quarterly') {
+                      for (let i = 0; i < 8; i++) {
+                        const quarterOffset = Math.floor(now.getMonth() / 3) - i;
+                        const year = now.getFullYear() + Math.floor(quarterOffset / 4);
+                        const quarter = ((quarterOffset % 4) + 4) % 4 + 1;
+                        const value = `${year}-Q${quarter}`;
+                        const label = `${year} Q${quarter}`;
+                        options.push(<option key={value} value={value}>{label}</option>);
+                      }
+                    } else {
+                      for (let i = 0; i < 5; i++) {
+                        const year = now.getFullYear() - i;
+                        options.push(<option key={year} value={String(year)}>{year}</option>);
+                      }
+                    }
+                    return options;
+                  })()}
+                </select>
+              </div>
             </div>
           </div>
           <div className="overflow-x-auto rounded-lg border border-indigo-100">
@@ -1344,6 +1395,16 @@ export function Applications() {
                         <input type="text" value={editForm.trainingNumber || ''} onChange={(e) => setEditForm({ ...editForm, trainingNumber: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Сургалт эхлэх хугацаа</label>
+                        <input type="date" value={editForm.trainingStartDate || ''} onChange={(e) => setEditForm({ ...editForm, trainingStartDate: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 mb-1">Сургалт дуусах хугацаа</label>
+                        <input type="date" value={editForm.trainingEndDate || ''} onChange={(e) => setEditForm({ ...editForm, trainingEndDate: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-2 py-1" />
+                      </div>
                       <div className="col-span-2">
                         <label className="block text-gray-500 mb-1">Бусад чадвар</label>
                         <textarea value={editForm.otherSkills || ''} onChange={(e) => setEditForm({ ...editForm, otherSkills: e.target.value })}
@@ -1785,6 +1846,28 @@ export function Applications() {
                     onChange={(e) => setTrainingNumber(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="Сургалтын дугаар оруулах..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Сургалт эхлэх хугацаа
+                  </label>
+                  <input
+                    type="date"
+                    value={trainingStartDate}
+                    onChange={(e) => setTrainingStartDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Сургалт дуусах хугацаа
+                  </label>
+                  <input
+                    type="date"
+                    value={trainingEndDate}
+                    onChange={(e) => setTrainingEndDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>

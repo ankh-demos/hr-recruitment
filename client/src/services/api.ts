@@ -165,8 +165,12 @@ export const applicationsApi = {
   getAll: (): Promise<Application[]> =>
     fetch(`${API_BASE}/applications`).then(res => handleResponse<Application[]>(res)),
 
-  getStatistics: (month?: string): Promise<any> => {
-    const url = month ? `${API_BASE}/applications/statistics?month=${month}` : `${API_BASE}/applications/statistics`;
+  getStatistics: (month?: string, period?: 'monthly' | 'quarterly' | 'yearly'): Promise<any> => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (period) params.append('period', period);
+    const queryString = params.toString();
+    const url = queryString ? `${API_BASE}/applications/statistics?${queryString}` : `${API_BASE}/applications/statistics`;
     return fetch(url).then(res => handleResponse<any>(res));
   },
 
