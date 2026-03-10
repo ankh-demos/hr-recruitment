@@ -369,14 +369,27 @@ export const supabaseDatabase = {
       }).length;
       
       // iconnectOpenings: Count employees hired in this period (use hired_date, not created_at)
-      const { data: iconnectEmps, error: iconnectError } = await supabase
-        .from('employees')
-        .select('id, hired_date')
-        .gte('hired_date', startDate)
-        .lt('hired_date', endDate)
-        .eq('office_name', office);
-      if (iconnectError) throw iconnectError;
-      const iconnectOpenings = iconnectEmps?.length || 0;
+      let iconnectOpenings = 0;
+      try {
+        const { data: iconnectEmps, error: iconnectError } = await supabase
+          .from('employees')
+          .select('id, hired_date')
+          .gte('hired_date', startDate)
+          .lt('hired_date', endDate)
+          .eq('office_name', office);
+        if (!iconnectError) {
+          iconnectOpenings = iconnectEmps?.length || 0;
+        }
+      } catch (e) {
+        // hired_date column may have issues, fallback to created_at
+        const { data: iconnectEmps } = await supabase
+          .from('employees')
+          .select('id, created_at')
+          .gte('created_at', startDate)
+          .lt('created_at', endDate)
+          .eq('office_name', office);
+        iconnectOpenings = iconnectEmps?.length || 0;
+      }
       
       // fireupRegistrations: Count from BOTH applications and employees with fireup_date in this period
       // (Applications are deleted when converted to iconnect, so we need to check both)
@@ -385,14 +398,22 @@ export const supabaseDatabase = {
         return a.fireup_date >= startDate && a.fireup_date < endDate;
       }).length;
       
-      const { data: fireupFromEmps, error: fireupEmpError } = await supabase
-        .from('employees')
-        .select('id')
-        .gte('fireup_date', startDate)
-        .lt('fireup_date', endDate)
-        .eq('office_name', office);
-      if (fireupEmpError) throw fireupEmpError;
-      const fireupRegistrations = fireupFromApps + (fireupFromEmps?.length || 0);
+      // Try to query employees for fireup_date - column may not exist in older schemas
+      let fireupFromEmpsCount = 0;
+      try {
+        const { data: fireupFromEmps, error: fireupEmpError } = await supabase
+          .from('employees')
+          .select('id, fireup_date')
+          .gte('fireup_date', startDate)
+          .lt('fireup_date', endDate)
+          .eq('office_name', office);
+        if (!fireupEmpError) {
+          fireupFromEmpsCount = fireupFromEmps?.length || 0;
+        }
+      } catch (e) {
+        // Column may not exist, ignore
+      }
+      const fireupRegistrations = fireupFromApps + fireupFromEmpsCount;
       
       // inProcess: Current applications in interviewing or fireup status
       const inProcess = allApps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
@@ -411,15 +432,23 @@ export const supabaseDatabase = {
         return a.created_at >= startDate && a.created_at < endDate;
       }).length;
       
-      const { data: transfersFromEmps, error: transferEmpError } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('is_transfer', true)
-        .gte('hired_date', startDate)
-        .lt('hired_date', endDate)
-        .eq('office_name', office);
-      if (transferEmpError) throw transferEmpError;
-      const transfers = transfersFromApps + (transfersFromEmps?.length || 0);
+      // Try to query employees for is_transfer - column may not exist in older schemas
+      let transfersFromEmpsCount = 0;
+      try {
+        const { data: transfersFromEmps, error: transferEmpError } = await supabase
+          .from('employees')
+          .select('id, is_transfer')
+          .eq('is_transfer', true)
+          .gte('hired_date', startDate)
+          .lt('hired_date', endDate)
+          .eq('office_name', office);
+        if (!transferEmpError) {
+          transfersFromEmpsCount = transfersFromEmps?.length || 0;
+        }
+      } catch (e) {
+        // Column may not exist, ignore
+      }
+      const transfers = transfersFromApps + transfersFromEmpsCount;
       
       // Employees hired this period (same as iconnectOpenings)
       const newHires = iconnectOpenings;

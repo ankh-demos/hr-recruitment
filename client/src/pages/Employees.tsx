@@ -642,16 +642,25 @@ export function Employees() {
   async function updateEmployeeFields() {
     if (!selectedEmployee) return;
     try {
-      await fetch(`${API_BASE}/employees/${selectedEmployee.id}`, {
+      const response = await fetch(`${API_BASE}/employees/${selectedEmployee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFields)
       });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to update employee:', errorData);
+        alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (errorData.error || response.statusText));
+        return;
+      }
+      const updatedEmployee = await response.json();
       setEditFieldsOpen(false);
-      loadData();
-      setSelectedEmployee({ ...selectedEmployee, ...editFields });
+      // Update the employee in the list immediately
+      setEmployees(prev => prev.map(e => e.id === selectedEmployee.id ? { ...e, ...updatedEmployee } : e));
+      setSelectedEmployee({ ...selectedEmployee, ...updatedEmployee });
     } catch (error) {
       console.error('Failed to update employee fields:', error);
+      alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа');
     }
   }
 
