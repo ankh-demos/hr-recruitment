@@ -1,6 +1,18 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { Candidate, Job, Interview, Application, User, Employee, ResignedAgent, AgentRank } from '../types';
 
+// Special field name mappings (camelCase -> snake_case)
+const FIELD_MAPPINGS: Record<string, string> = {
+  iConnectName: 'iconnect_name',
+  hasIConnect: 'has_iconnect',
+};
+
+// Reverse mappings (snake_case -> camelCase)
+const REVERSE_FIELD_MAPPINGS: Record<string, string> = {
+  iconnect_name: 'iConnectName',
+  has_iconnect: 'hasIConnect',
+};
+
 // Helper to convert snake_case to camelCase
 function toCamelCase(obj: any): any {
   if (obj === null || typeof obj !== 'object') return obj;
@@ -8,7 +20,7 @@ function toCamelCase(obj: any): any {
   
   const converted: any = {};
   for (const key in obj) {
-    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    const camelKey = REVERSE_FIELD_MAPPINGS[key] || key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
     converted[camelKey] = toCamelCase(obj[key]);
   }
   return converted;
@@ -21,7 +33,7 @@ function toSnakeCase(obj: any): any {
   
   const converted: any = {};
   for (const key in obj) {
-    const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    const snakeKey = FIELD_MAPPINGS[key] || key.replace(/([A-Z])/g, '_$1').toLowerCase();
     converted[snakeKey] = toSnakeCase(obj[key]);
   }
   return converted;
@@ -232,13 +244,17 @@ export const supabaseDatabase = {
 
   updateEmployee: async (id: string, updates: Partial<Employee>): Promise<Employee | undefined> => {
     const snakeCaseUpdates = toSnakeCase(updates);
-    console.log('Supabase updateEmployee - ID:', id, 'Updates:', JSON.stringify(snakeCaseUpdates).substring(0, 200));
+    
+    // Remove fields that Supabase auto-manages or that might not exist as columns
+    delete snakeCaseUpdates.id;
+    delete snakeCaseUpdates.created_at;
+    
+    console.log('Supabase updateEmployee - ID:', id, 'Updates:', JSON.stringify(snakeCaseUpdates).substring(0, 300));
     
     // First check if employee exists
     const { data: existing, error: checkError } = await supabase.from('employees').select('id').eq('id', id).single();
     if (checkError) {
       console.error('Supabase updateEmployee - Employee not found in DB:', id, checkError.code, checkError.message);
-      // If employee doesn't exist, return undefined with clear message
       if (checkError.code === 'PGRST116') {
         console.error('Employee ID does not exist in Supabase database. Please check if data was migrated properly.');
       }
@@ -249,6 +265,42 @@ export const supabaseDatabase = {
     const { data, error } = await supabase.from('employees').update(snakeCaseUpdates).eq('id', id).select().single();
     if (error) {
       console.error('Supabase updateEmployee error:', error.message, error.code, error.details, error.hint);
+      // If it's a column error, try stripping unknown fields and retrying
+      if (error.code === '42703' || error.message?.includes('column') || error.code === 'PGRST204') {
+        console.log('Retrying with only known columns...');
+        // Known employee columns in the DB
+        const knownColumns = new Set([
+          'application_id', 'iconnect_name', 'family_name', 'last_name', 'first_name',
+          'interested_office', 'birth_place', 'ethnicity', 'gender', 'birth_date',
+          'register_number', 'home_address', 'phone', 'emergency_phone', 'email',
+          'facebook', 'family_members', 'education', 'languages', 'work_experience',
+          'awards', 'other_skills', 'strengths_weaknesses', 'has_driver_license',
+          'photo_url', 'referral_source', 'signature_url', 'training_number',
+          'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
+          'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
+          'district', 'detailed_address', 'children_count', 'employment_start_date',
+          'office_name', 'status', 'hired_date', 'updated_at',
+          // Newer columns that may or may not exist
+          'has_iconnect', 'is_assistant', 'assistant_of',
+          'has_szh_training', 'szh_training_date', 'szh_official_letter_number',
+          'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer'
+        ]);
+        const filteredUpdates: any = {};
+        for (const key of Object.keys(snakeCaseUpdates)) {
+          if (knownColumns.has(key)) {
+            filteredUpdates[key] = snakeCaseUpdates[key];
+          } else {
+            console.log('Skipping unknown column:', key);
+          }
+        }
+        const { data: retryData, error: retryError } = await supabase.from('employees').update(filteredUpdates).eq('id', id).select().single();
+        if (retryError) {
+          console.error('Supabase updateEmployee retry error:', retryError.message, retryError.code, retryError.details);
+          return undefined;
+        }
+        console.log('Supabase updateEmployee retry success - ID:', retryData?.id);
+        return toCamelCase(retryData);
+      }
       return undefined;
     }
     console.log('Supabase updateEmployee success - ID:', data?.id);
@@ -332,7 +384,6 @@ export const supabaseDatabase = {
     const periodType = period || 'monthly';
     
     if (periodType === 'yearly') {
-      // Yearly statistics
       let year: number;
       if (month) {
         year = parseInt(month);
@@ -342,7 +393,6 @@ export const supabaseDatabase = {
       startDate = `${year}-01-01`;
       endDate = `${year + 1}-01-01`;
     } else if (periodType === 'quarterly') {
-      // Quarterly statistics (month format: YYYY-Q1, YYYY-Q2, etc.)
       let year: number;
       let quarter: number;
       if (month && month.includes('Q')) {
@@ -363,9 +413,7 @@ export const supabaseDatabase = {
         endDate = `${year}-${endMonth.toString().padStart(2, '0')}-01`;
       }
     } else {
-      // Monthly statistics (default)
       if (month) {
-        // Parse the provided month (format: YYYY-MM)
         const [yearStr, monthStr] = month.split('-');
         const year = parseInt(yearStr);
         const monthNum = parseInt(monthStr);
@@ -374,10 +422,9 @@ export const supabaseDatabase = {
         const nextYear = monthNum === 12 ? year + 1 : year;
         endDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
       } else {
-        // Use current month
         const now = new Date();
         const year = now.getFullYear();
-        const monthNum = now.getMonth() + 1; // 1-based
+        const monthNum = now.getMonth() + 1;
         startDate = `${year}-${monthNum.toString().padStart(2, '0')}-01`;
         const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
         const nextYear = monthNum === 12 ? year + 1 : year;
@@ -385,138 +432,150 @@ export const supabaseDatabase = {
       }
     }
     
+    // Use ISO timestamps for created_at/updated_at comparisons (timestamptz columns)
+    const startTimestamp = `${startDate}T00:00:00.000Z`;
+    const endTimestamp = `${endDate}T00:00:00.000Z`;
+    
+    console.log('[Statistics] Period:', periodType, 'Range:', startDate, 'to', endDate);
+    
     const offices = ['Гэгээнтэн', 'Ривер', 'Даун таун'];
     const stats: any = {};
     
     for (const office of offices) {
-      // Get all applications for this office to calculate various metrics
-      const { data: allApps, error: allAppsError } = await supabase
+      // totalMeetings: Count applications created in this period using Supabase filters
+      const { data: meetingApps, error: meetingError } = await supabase
         .from('applications')
-        .select('*')
-        .eq('interested_office', office);
-      if (allAppsError) throw allAppsError;
+        .select('id')
+        .eq('interested_office', office)
+        .gte('created_at', startTimestamp)
+        .lt('created_at', endTimestamp);
+      if (meetingError) console.error('[Statistics] meetingApps error:', meetingError);
+      const totalMeetings = meetingApps?.length || 0;
       
-      // totalMeetings: Count applications created in this period (new applications submitted)
-      const totalMeetings = allApps.filter(a => {
-        if (!a.created_at) return false;
-        return a.created_at >= startDate && a.created_at < endDate;
-      }).length;
-      
-      // iconnectOpenings: Count employees hired in this period (use hired_date, not created_at)
+      // iconnectOpenings: Count employees hired in this period
       let iconnectOpenings = 0;
-      try {
-        const { data: iconnectEmps, error: iconnectError } = await supabase
+      const { data: iconnectEmps, error: iconnectError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('office_name', office)
+        .gte('hired_date', startDate)
+        .lt('hired_date', endDate);
+      if (iconnectError) {
+        console.error('[Statistics] iconnectEmps error:', iconnectError);
+        // Fallback to created_at
+        const { data: fallbackEmps } = await supabase
           .from('employees')
-          .select('id, hired_date')
-          .gte('hired_date', startDate)
-          .lt('hired_date', endDate)
-          .eq('office_name', office);
-        if (!iconnectError) {
-          iconnectOpenings = iconnectEmps?.length || 0;
-        }
-      } catch (e) {
-        // hired_date column may have issues, fallback to created_at
-        const { data: iconnectEmps } = await supabase
-          .from('employees')
-          .select('id, created_at')
-          .gte('created_at', startDate)
-          .lt('created_at', endDate)
-          .eq('office_name', office);
+          .select('id')
+          .eq('office_name', office)
+          .gte('created_at', startTimestamp)
+          .lt('created_at', endTimestamp);
+        iconnectOpenings = fallbackEmps?.length || 0;
+      } else {
         iconnectOpenings = iconnectEmps?.length || 0;
       }
       
-      // fireupRegistrations: Count from BOTH applications and employees with fireup_date in this period
-      // (Applications are deleted when converted to iconnect, so we need to check both)
-      const fireupFromApps = allApps.filter(a => {
-        if (!a.fireup_date) return false;
-        return a.fireup_date >= startDate && a.fireup_date < endDate;
-      }).length;
+      // fireupRegistrations: Count from applications with fireup_date in this period
+      const { data: fireupApps, error: fireupAppsError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('interested_office', office)
+        .gte('fireup_date', startDate)
+        .lt('fireup_date', endDate);
+      if (fireupAppsError) console.error('[Statistics] fireupApps error:', fireupAppsError);
+      const fireupFromApps = fireupApps?.length || 0;
       
-      // Try to query employees for fireup_date - column may not exist in older schemas
+      // Also check employees with fireup_date (applications deleted when converted)
       let fireupFromEmpsCount = 0;
-      try {
-        const { data: fireupFromEmps, error: fireupEmpError } = await supabase
-          .from('employees')
-          .select('id, fireup_date')
-          .gte('fireup_date', startDate)
-          .lt('fireup_date', endDate)
-          .eq('office_name', office);
-        if (!fireupEmpError) {
-          fireupFromEmpsCount = fireupFromEmps?.length || 0;
-        }
-      } catch (e) {
-        // Column may not exist, ignore
+      const { data: fireupFromEmps, error: fireupEmpError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('office_name', office)
+        .gte('fireup_date', startDate)
+        .lt('fireup_date', endDate);
+      if (!fireupEmpError) {
+        fireupFromEmpsCount = fireupFromEmps?.length || 0;
       }
       const fireupRegistrations = fireupFromApps + fireupFromEmpsCount;
       
-      // inProcess: Current applications in interviewing or fireup status
-      const inProcess = allApps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
+      // inProcess: Current applications in interviewing or fireup status (not period-filtered)
+      const { data: processApps, error: processError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('interested_office', office)
+        .in('status', ['interviewing', 'fireup']);
+      if (processError) console.error('[Statistics] processApps error:', processError);
+      const inProcess = processApps?.length || 0;
       
-      // cancelled: Applications cancelled in this period (check updated_at for cancelled status)
-      const cancelled = allApps.filter(a => {
-        if (a.status !== 'cancelled') return false;
-        if (!a.updated_at) return false;
-        return a.updated_at >= startDate && a.updated_at < endDate;
-      }).length;
+      // cancelled: Applications cancelled in this period
+      const { data: cancelledApps, error: cancelledError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('interested_office', office)
+        .eq('status', 'cancelled')
+        .gte('updated_at', startTimestamp)
+        .lt('updated_at', endTimestamp);
+      if (cancelledError) console.error('[Statistics] cancelledApps error:', cancelledError);
+      const cancelled = cancelledApps?.length || 0;
       
-      // transfers: Count from BOTH applications and employees with is_transfer=true
-      const transfersFromApps = allApps.filter(a => {
-        if (!a.is_transfer) return false;
-        if (!a.created_at) return false;
-        return a.created_at >= startDate && a.created_at < endDate;
-      }).length;
+      // transfers from applications
+      const { data: transferApps, error: transferAppsError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('interested_office', office)
+        .eq('is_transfer', true)
+        .gte('created_at', startTimestamp)
+        .lt('created_at', endTimestamp);
+      if (transferAppsError) console.error('[Statistics] transferApps error:', transferAppsError);
+      const transfersFromApps = transferApps?.length || 0;
       
-      // Try to query employees for is_transfer - column may not exist in older schemas
+      // transfers from employees
       let transfersFromEmpsCount = 0;
-      try {
-        const { data: transfersFromEmps, error: transferEmpError } = await supabase
-          .from('employees')
-          .select('id, is_transfer')
-          .eq('is_transfer', true)
-          .gte('hired_date', startDate)
-          .lt('hired_date', endDate)
-          .eq('office_name', office);
-        if (!transferEmpError) {
-          transfersFromEmpsCount = transfersFromEmps?.length || 0;
-        }
-      } catch (e) {
-        // Column may not exist, ignore
+      const { data: transferEmps, error: transferEmpError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('office_name', office)
+        .eq('is_transfer', true)
+        .gte('hired_date', startDate)
+        .lt('hired_date', endDate);
+      if (!transferEmpError) {
+        transfersFromEmpsCount = transferEmps?.length || 0;
       }
       const transfers = transfersFromApps + transfersFromEmpsCount;
       
-      // Employees hired this period (same as iconnectOpenings)
+      // Growth
       const newHires = iconnectOpenings;
       const monthlyGrowth = newHires;
       
       // Resigned this period
-      const { data: res, error: resError } = await supabase
+      const { data: resignedData, error: resError } = await supabase
         .from('resigned_agents')
         .select('id')
+        .eq('office_name', office)
         .gte('resignation_date', startDate)
-        .lt('resignation_date', endDate)
-        .eq('office_name', office);
-      if (resError) throw resError;
-      const resigned = res?.length || 0;
+        .lt('resignation_date', endDate);
+      if (resError) console.error('[Statistics] resigned error:', resError);
+      const resigned = resignedData?.length || 0;
       
-      // Current agents on leave (not filtered by period - this is current status)
+      // Current agents on leave
       const { data: leaveEmps, error: leaveError } = await supabase
         .from('employees')
         .select('id')
-        .in('status', ['on_leave', 'maternity_leave'])
-        .eq('office_name', office);
-      if (leaveError) throw leaveError;
+        .eq('office_name', office)
+        .in('status', ['on_leave', 'maternity_leave']);
+      if (leaveError) console.error('[Statistics] leaveEmps error:', leaveError);
       const agentsOnLeave = leaveEmps?.length || 0;
       
-      // Net growth = new hires - resigned (leave is temporary, not subtracted)
       const netGrowth = monthlyGrowth - resigned;
       
-      // Total active IConnect agents - all current employees
+      // Total active IConnect agents
       const { data: totalEmps, error: totalError } = await supabase
         .from('employees')
         .select('id')
         .eq('office_name', office);
-      if (totalError) throw totalError;
+      if (totalError) console.error('[Statistics] totalEmps error:', totalError);
       const totalIConnect = totalEmps?.length || 0;
+      
+      console.log(`[Statistics] ${office}: meetings=${totalMeetings}, iconnect=${iconnectOpenings}, fireup=${fireupRegistrations}, inProcess=${inProcess}, cancelled=${cancelled}, transfers=${transfers}, leave=${agentsOnLeave}, resigned=${resigned}, total=${totalIConnect}`);
       
       stats[office] = {
         totalMeetings,

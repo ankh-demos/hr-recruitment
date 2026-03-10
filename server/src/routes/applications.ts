@@ -20,9 +20,11 @@ router.get('/statistics', async (req: Request, res: Response) => {
   try {
     const month = req.query.month as string;
     const period = req.query.period as 'monthly' | 'quarterly' | 'yearly' | undefined;
+    console.log('[Statistics Route] Fetching statistics - month:', month || 'current', 'period:', period || 'monthly');
     const stats = await db.getStatistics(month, period);
     res.json(stats);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Statistics Route] Error:', error?.message || error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
