@@ -245,9 +245,10 @@ export const supabaseDatabase = {
   updateEmployee: async (id: string, updates: Partial<Employee>): Promise<Employee | undefined> => {
     const snakeCaseUpdates = toSnakeCase(updates);
     
-    // Remove fields that Supabase auto-manages or that might not exist as columns
+    // Remove fields that Supabase auto-manages
     delete snakeCaseUpdates.id;
     delete snakeCaseUpdates.created_at;
+    delete snakeCaseUpdates.updated_at; // DB trigger handles this
     
     console.log('Supabase updateEmployee - ID:', id, 'Updates:', JSON.stringify(snakeCaseUpdates).substring(0, 300));
     
@@ -256,52 +257,70 @@ export const supabaseDatabase = {
     if (checkError) {
       console.error('Supabase updateEmployee - Employee not found in DB:', id, checkError.code, checkError.message);
       if (checkError.code === 'PGRST116') {
-        console.error('Employee ID does not exist in Supabase database. Please check if data was migrated properly.');
+        console.error('Employee ID does not exist in Supabase database.');
       }
       return undefined;
     }
     console.log('Employee exists, proceeding with update');
     
+    // Known base columns in the employees table (original schema)
+    const knownBaseColumns = new Set([
+      'application_id', 'iconnect_name', 'family_name', 'last_name', 'first_name',
+      'interested_office', 'birth_place', 'ethnicity', 'gender', 'birth_date',
+      'register_number', 'home_address', 'phone', 'emergency_phone', 'email',
+      'facebook', 'family_members', 'education', 'languages', 'work_experience',
+      'awards', 'other_skills', 'strengths_weaknesses', 'has_driver_license',
+      'photo_url', 'referral_source', 'signature_url', 'training_number',
+      'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
+      'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
+      'district', 'detailed_address', 'children_count', 'employment_start_date',
+      'office_name', 'status', 'hired_date'
+    ]);
+    
+    // Extended columns (may or may not exist depending on migration status)
+    const extendedColumns = new Set([
+      'has_iconnect', 'is_assistant', 'assistant_of',
+      'has_szh_training', 'szh_training_date', 'szh_official_letter_number',
+      'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer'
+    ]);
+    
     const { data, error } = await supabase.from('employees').update(snakeCaseUpdates).eq('id', id).select().single();
     if (error) {
       console.error('Supabase updateEmployee error:', error.message, error.code, error.details, error.hint);
-      // If it's a column error, try stripping unknown fields and retrying
-      if (error.code === '42703' || error.message?.includes('column') || error.code === 'PGRST204') {
-        console.log('Retrying with only known columns...');
-        // Known employee columns in the DB
-        const knownColumns = new Set([
-          'application_id', 'iconnect_name', 'family_name', 'last_name', 'first_name',
-          'interested_office', 'birth_place', 'ethnicity', 'gender', 'birth_date',
-          'register_number', 'home_address', 'phone', 'emergency_phone', 'email',
-          'facebook', 'family_members', 'education', 'languages', 'work_experience',
-          'awards', 'other_skills', 'strengths_weaknesses', 'has_driver_license',
-          'photo_url', 'referral_source', 'signature_url', 'training_number',
-          'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
-          'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
-          'district', 'detailed_address', 'children_count', 'employment_start_date',
-          'office_name', 'status', 'hired_date', 'updated_at',
-          // Newer columns that may or may not exist
-          'has_iconnect', 'is_assistant', 'assistant_of',
-          'has_szh_training', 'szh_training_date', 'szh_official_letter_number',
-          'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer'
-        ]);
-        const filteredUpdates: any = {};
-        for (const key of Object.keys(snakeCaseUpdates)) {
-          if (knownColumns.has(key)) {
-            filteredUpdates[key] = snakeCaseUpdates[key];
-          } else {
-            console.log('Skipping unknown column:', key);
-          }
+      
+      // Retry with only base columns (strip extended columns that might not exist)
+      console.log('Retrying with only base columns...');
+      const baseOnlyUpdates: any = {};
+      for (const key of Object.keys(snakeCaseUpdates)) {
+        if (knownBaseColumns.has(key)) {
+          baseOnlyUpdates[key] = snakeCaseUpdates[key];
+        } else if (extendedColumns.has(key)) {
+          console.log('Skipping extended column (may not exist):', key);
+        } else {
+          console.log('Skipping unknown column:', key);
         }
-        const { data: retryData, error: retryError } = await supabase.from('employees').update(filteredUpdates).eq('id', id).select().single();
-        if (retryError) {
-          console.error('Supabase updateEmployee retry error:', retryError.message, retryError.code, retryError.details);
-          return undefined;
-        }
-        console.log('Supabase updateEmployee retry success - ID:', retryData?.id);
-        return toCamelCase(retryData);
       }
-      return undefined;
+      
+      const { data: retryData, error: retryError } = await supabase.from('employees').update(baseOnlyUpdates).eq('id', id).select().single();
+      if (retryError) {
+        console.error('Supabase updateEmployee retry error:', retryError.message, retryError.code);
+        
+        // If still failing (likely status constraint), try without status field
+        if (retryError.message?.includes('check constraint') || retryError.code === '23514') {
+          console.log('Status constraint violation, retrying without status...');
+          delete baseOnlyUpdates.status;
+          const { data: retry2Data, error: retry2Error } = await supabase.from('employees').update(baseOnlyUpdates).eq('id', id).select().single();
+          if (retry2Error) {
+            console.error('Supabase updateEmployee final retry error:', retry2Error.message);
+            return undefined;
+          }
+          console.log('Supabase updateEmployee success (without status) - ID:', retry2Data?.id);
+          return toCamelCase(retry2Data);
+        }
+        return undefined;
+      }
+      console.log('Supabase updateEmployee retry success - ID:', retryData?.id);
+      return toCamelCase(retryData);
     }
     console.log('Supabase updateEmployee success - ID:', data?.id);
     return toCamelCase(data);

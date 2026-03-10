@@ -72,6 +72,9 @@ export function Applications() {
   const lastLoadRef = useRef<number>(0);
   const location = useLocation();
 
+  // Track if we've ever loaded data (for initial loading screen)
+  const [initialLoad, setInitialLoad] = useState(true);
+
   // Load applications function - with built-in debounce
   const loadApplications = useCallback(async (force = false) => {
     const now = Date.now();
@@ -91,6 +94,7 @@ export function Applications() {
       console.error('Failed to load applications:', error);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }, []);
 
@@ -144,12 +148,12 @@ export function Applications() {
     setCurrentPage(1);
   }, [selectedStatuses, searchTerm]);
 
-  // Reload statistics when month or period changes
+  // Reload statistics when month, period, or visibility changes
   useEffect(() => {
     if (showStatistics) {
       loadStatistics(selectedMonth || undefined, statsPeriod);
     }
-  }, [selectedMonth, statsPeriod]);
+  }, [selectedMonth, statsPeriod, showStatistics]);
 
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev =>
@@ -694,7 +698,8 @@ export function Applications() {
     }
   }
 
-  if (loading) {
+  // Only show full loading screen on initial load
+  if (initialLoad && loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
 
