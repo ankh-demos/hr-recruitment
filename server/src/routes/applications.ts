@@ -81,18 +81,29 @@ router.put('/:id', async (req: Request, res: Response) => {
         // Update application with any additional data before creating employee
         const updatedApp = await applicationModel.update(req.params.id, { status, ...rest });
         if (updatedApp) {
-          await employeeModel.createFromApplication(updatedApp);
-          // Delete the application after moving to employees
-          await applicationModel.delete(req.params.id);
-          return res.json({ moved: true, message: 'Application moved to employees' });
+          try {
+            await employeeModel.createFromApplication(updatedApp);
+            // Delete the application only after successfully creating employee
+            await applicationModel.delete(req.params.id);
+            return res.json({ moved: true, message: 'Application moved to employees' });
+          } catch (createError: any) {
+            console.error('Failed to create employee from application:', createError);
+            // Revert the status update since employee creation failed
+            await applicationModel.update(req.params.id, { status: currentApplication.status });
+            return res.status(500).json({ 
+              error: 'Failed to create employee', 
+              details: createError?.message || 'Database error - check status constraint'
+            });
+          }
         }
       }
     }
 
     const application = await applicationModel.update(req.params.id, { status, ...rest });
     res.json(application);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update application' });
+  } catch (error: any) {
+    console.error('Failed to update application:', error);
+    res.status(500).json({ error: 'Failed to update application', details: error?.message });
   }
 });
 

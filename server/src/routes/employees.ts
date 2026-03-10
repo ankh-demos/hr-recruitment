@@ -61,13 +61,32 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Update employee
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const employee = await employeeModel.update(req.params.id, req.body);
+    const id = req.params.id;
+    console.log('PUT /employees/:id - ID:', id, 'Body:', JSON.stringify(req.body).substring(0, 300));
+    
+    // First check if employee exists
+    const existing = await employeeModel.getById(id);
+    if (!existing) {
+      console.log('Employee not found for ID:', id);
+      return res.status(404).json({ 
+        error: 'Employee not found', 
+        details: 'Ажилтан олдсонгүй. Энэ ID Supabase дээр бүртгэлгүй байж магадгүй.' 
+      });
+    }
+    console.log('Employee found, updating...');
+    
+    const employee = await employeeModel.update(id, req.body);
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
+      console.error('Update returned null/undefined for ID:', id);
+      return res.status(500).json({ 
+        error: 'Update failed', 
+        details: 'Мэдээлэл шинэчлэхэд алдаа гарлаа. Консол дээр дэлгэрэнгүй мэдээлэл харна уу.' 
+      });
     }
     res.json(employee);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update employee' });
+  } catch (error: any) {
+    console.error('Failed to update employee:', error);
+    res.status(500).json({ error: 'Failed to update employee', details: error?.message });
   }
 });
 

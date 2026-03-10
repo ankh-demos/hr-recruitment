@@ -193,13 +193,22 @@ export const supabaseDatabase = {
   // ============ EMPLOYEES ============
   getEmployees: async (): Promise<Employee[]> => {
     const { data, error } = await supabase.from('employees').select('*');
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase getEmployees error:', error.message, error.code);
+      throw error;
+    }
+    console.log('Supabase getEmployees - fetched', data?.length || 0, 'employees');
     return (data || []).map(toCamelCase);
   },
 
   getEmployeeById: async (id: string): Promise<Employee | undefined> => {
+    console.log('Supabase getEmployeeById - looking for ID:', id);
     const { data, error } = await supabase.from('employees').select('*').eq('id', id).single();
-    if (error) return undefined;
+    if (error) {
+      console.log('Supabase getEmployeeById - not found or error:', error.code, error.message);
+      return undefined;
+    }
+    console.log('Supabase getEmployeeById - found employee:', data?.first_name, data?.last_name);
     return toCamelCase(data);
   },
 
@@ -210,14 +219,39 @@ export const supabaseDatabase = {
   },
 
   createEmployee: async (employee: Employee): Promise<Employee> => {
-    const { data, error } = await supabase.from('employees').insert(toSnakeCase(employee)).select().single();
-    if (error) throw error;
+    const snakeCaseEmployee = toSnakeCase(employee);
+    console.log('Supabase createEmployee - ID:', employee.id, 'Status:', employee.status);
+    const { data, error } = await supabase.from('employees').insert(snakeCaseEmployee).select().single();
+    if (error) {
+      console.error('Supabase createEmployee error:', error.message, error.code, error.details);
+      throw error;
+    }
+    console.log('Supabase createEmployee success - ID:', data?.id);
     return toCamelCase(data);
   },
 
   updateEmployee: async (id: string, updates: Partial<Employee>): Promise<Employee | undefined> => {
-    const { data, error } = await supabase.from('employees').update(toSnakeCase(updates)).eq('id', id).select().single();
-    if (error) return undefined;
+    const snakeCaseUpdates = toSnakeCase(updates);
+    console.log('Supabase updateEmployee - ID:', id, 'Updates:', JSON.stringify(snakeCaseUpdates).substring(0, 200));
+    
+    // First check if employee exists
+    const { data: existing, error: checkError } = await supabase.from('employees').select('id').eq('id', id).single();
+    if (checkError) {
+      console.error('Supabase updateEmployee - Employee not found in DB:', id, checkError.code, checkError.message);
+      // If employee doesn't exist, return undefined with clear message
+      if (checkError.code === 'PGRST116') {
+        console.error('Employee ID does not exist in Supabase database. Please check if data was migrated properly.');
+      }
+      return undefined;
+    }
+    console.log('Employee exists, proceeding with update');
+    
+    const { data, error } = await supabase.from('employees').update(snakeCaseUpdates).eq('id', id).select().single();
+    if (error) {
+      console.error('Supabase updateEmployee error:', error.message, error.code, error.details, error.hint);
+      return undefined;
+    }
+    console.log('Supabase updateEmployee success - ID:', data?.id);
     return toCamelCase(data);
   },
 
