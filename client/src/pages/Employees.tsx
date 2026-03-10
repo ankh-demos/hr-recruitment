@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Employee, RankLevel, AgentRank } from '../types';
 import { resignedAgentsApi, agentRanksApi, employeesApi } from '../services/api';
@@ -59,7 +59,6 @@ function calculateMonthsDiff(startDate: string, endDate: string): number {
 }
 
 export function Employees() {
-  const location = useLocation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [agentRanks, setAgentRanks] = useState<AgentRank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,11 +135,21 @@ export function Employees() {
   const [importData, setImportData] = useState<Partial<Employee>[]>([]);
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const lastLoadRef = useRef<number>(0);
+  const location = useLocation();
 
-  // Load data function - reusable
-  const loadData = useCallback(async () => {
+  // Load data function - with built-in debounce
+  const loadData = useCallback(async (force = false) => {
+    const now = Date.now();
+    const MIN_INTERVAL = 2000; // Minimum 2 seconds between loads
+    
+    if (!force && now - lastLoadRef.current < MIN_INTERVAL) {
+      return;
+    }
+    
     try {
       setLoading(true);
+      lastLoadRef.current = now;
       const [employeesResponse, ranksData] = await Promise.all([
         fetch(`${API_BASE}/employees`),
         agentRanksApi.getAll()
@@ -157,29 +166,8 @@ export function Employees() {
 
   // Load data on mount and when navigating to this page
   useEffect(() => {
-    loadData();
-  }, [location.pathname, loadData]);
-
-  // Reload data when window/tab regains focus
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadData();
-      }
-    };
-    
-    const handleFocus = () => {
-      loadData();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loadData]);
+    loadData(true);
+  }, [location.key, loadData]);
 
   function toggleStatusFilter(status: string) {
     setSelectedStatuses(prev =>

@@ -196,6 +196,11 @@ export interface Employee {
   signatureUrl: string;
   // Training number from Fire UP
   trainingNumber?: string;
+  // Training dates from Fire UP
+  trainingStartDate?: string; // Сургалт эхлэх огноо
+  trainingEndDate?: string; // Сургалт дуусах огноо
+  fireupDate?: string; // Fire UP огноо
+  isTransfer?: boolean; // Шилжиж ирсэн эсэх
   // New Employee fields
   certificateNumber?: string; // Certificate дугаар
   citizenRegistrationNumber?: string; // Иргэний бүртгэлийн дугаар

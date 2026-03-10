@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { applicationsApi, employeesApi, resignedAgentsApi, agentRanksApi } from '../services/api';
 import { Application, Employee, ResignedAgent, AgentRank } from '../types';
@@ -8,7 +8,6 @@ const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун та�
 
 export function Dashboard() {
   const { user } = useAuth();
-  const location = useLocation();
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
   const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
@@ -47,10 +46,22 @@ export function Dashboard() {
   // Chart data
   const [statusDistribution, setStatusDistribution] = useState<{ status: string; count: number; color: string }[]>([]);
 
-  // Load all data - reusable function
-  const loadData = useCallback(async () => {
+  // Track last data load time to prevent excessive API calls
+  const lastLoadRef = useRef<number>(0);
+  const location = useLocation();
+
+  // Load all data - with built-in debounce
+  const loadData = useCallback(async (force = false) => {
+    const now = Date.now();
+    const MIN_INTERVAL = 2000; // Minimum 2 seconds between loads
+    
+    if (!force && now - lastLoadRef.current < MIN_INTERVAL) {
+      return; // Skip if loaded recently
+    }
+    
     try {
       setLoading(true);
+      lastLoadRef.current = now;
       const [applications, employees, resignedAgents, agentRanks] = await Promise.all([
         applicationsApi.getAll(),
         employeesApi.getAll(),
@@ -68,31 +79,10 @@ export function Dashboard() {
     }
   }, []);
 
-  // Load data when component mounts or when navigating to this page
+  // Load data on mount and when navigating to this page (location.key changes on each navigation)
   useEffect(() => {
-    loadData();
-  }, [location.pathname, loadData]);
-
-  // Reload data when window/tab regains focus
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadData();
-      }
-    };
-    
-    const handleFocus = () => {
-      loadData();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loadData]);
+    loadData(true);
+  }, [location.key, loadData]);
 
   // Calculate stats based on selected office filter
   useEffect(() => {

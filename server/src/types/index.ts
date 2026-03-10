@@ -150,7 +150,8 @@ export interface Application {
 
   // Fire UP training number
   trainingNumber?: string; // Сургалтын дугаар
-  fireupDate?: string; // Fire UP огнои (хэзээ товлосон)  trainingStartDate?: string; // Сургалт эхлэх хугацаа
+  fireupDate?: string; // Fire UP огнои (хэзээ товлосон)
+  trainingStartDate?: string; // Сургалт эхлэх хугацаа
   trainingEndDate?: string; // Сургалт дуусах хугацаа
   // Transfer flag
   isTransfer?: boolean; // Шилжиж орж ирсэн эсэх
@@ -194,6 +195,11 @@ export interface Employee {
   signatureUrl: string;
   // Training number from Fire UP
   trainingNumber?: string;
+  // Training dates from Fire UP
+  trainingStartDate?: string; // Сургалт эхлэх огноо
+  trainingEndDate?: string; // Сургалт дуусах огноо
+  fireupDate?: string; // Fire UP огноо
+  isTransfer?: boolean; // Шилжиж ирсэн эсэх
   // New Employee fields
   certificateNumber?: string; // Certificate дугаар
   citizenRegistrationNumber?: string; // Иргэний бүртгэлийн дугаар

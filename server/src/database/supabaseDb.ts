@@ -368,21 +368,31 @@ export const supabaseDatabase = {
         return a.created_at >= startDate && a.created_at < endDate;
       }).length;
       
-      // iconnectOpenings: Count employees created in this period (when app becomes iconnect, employee is created)
+      // iconnectOpenings: Count employees hired in this period (use hired_date, not created_at)
       const { data: iconnectEmps, error: iconnectError } = await supabase
         .from('employees')
-        .select('id')
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
+        .select('id, hired_date')
+        .gte('hired_date', startDate)
+        .lt('hired_date', endDate)
         .eq('office_name', office);
       if (iconnectError) throw iconnectError;
       const iconnectOpenings = iconnectEmps?.length || 0;
       
-      // fireupRegistrations: Count applications with fireup_date in this period
-      const fireupRegistrations = allApps.filter(a => {
+      // fireupRegistrations: Count from BOTH applications and employees with fireup_date in this period
+      // (Applications are deleted when converted to iconnect, so we need to check both)
+      const fireupFromApps = allApps.filter(a => {
         if (!a.fireup_date) return false;
         return a.fireup_date >= startDate && a.fireup_date < endDate;
       }).length;
+      
+      const { data: fireupFromEmps, error: fireupEmpError } = await supabase
+        .from('employees')
+        .select('id')
+        .gte('fireup_date', startDate)
+        .lt('fireup_date', endDate)
+        .eq('office_name', office);
+      if (fireupEmpError) throw fireupEmpError;
+      const fireupRegistrations = fireupFromApps + (fireupFromEmps?.length || 0);
       
       // inProcess: Current applications in interviewing or fireup status
       const inProcess = allApps.filter(a => a.status === 'interviewing' || a.status === 'fireup').length;
@@ -394,12 +404,22 @@ export const supabaseDatabase = {
         return a.updated_at >= startDate && a.updated_at < endDate;
       }).length;
       
-      // transfers: Applications marked as transfer created in this period
-      const transfers = allApps.filter(a => {
+      // transfers: Count from BOTH applications and employees with is_transfer=true
+      const transfersFromApps = allApps.filter(a => {
         if (!a.is_transfer) return false;
         if (!a.created_at) return false;
         return a.created_at >= startDate && a.created_at < endDate;
       }).length;
+      
+      const { data: transfersFromEmps, error: transferEmpError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('is_transfer', true)
+        .gte('hired_date', startDate)
+        .lt('hired_date', endDate)
+        .eq('office_name', office);
+      if (transferEmpError) throw transferEmpError;
+      const transfers = transfersFromApps + (transfersFromEmps?.length || 0);
       
       // Employees hired this period (same as iconnectOpenings)
       const newHires = iconnectOpenings;

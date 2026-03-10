@@ -47,6 +47,11 @@ export const employeeModel = {
       referralSource: application.referralSource,
       signatureUrl: application.signatureUrl,
       trainingNumber: application.trainingNumber,
+      // Training dates and transfer info from application
+      trainingStartDate: application.trainingStartDate,
+      trainingEndDate: application.trainingEndDate,
+      fireupDate: application.fireupDate,
+      isTransfer: application.isTransfer,
       // Employee specific
       officeName: application.interestedOffice, // Default to interested office
       status: 'new_0_6', // Default status for new employees

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Application, ApplicationMeeting, User } from '../types';
 import { usersApi, applicationsApi } from '../services/api';
@@ -19,7 +19,6 @@ const APPLICATION_STATUSES = [
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 export function Applications() {
-  const location = useLocation();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
@@ -70,11 +69,21 @@ export function Applications() {
   const [importData, setImportData] = useState<Omit<Application, 'id' | 'status' | 'createdAt' | 'updatedAt'>[]>([]);
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const lastLoadRef = useRef<number>(0);
+  const location = useLocation();
 
-  // Load applications function - reusable
-  const loadApplications = useCallback(async () => {
+  // Load applications function - with built-in debounce
+  const loadApplications = useCallback(async (force = false) => {
+    const now = Date.now();
+    const MIN_INTERVAL = 2000;
+    
+    if (!force && now - lastLoadRef.current < MIN_INTERVAL) {
+      return;
+    }
+    
     try {
       setLoading(true);
+      lastLoadRef.current = now;
       const response = await fetch(`${API_BASE}/applications`);
       const data = await response.json();
       setApplications(data);
@@ -87,30 +96,9 @@ export function Applications() {
 
   // Load data on mount and when navigating to this page
   useEffect(() => {
-    loadApplications();
+    loadApplications(true);
     loadUsers();
-  }, [location.pathname, loadApplications]);
-
-  // Reload data when window/tab regains focus
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadApplications();
-      }
-    };
-    
-    const handleFocus = () => {
-      loadApplications();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loadApplications]);
+  }, [location.key, loadApplications]);
 
   // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
