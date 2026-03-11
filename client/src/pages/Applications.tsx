@@ -59,6 +59,8 @@ export function Applications() {
 
   // iConnect Confirmation State
   const [iconnectConfirmOpen, setIconnectConfirmOpen] = useState(false);
+  const [statusActionLoading, setStatusActionLoading] = useState<Application['status'] | 'fireup' | 'iconnect' | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
@@ -104,6 +106,10 @@ export function Applications() {
     loadApplications(true);
     loadUsers();
   }, [location.key, loadApplications]);
+
+  useEffect(() => {
+    setStatusFeedback(null);
+  }, [selectedApplication?.id]);
 
   // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
@@ -183,15 +189,37 @@ export function Applications() {
   }
 
   async function updateStatus(id: string, status: Application['status']) {
+    setStatusActionLoading(status);
+    setStatusFeedback({ type: 'info', text: 'Төлөв шинэчилж байна...' });
     try {
-      await fetch(`${API_BASE}/applications/${id}`, {
+      const response = await fetch(`${API_BASE}/applications/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setStatusFeedback({
+          type: 'error',
+          text: 'Төлөв шинэчлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText)
+        });
+        return;
+      }
+
+      const updated = await response.json().catch(() => null);
+      if (updated && updated.id && selectedApplication?.id === updated.id) {
+        setSelectedApplication(updated);
+      } else if (selectedApplication?.id === id) {
+        setSelectedApplication({ ...selectedApplication, status });
+      }
+      setStatusFeedback({ type: 'success', text: 'Төлөв амжилттай шинэчлэгдлээ' });
       loadApplications();
     } catch (error) {
       console.error('Failed to update application:', error);
+      setStatusFeedback({ type: 'error', text: 'Төлөв шинэчлэхэд алдаа гарлаа' });
+    } finally {
+      setStatusActionLoading(null);
     }
   }
 
@@ -207,12 +235,24 @@ export function Applications() {
   // Save Fire UP with training number
   async function saveFireUp() {
     if (!selectedApplication) return;
+    setStatusActionLoading('fireup');
+    setStatusFeedback({ type: 'info', text: 'Fire UP төлөв хадгалж байна...' });
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+      const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setStatusFeedback({
+          type: 'error',
+          text: 'Fire UP шинэчлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText)
+        });
+        return;
+      }
+
       setFireUpModalOpen(false);
       setTrainingNumber('');
       setTrainingStartDate('');
@@ -220,8 +260,12 @@ export function Applications() {
       loadApplications();
       // Update selected application
       setSelectedApplication({ ...selectedApplication, status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate });
+      setStatusFeedback({ type: 'success', text: 'Fire UP төлөв амжилттай хадгалагдлаа' });
     } catch (error) {
       console.error('Failed to update to Fire UP:', error);
+      setStatusFeedback({ type: 'error', text: 'Fire UP шинэчлэхэд алдаа гарлаа' });
+    } finally {
+      setStatusActionLoading(null);
     }
   }
 
@@ -234,6 +278,8 @@ export function Applications() {
   // Confirm iConnect and move to employees
   async function confirmIconnect() {
     if (!selectedApplication) return;
+    setStatusActionLoading('iconnect');
+    setStatusFeedback({ type: 'info', text: 'iConnect руу шилжүүлж байна...' });
     try {
       const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
         method: 'PUT',
@@ -245,15 +291,20 @@ export function Applications() {
         console.error('iConnect error:', errorData);
         alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
         setIconnectConfirmOpen(false);
+        setStatusFeedback({ type: 'error', text: 'iConnect руу шилжүүлэхэд алдаа гарлаа' });
         return;
       }
       setIconnectConfirmOpen(false);
       setSelectedApplication(null);
       loadApplications();
+      setStatusFeedback({ type: 'success', text: 'Анкет амжилттай ажилтан руу шилжлээ' });
     } catch (error) {
       console.error('Failed to move to iConnect:', error);
       alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа');
       setIconnectConfirmOpen(false);
+      setStatusFeedback({ type: 'error', text: 'iConnect руу шилжүүлэхэд алдаа гарлаа' });
+    } finally {
+      setStatusActionLoading(null);
     }
   }
 
@@ -1223,22 +1274,42 @@ export function Applications() {
                 </div>
 
                 {/* Status Actions */}
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Одоогийн төлөв:</span>
+                  <span className={`px-2 py-1 text-xs rounded-full ${APPLICATION_STATUSES.find(s => s.value === selectedApplication.status)?.color || 'bg-gray-100 text-gray-700'}`}>
+                    {APPLICATION_STATUSES.find(s => s.value === selectedApplication.status)?.label || selectedApplication.status}
+                  </span>
+                </div>
+                {statusFeedback && (
+                  <div className={`mb-3 rounded-md px-3 py-2 text-sm ${
+                    statusFeedback.type === 'success'
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : statusFeedback.type === 'error'
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}>
+                    {statusFeedback.text}
+                  </div>
+                )}
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                    disabled={statusActionLoading !== null}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Шинэ
+                    {statusActionLoading === 'new' ? 'Шинэчилж байна...' : 'Шинэ'}
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
-                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                    disabled={statusActionLoading !== null}
+                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Ярилцлага хийж байгаа
+                    {statusActionLoading === 'interviewing' ? 'Шинэчилж байна...' : 'Ярилцлага хийж байгаа'}
                   </button>
                   <button
                     onClick={openFireUpModal}
-                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                    disabled={statusActionLoading !== null}
+                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Fire UP
                     {selectedApplication.trainingNumber && (
@@ -1247,15 +1318,17 @@ export function Applications() {
                   </button>
                   <button
                     onClick={openIconnectConfirm}
-                    className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
+                    disabled={statusActionLoading !== null}
+                    className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    iConnect
+                    {statusActionLoading === 'iconnect' ? 'Шилжүүлж байна...' : 'iConnect'}
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
-                    className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                    disabled={statusActionLoading !== null}
+                    className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Цуцлах
+                    {statusActionLoading === 'cancelled' ? 'Шинэчилж байна...' : 'Цуцлах'}
                   </button>
                 </div>
 
@@ -1912,15 +1985,17 @@ export function Applications() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setFireUpModalOpen(false)}
+                  disabled={statusActionLoading === 'fireup'}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Болих
                 </button>
                 <button
                   onClick={saveFireUp}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                  disabled={statusActionLoading === 'fireup'}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Хадгалах
+                  {statusActionLoading === 'fireup' ? 'Хадгалж байна...' : 'Хадгалах'}
                 </button>
               </div>
             </div>
@@ -1960,15 +2035,17 @@ export function Applications() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setIconnectConfirmOpen(false)}
+                  disabled={statusActionLoading === 'iconnect'}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Болих
                 </button>
                 <button
                   onClick={confirmIconnect}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  disabled={statusActionLoading === 'iconnect'}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Тийм, бүртгэх
+                  {statusActionLoading === 'iconnect' ? 'Шилжүүлж байна...' : 'Тийм, бүртгэх'}
                 </button>
               </div>
             </div>

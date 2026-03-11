@@ -36,6 +36,10 @@ export function Dashboard() {
     noKpi: 0,                // KPI тооцохгүй
     pendingIconnect: 0,      // Iconnect нээгдэхээр хүлээгдэж байгаа (fireup apps)
     resigned: 0,             // Гарсан
+    tenure_0_6: 0,           // Шинэ 0-6 сар
+    tenure_6_12: 0,          // 6-12 сар
+    tenure_1_3: 0,           // 1-3 жил
+    tenure_3_plus: 0,        // 3+ жил
     totalAgents: 0,          // Нийт агент
     quality: 0               // Чанар
   });
@@ -137,6 +141,21 @@ export function Dashboard() {
     const noKpiCount = filteredEmployees.filter((e: Employee) => e.excludeFromKpi).length;
     const pendingIconnectCount = filteredApplications.filter((a: Application) => a.status === 'fireup').length;
 
+    const getTenureMonths = (employee: Employee): number => {
+      const startDateRaw = employee.employmentStartDate || employee.hiredDate || employee.createdAt;
+      if (!startDateRaw) return 0;
+      const startDate = new Date(startDateRaw);
+      if (Number.isNaN(startDate.getTime())) return 0;
+      const now = new Date();
+      const monthDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+      return Math.max(0, monthDiff);
+    };
+
+    const tenure0To6 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) < 6).length;
+    const tenure6To12 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 6 && getTenureMonths(e) < 12).length;
+    const tenure1To3 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 12 && getTenureMonths(e) < 36).length;
+    const tenure3Plus = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 36).length;
+
     const totalAgents = filteredEmployees.length;
     const qualitySum = activeTransactionCount + inactiveTransactionCount;
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
@@ -155,6 +174,10 @@ export function Dashboard() {
       noKpi: noKpiCount,
       pendingIconnect: pendingIconnectCount,
       resigned: resignedCount,
+      tenure_0_6: tenure0To6,
+      tenure_6_12: tenure6To12,
+      tenure_1_3: tenure1To3,
+      tenure_3_plus: tenure3Plus,
       totalAgents: totalAgents,
       quality: quality
     });
@@ -183,6 +206,10 @@ export function Dashboard() {
   }, [selectedOffice, allApplications, allEmployees, allResignedAgents]);
 
   const totalForChart = statusDistribution.reduce((sum, item) => sum + item.count, 0);
+  const formatEmployeePercent = (value: number) => {
+    if (employeeStats.totalAgents === 0) return '0.0';
+    return ((value / employeeStats.totalAgents) * 100).toFixed(1);
+  };
 
   // Categorize ranks by expiration status
   const { expiredRanks, expiringThisMonth, expiringNextMonth } = useMemo(() => {
@@ -484,148 +511,77 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Status cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-teal-700">{employeeStats.active_transaction}</p>
-                <p className="text-xs text-teal-600">Идэвхитэй гүйлгээтэй</p>
-              </div>
+        {/* Grouped status columns with percentages */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="border border-blue-100 rounded-lg p-4 bg-blue-50">
+            <h4 className="font-semibold text-blue-800 mb-3">Шинэ үе шат (хугацаа)</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Шинэ 0-6 сар', value: employeeStats.tenure_0_6 },
+                { label: '6-12 сар', value: employeeStats.tenure_6_12 },
+                { label: '1-3 жил', value: employeeStats.tenure_1_3 },
+                { label: '3+ жил', value: employeeStats.tenure_3_plus }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-blue-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
-                <p className="text-xs text-orange-600">Идэвхитэй, гүйлгээгүй</p>
-              </div>
+
+          <div className="border border-teal-100 rounded-lg p-4 bg-teal-50">
+            <h4 className="font-semibold text-teal-800 mb-3">Идэвх / Гүйлгээ</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Идэвхтэй, гүйлгээтэй', value: employeeStats.active_transaction },
+                { label: 'Идэвхтэй, гүйлгээгүй', value: employeeStats.active_no_transaction },
+                { label: 'Идэвхигүй, гүйлгээтэй', value: employeeStats.inactive_transaction },
+                { label: 'Идэвхигүй', value: employeeStats.inactive }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-teal-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
-                <p className="text-xs text-yellow-600">Идэвхигүй, гүйлгээтэй</p>
-              </div>
+
+          <div className="border border-purple-100 rounded-lg p-4 bg-purple-50">
+            <h4 className="font-semibold text-purple-800 mb-3">Чөлөө / Багийн төлөв</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Чөлөөтэй (iconnect)', value: employeeStats.on_leave_iconnect },
+                { label: 'Жирэмсний/хаасан', value: employeeStats.on_leave_closed },
+                { label: 'Багаас гарсан', value: employeeStats.left_team }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-purple-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="bg-gray-100 border-l-4 border-gray-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
+
+          <div className="border border-rose-100 rounded-lg p-4 bg-rose-50">
+            <h4 className="font-semibold text-rose-800 mb-3">Бусад</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Iconnect нуусан', value: employeeStats.hidden_iconnect },
+                { label: 'Гарсан', value: employeeStats.resigned }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-rose-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
+              <div className="mt-3 pt-2 border-t border-rose-200 flex items-center justify-between">
+                <span className="text-sm font-medium text-rose-800">Нийт агент</span>
+                <span className="text-sm font-bold text-rose-800">{employeeStats.totalAgents}</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
-                <p className="text-xs text-gray-600">Идэвхигүй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave_iconnect}</p>
-                <p className="text-xs text-purple-600">Чөлөөтэй iconnect-тэй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-pink-700">{employeeStats.on_leave_closed}</p>
-                <p className="text-xs text-pink-600">Чөлөөтэй Iconnect хаасан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-700">{employeeStats.hidden_iconnect}</p>
-                <p className="text-xs text-red-600">Iconnect нуусан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-rose-700">{employeeStats.left_team}</p>
-                <p className="text-xs text-rose-600">Багаас гарсан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-700">{employeeStats.resigned}</p>
-                <p className="text-xs text-amber-600">Гарсан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-100 border-l-4 border-slate-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-700">{employeeStats.totalAgents}</p>
-                <p className="text-xs text-slate-600">Нийт агент</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-emerald-100 border-l-4 border-emerald-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-emerald-700">{employeeStats.quality.toFixed(1)}%</p>
-                <p className="text-xs text-emerald-600">Чанар</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-rose-800">Чанар</span>
+                <span className="text-sm font-bold text-rose-800">{employeeStats.quality.toFixed(1)}%</span>
               </div>
             </div>
           </div>

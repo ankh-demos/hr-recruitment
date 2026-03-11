@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** March 10, 2026
+**Last Updated:** March 11, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,59 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (March 11, 2026) - Latest Sync
+
+### Fixed: Statistics/Update Reliability and iConnect Transfer Errors
+
+#### Key Fixes Included in Latest Pull
+1. **Statistics no longer showing 0 unexpectedly**
+  - Statistics queries were moved to use Supabase server-side date filtering for better accuracy.
+
+2. **Employee update errors reduced with safe fallback logic**
+  - Improved `toSnakeCase` mapping for `iConnectName`/`hasIConnect`.
+  - Added retry strategy in employee updates:
+    - Try full update
+    - Retry with base columns only when extended columns are missing
+    - Retry without `status` if status check constraint fails
+
+3. **iConnect transfer flow made safer and more transparent**
+  - Frontend now checks API response and shows clear error alerts when transfer fails.
+  - Backend now creates employee from current application data directly, deletes application only after success, and returns detailed failure info.
+
+4. **Edit forms aligned with evolving schema constraints**
+  - Removed strict required-field blocking in Application and Employee edit modals to support partially populated legacy records.
+  - Required asterisks were removed from corresponding edit form labels.
+
+5. **Loading UX improvement**
+  - Applications page loading screen behavior improved to avoid heavy loading state flashes after initial load.
+
+### New Database Migrations Added
+- `server/migrations/2026_03_11_full_sync.sql`
+- `server/migrations/add_missing_employee_columns.sql`
+
+### Migration Coverage (March 11)
+- Adds missing columns across `applications`, `employees`, and `resigned_agents` for:
+  - training dates (`training_start_date`, `training_end_date`), `fireup_date`, `is_transfer`
+  - tag/support fields (`has_iconnect`, `has_first_transaction`, `exclude_from_kpi`, assistant/SZH fields)
+  - `referred_agent_name` on applications
+- Updates employee status constraint to the 8-status model.
+- Includes legacy status value mapping to new status values.
+
+### Pulled Commit Highlights
+- `b03a12d` - make employee-related fields optional in edit/update flows and add training/transfer support consistency
+- `51f4fc7` - fix statistics = 0 issue and employee update failures in Supabase path
+- `b8f2633` / `e348672` - database sync and migration support updates
+
+### Manual Action (Important)
+If your Supabase schema is not fully synced, run:
+
+```sql
+-- Preferred one-shot migration
+-- File: server/migrations/2026_03_11_full_sync.sql
+```
 
 ---
 
