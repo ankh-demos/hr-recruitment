@@ -63,6 +63,7 @@ export function Applications() {
   // Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Application>>({});
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Import state
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -295,12 +296,35 @@ export function Applications() {
   function cancelEditMode() {
     setIsEditMode(false);
     setEditForm({});
+    setEditError(null);
   }
 
   // Save edited application
-  // Save edited application
   async function saveApplication() {
     if (!selectedApplication) return;
+
+    // Validate required fields
+    const requiredFields: { key: keyof Application; label: string }[] = [
+      { key: 'familyName', label: 'Ургийн овог' },
+      { key: 'lastName', label: 'Овог' },
+      { key: 'firstName', label: 'Нэр' },
+      { key: 'interestedOffice', label: 'Оффис' },
+      { key: 'birthPlace', label: 'Төрсөн газар' },
+      { key: 'ethnicity', label: 'Үндэс угсаа' },
+      { key: 'gender', label: 'Хүйс' },
+      { key: 'birthDate', label: 'Төрсөн огноо' },
+      { key: 'registerNumber', label: 'Регистр' },
+      { key: 'homeAddress', label: 'Гэрийн хаяг' },
+      { key: 'phone', label: 'Утас' },
+      { key: 'emergencyPhone', label: 'Яаралтай холбоо' },
+    ];
+    const missing = requiredFields.filter(f => !editForm[f.key] || (typeof editForm[f.key] === 'string' && !(editForm[f.key] as string).trim()));
+    if (missing.length > 0) {
+      setEditError(`Дараах талбаруудыг бөглөнө үү: ${missing.map(f => f.label).join(', ')}`);
+      return;
+    }
+    setEditError(null);
+
     try {
       await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
         method: 'PUT',
@@ -324,8 +348,10 @@ export function Applications() {
 
       setIsEditMode(false);
       setEditForm({});
+      setEditError(null);
     } catch (error) {
       console.error('Failed to save application:', error);
+      setEditError('Хадгалахад алдаа гарлаа. Дахин оролдоно уу.');
     }
   }
 
@@ -1317,23 +1343,28 @@ export function Applications() {
                   <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2">Хувийн мэдээлэл</h3>
                   {isEditMode ? (
                     <div className="grid grid-cols-2 gap-4 text-sm">
+                      {editError && (
+                        <div className="col-span-2 bg-red-50 border border-red-300 text-red-700 px-3 py-2 rounded text-sm">
+                          {editError}
+                        </div>
+                      )}
                       <div>
-                        <label className="block text-gray-500 mb-1">Ургийн овог</label>
+                        <label className="block text-gray-500 mb-1">Ургийн овог <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({ ...editForm, familyName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Овог</label>
+                        <label className="block text-gray-500 mb-1">Овог <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Нэр</label>
+                        <label className="block text-gray-500 mb-1">Нэр <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Оффис</label>
+                        <label className="block text-gray-500 mb-1">Оффис <span className="text-red-500">*</span></label>
                         <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({ ...editForm, interestedOffice: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1">
                           <option value="">Сонгох</option>
@@ -1348,17 +1379,17 @@ export function Applications() {
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Төрсөн газар</label>
+                        <label className="block text-gray-500 mb-1">Төрсөн газар <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({ ...editForm, birthPlace: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Үндэс угсаа</label>
+                        <label className="block text-gray-500 mb-1">Үндэс угсаа <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({ ...editForm, ethnicity: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Хүйс</label>
+                        <label className="block text-gray-500 mb-1">Хүйс <span className="text-red-500">*</span></label>
                         <select value={editForm.gender || ''} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value as 'male' | 'female' })}
                           className="w-full border border-gray-300 rounded px-2 py-1">
                           <option value="male">Эрэгтэй</option>
@@ -1366,17 +1397,17 @@ export function Applications() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Төрсөн огноо</label>
+                        <label className="block text-gray-500 mb-1">Төрсөн огноо <span className="text-red-500">*</span></label>
                         <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Регистр</label>
+                        <label className="block text-gray-500 mb-1">Регистр <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({ ...editForm, registerNumber: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-gray-500 mb-1">Гэрийн хаяг</label>
+                        <label className="block text-gray-500 mb-1">Гэрийн хаяг <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({ ...editForm, homeAddress: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
@@ -1386,12 +1417,12 @@ export function Applications() {
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Утас</label>
+                        <label className="block text-gray-500 mb-1">Утас <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Яаралтай холбоо</label>
+                        <label className="block text-gray-500 mb-1">Яаралтай холбоо <span className="text-red-500">*</span></label>
                         <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({ ...editForm, emergencyPhone: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>

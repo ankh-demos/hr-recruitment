@@ -281,7 +281,8 @@ export const supabaseDatabase = {
     const extendedColumns = new Set([
       'has_iconnect', 'is_assistant', 'assistant_of',
       'has_szh_training', 'szh_training_date', 'szh_official_letter_number',
-      'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer'
+      'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer',
+      'has_first_transaction', 'exclude_from_kpi'
     ]);
     
     const { data, error } = await supabase.from('employees').update(snakeCaseUpdates).eq('id', id).select().single();
