@@ -77,27 +77,28 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     // If status is changing to 'iconnect', create an employee and delete application
     if (status === 'iconnect' && currentApplication.status !== 'iconnect') {
+      console.log('[iConnect] Starting iConnect flow for application:', req.params.id);
       // Check if employee already exists for this application
       const existingEmployee = await employeeModel.getByApplicationId(req.params.id);
+      console.log('[iConnect] Existing employee check:', existingEmployee ? 'FOUND' : 'NOT FOUND');
       if (!existingEmployee) {
-        // Update application with any additional data before creating employee
-        const updatedApp = await applicationModel.update(req.params.id, { status, ...rest });
-        if (updatedApp) {
-          try {
-            await employeeModel.createFromApplication(updatedApp);
-            // Delete the application only after successfully creating employee
-            await applicationModel.delete(req.params.id);
-            return res.json({ moved: true, message: 'Application moved to employees' });
-          } catch (createError: any) {
-            console.error('Failed to create employee from application:', createError);
-            // Revert the status update since employee creation failed
-            await applicationModel.update(req.params.id, { status: currentApplication.status });
-            return res.status(500).json({ 
-              error: 'Failed to create employee', 
-              details: createError?.message || 'Database error - check status constraint'
-            });
-          }
+        try {
+          console.log('[iConnect] Creating employee from application...');
+          const employee = await employeeModel.createFromApplication(currentApplication);
+          console.log('[iConnect] Employee created:', employee.id);
+          // Delete the application only after successfully creating employee
+          await applicationModel.delete(req.params.id);
+          console.log('[iConnect] Application deleted');
+          return res.json({ moved: true, message: 'Application moved to employees' });
+        } catch (createError: any) {
+          console.error('[iConnect] Failed to create employee:', createError?.message, createError?.code, createError?.details);
+          return res.status(500).json({ 
+            error: 'Failed to create employee', 
+            details: createError?.message || 'Database error - check status constraint'
+          });
         }
+      } else {
+        console.log('[iConnect] Employee already exists, just updating status');
       }
     }
 

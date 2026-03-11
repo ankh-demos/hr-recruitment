@@ -235,16 +235,25 @@ export function Applications() {
   async function confirmIconnect() {
     if (!selectedApplication) return;
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
+      const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'iconnect' })
       });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('iConnect error:', errorData);
+        alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
+        setIconnectConfirmOpen(false);
+        return;
+      }
       setIconnectConfirmOpen(false);
       setSelectedApplication(null);
       loadApplications();
     } catch (error) {
       console.error('Failed to move to iConnect:', error);
+      alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа');
+      setIconnectConfirmOpen(false);
     }
   }
 
@@ -302,27 +311,6 @@ export function Applications() {
   // Save edited application
   async function saveApplication() {
     if (!selectedApplication) return;
-
-    // Validate required fields
-    const requiredFields: { key: keyof Application; label: string }[] = [
-      { key: 'familyName', label: 'Ургийн овог' },
-      { key: 'lastName', label: 'Овог' },
-      { key: 'firstName', label: 'Нэр' },
-      { key: 'interestedOffice', label: 'Оффис' },
-      { key: 'birthPlace', label: 'Төрсөн газар' },
-      { key: 'ethnicity', label: 'Үндэс угсаа' },
-      { key: 'gender', label: 'Хүйс' },
-      { key: 'birthDate', label: 'Төрсөн огноо' },
-      { key: 'registerNumber', label: 'Регистр' },
-      { key: 'homeAddress', label: 'Гэрийн хаяг' },
-      { key: 'phone', label: 'Утас' },
-      { key: 'emergencyPhone', label: 'Яаралтай холбоо' },
-    ];
-    const missing = requiredFields.filter(f => !editForm[f.key] || (typeof editForm[f.key] === 'string' && !(editForm[f.key] as string).trim()));
-    if (missing.length > 0) {
-      setEditError(`Дараах талбаруудыг бөглөнө үү: ${missing.map(f => f.label).join(', ')}`);
-      return;
-    }
     setEditError(null);
 
     try {
@@ -1349,22 +1337,22 @@ export function Applications() {
                         </div>
                       )}
                       <div>
-                        <label className="block text-gray-500 mb-1">Ургийн овог <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Ургийн овог</label>
                         <input type="text" value={editForm.familyName || ''} onChange={(e) => setEditForm({ ...editForm, familyName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Овог <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Овог</label>
                         <input type="text" value={editForm.lastName || ''} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Нэр <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Нэр</label>
                         <input type="text" value={editForm.firstName || ''} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Оффис <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Оффис</label>
                         <select value={editForm.interestedOffice || ''} onChange={(e) => setEditForm({ ...editForm, interestedOffice: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1">
                           <option value="">Сонгох</option>
@@ -1379,17 +1367,17 @@ export function Applications() {
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Төрсөн газар <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Төрсөн газар</label>
                         <input type="text" value={editForm.birthPlace || ''} onChange={(e) => setEditForm({ ...editForm, birthPlace: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Үндэс угсаа <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Үндэс угсаа</label>
                         <input type="text" value={editForm.ethnicity || ''} onChange={(e) => setEditForm({ ...editForm, ethnicity: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Хүйс <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Хүйс</label>
                         <select value={editForm.gender || ''} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value as 'male' | 'female' })}
                           className="w-full border border-gray-300 rounded px-2 py-1">
                           <option value="male">Эрэгтэй</option>
@@ -1397,17 +1385,17 @@ export function Applications() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Төрсөн огноо <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Төрсөн огноо</label>
                         <input type="date" value={editForm.birthDate || ''} onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Регистр <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Регистр</label>
                         <input type="text" value={editForm.registerNumber || ''} onChange={(e) => setEditForm({ ...editForm, registerNumber: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-gray-500 mb-1">Гэрийн хаяг <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Гэрийн хаяг</label>
                         <input type="text" value={editForm.homeAddress || ''} onChange={(e) => setEditForm({ ...editForm, homeAddress: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
@@ -1417,12 +1405,12 @@ export function Applications() {
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Утас <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Утас</label>
                         <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">Яаралтай холбоо <span className="text-red-500">*</span></label>
+                        <label className="block text-gray-500 mb-1">Яаралтай холбоо</label>
                         <input type="text" value={editForm.emergencyPhone || ''} onChange={(e) => setEditForm({ ...editForm, emergencyPhone: e.target.value })}
                           className="w-full border border-gray-300 rounded px-2 py-1" />
                       </div>

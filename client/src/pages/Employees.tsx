@@ -638,29 +638,6 @@ export function Employees() {
 
   async function updateEmployeeFields() {
     if (!selectedEmployee) return;
-
-    // Validate required fields
-    const requiredFields: { key: string; label: string }[] = [
-      { key: 'familyName', label: 'Ургийн овог' },
-      { key: 'lastName', label: 'Овог' },
-      { key: 'firstName', label: 'Нэр' },
-      { key: 'gender', label: 'Хүйс' },
-      { key: 'birthDate', label: 'Төрсөн огноо' },
-      { key: 'birthPlace', label: 'Төрсөн газар' },
-      { key: 'ethnicity', label: 'Үндэс угсаа' },
-      { key: 'registerNumber', label: 'Регистрийн дугаар' },
-      { key: 'homeAddress', label: 'Гэрийн хаяг' },
-      { key: 'phone', label: 'Утас' },
-      { key: 'emergencyPhone', label: 'Яаралтай холбоо' },
-    ];
-    const missing = requiredFields.filter(f => {
-      const val = (editFields as any)[f.key];
-      return !val || (typeof val === 'string' && !val.trim());
-    });
-    if (missing.length > 0) {
-      setEditFieldsError(`Дараах талбаруудыг бөглөнө үү: ${missing.map(f => f.label).join(', ')}`);
-      return;
-    }
     setEditFieldsError(null);
 
     try {
@@ -1549,17 +1526,17 @@ export function Employees() {
                 <h4 className="font-medium text-gray-700">Хувийн мэдээлэл</h4>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ургийн овог <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ургийн овог</label>
                 <input type="text" value={editFields.familyName} onChange={(e) => setEditFields({ ...editFields, familyName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Овог <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Овог</label>
                 <input type="text" value={editFields.lastName} onChange={(e) => setEditFields({ ...editFields, lastName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Нэр <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Нэр</label>
                 <input type="text" value={editFields.firstName} onChange={(e) => setEditFields({ ...editFields, firstName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
@@ -1598,7 +1575,7 @@ export function Employees() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Хүйс <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Хүйс</label>
                 <select value={editFields.gender} onChange={(e) => setEditFields({ ...editFields, gender: e.target.value as 'male' | 'female' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="male">Эрэгтэй</option>
@@ -1606,22 +1583,22 @@ export function Employees() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн огноо <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн огноо</label>
                 <input type="date" value={editFields.birthDate} onChange={(e) => setEditFields({ ...editFields, birthDate: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн газар <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Төрсөн газар</label>
                 <input type="text" value={editFields.birthPlace} onChange={(e) => setEditFields({ ...editFields, birthPlace: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Үндэс угсаа <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Үндэс угсаа</label>
                 <input type="text" value={editFields.ethnicity} onChange={(e) => setEditFields({ ...editFields, ethnicity: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Регистрийн дугаар <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Регистрийн дугаар</label>
                 <input type="text" value={editFields.registerNumber} onChange={(e) => setEditFields({ ...editFields, registerNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
@@ -1636,12 +1613,12 @@ export function Employees() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Утас <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Утас</label>
                 <input type="text" value={editFields.phone} onChange={(e) => setEditFields({ ...editFields, phone: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Яаралтай холбоо <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Яаралтай холбоо</label>
                 <input type="text" value={editFields.emergencyPhone} onChange={(e) => setEditFields({ ...editFields, emergencyPhone: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
@@ -1651,7 +1628,7 @@ export function Employees() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрийн хаяг <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Гэрийн хаяг</label>
                 <input type="text" value={editFields.homeAddress} onChange={(e) => setEditFields({ ...editFields, homeAddress: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
