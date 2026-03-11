@@ -226,15 +226,21 @@ ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_official_letter_number text;
                         or → Ажиллахаа больсон (cancelled)
 ```
 
-### Employee Statuses
-- `active` - Идэвхтэй
-- `new_0_3` - Шинэ 0-3 сар (default for new employees)
-- `inactive_transaction` - Идэвхгүй, гүйлгээтэй
-- `inactive` - Идэвхгүй
-- `active_no_transaction` - Идэвхтэй, гүйлгээгүй
-- `on_leave` - Чөлөөтэй
-- `maternity_leave` - Жирэмсний амралт
-- `team_member` - Багийн гишүүн
+### Employee Statuses (8 actual statuses)
+- `active_transaction` - Идэвхитэй гүйлгээтэй /тухайн сард гүйлгээтэй/
+- `active_no_transaction` - Идэвхитэй, гүйлгээгүй
+- `inactive_transaction` - Идэвхигүй, гүйлгээтэй
+- `inactive` - Идэвхигүй
+- `on_leave_iconnect` - Чөлөөтэй iconnect-тэй
+- `on_leave_closed` - Чөлөөтэй Iconnect хаасан
+- `hidden_iconnect` - Iconnect нуусан агент
+- `left_team` - Багаас гарсан
+
+### Employee Computed Tags (not statuses - derived from fields/data)
+- **Нийт iconnect** - count of employees with `hasIConnect === true`
+- **Анхны гүйлгээ хийсэн агент** - count of employees with `hasFirstTransaction === true`
+- **KPI тооцохгүй** - count of employees with `excludeFromKpi === true`
+- **Iconnect нээгдэхээр хүлээгдэж байгаа** - count of applications with status `fireup`
 
 ### Office Names
 - Гэгээнтэн

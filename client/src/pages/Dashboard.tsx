@@ -22,22 +22,22 @@ export function Dashboard() {
     newThisWeek: 0
   });
   const [employeeStats, setEmployeeStats] = useState({
-    active: 0,           // Идэвхтэй
-    new_0_6: 0,          // Шинэ 0-6 сар
-    month_6_12: 0,       // 6-12 сар
-    experienced_1_3: 0,  // 1-3 жил
-    over_3_years: 0,     // 3+ жил
-    inactive_transaction: 0, // Идэвхгүй, гүйлгээтэй
-    inactive: 0,         // Идэвхгүй
-    active_no_transaction: 0, // Идэвхтэй, гүйлгээгүй
-    on_leave: 0,         // Чөлөөтэй
-    maternity_leave: 0,  // Жирэмсний амралт
-    team_member: 0,      // Багийн гишүүн
-    top: 0,              // Топ
-    resigned: 0,         // Гарсан
-    totalIconnect: 0,    // Нийт iConnect
-    totalAgents: 0,      // Нийт агент
-    quality: 0           // Чанар
+    active_transaction: 0,   // Идэвхитэй гүйлгээтэй
+    active_no_transaction: 0, // Идэвхитэй, гүйлгээгүй
+    inactive_transaction: 0, // Идэвхигүй, гүйлгээтэй
+    inactive: 0,             // Идэвхигүй
+    on_leave_iconnect: 0,    // Чөлөөтэй iconnect-тэй
+    on_leave_closed: 0,      // Чөлөөтэй Iconnect хаасан
+    hidden_iconnect: 0,      // Iconnect нуусан агент
+    left_team: 0,            // Багаас гарсан
+    // Computed tags (not statuses)
+    totalIconnect: 0,        // Нийт iconnect (hasIConnect === true)
+    firstTransaction: 0,     // Анхны гүйлгээ хийсэн агент
+    noKpi: 0,                // KPI тооцохгүй
+    pendingIconnect: 0,      // Iconnect нээгдэхээр хүлээгдэж байгаа (fireup apps)
+    resigned: 0,             // Гарсан
+    totalAgents: 0,          // Нийт агент
+    quality: 0               // Чанар
   });
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,38 +121,40 @@ export function Dashboard() {
       newThisWeek: newThisWeek
     });
 
-    // Calculate employee stats
-    const activeCount = filteredEmployees.filter((e: Employee) => e.status === 'active').length;
-    const new06Count = filteredEmployees.filter((e: Employee) => e.status === 'new_0_6').length;
-    const month612Count = filteredEmployees.filter((e: Employee) => e.status === 'month_6_12').length;
-    const experienced13Count = filteredEmployees.filter((e: Employee) => e.status === 'experienced_1_3').length;
-    const over3YearsCount = filteredEmployees.filter((e: Employee) => e.status === 'over_3_years').length;
+    // Calculate employee stats (8 actual statuses)
+    const activeTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_transaction').length;
+    const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
     const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
     const inactiveCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive').length;
-    const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
-    const onLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'on_leave').length;
-    const maternityLeaveCount = filteredEmployees.filter((e: Employee) => e.status === 'maternity_leave').length;
-    const teamMemberCount = filteredEmployees.filter((e: Employee) => e.status === 'team_member').length;
-    const topCount = filteredEmployees.filter((e: Employee) => e.status === 'top').length;
+    const onLeaveIconnectCount = filteredEmployees.filter((e: Employee) => e.status === 'on_leave_iconnect').length;
+    const onLeaveClosedCount = filteredEmployees.filter((e: Employee) => e.status === 'on_leave_closed').length;
+    const hiddenIconnectCount = filteredEmployees.filter((e: Employee) => e.status === 'hidden_iconnect').length;
+    const leftTeamCount = filteredEmployees.filter((e: Employee) => e.status === 'left_team').length;
+
+    // Computed tags (not statuses - from boolean fields and application data)
+    const totalIconnectCount = filteredEmployees.filter((e: Employee) => e.hasIConnect).length;
+    const firstTransactionCount = filteredEmployees.filter((e: Employee) => e.hasFirstTransaction).length;
+    const noKpiCount = filteredEmployees.filter((e: Employee) => e.excludeFromKpi).length;
+    const pendingIconnectCount = filteredApplications.filter((a: Application) => a.status === 'fireup').length;
+
     const totalAgents = filteredEmployees.length;
-    const qualitySum = activeCount + new06Count + month612Count + experienced13Count + over3YearsCount + inactiveTransactionCount + topCount;
+    const qualitySum = activeTransactionCount + inactiveTransactionCount;
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
 
     setEmployeeStats({
-      active: activeCount,
-      new_0_6: new06Count,
-      month_6_12: month612Count,
-      experienced_1_3: experienced13Count,
-      over_3_years: over3YearsCount,
+      active_transaction: activeTransactionCount,
+      active_no_transaction: activeNoTransactionCount,
       inactive_transaction: inactiveTransactionCount,
       inactive: inactiveCount,
-      active_no_transaction: activeNoTransactionCount,
-      on_leave: onLeaveCount,
-      maternity_leave: maternityLeaveCount,
-      team_member: teamMemberCount,
-      top: topCount,
+      on_leave_iconnect: onLeaveIconnectCount,
+      on_leave_closed: onLeaveClosedCount,
+      hidden_iconnect: hiddenIconnectCount,
+      left_team: leftTeamCount,
+      totalIconnect: totalIconnectCount,
+      firstTransaction: firstTransactionCount,
+      noKpi: noKpiCount,
+      pendingIconnect: pendingIconnectCount,
       resigned: resignedCount,
-      totalIconnect: iconnectApps,
       totalAgents: totalAgents,
       quality: quality
     });
@@ -425,17 +427,19 @@ export function Dashboard() {
       {/* Employee Status Stats */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        
+        {/* Computed tags section */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-700">{employeeStats.active}</p>
-                <p className="text-xs text-green-600">Идэвхтэй</p>
+                <p className="text-2xl font-bold text-green-700">{employeeStats.totalIconnect}</p>
+                <p className="text-xs text-green-600">Нийт iconnect</p>
               </div>
             </div>
           </div>
@@ -443,38 +447,55 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-blue-700">{employeeStats.new_0_6}</p>
-                <p className="text-xs text-blue-600">Шинэ 0-6 сар</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
-                <p className="text-xs text-yellow-600">Идэвхгүй, гүйлгээтэй</p>
+                <p className="text-2xl font-bold text-blue-700">{employeeStats.firstTransaction}</p>
+                <p className="text-xs text-blue-600">Анхны гүйлгээ хийсэн</p>
               </div>
             </div>
           </div>
-          <div className="bg-gray-100 border-l-4 border-gray-500 p-4 rounded-lg">
+          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
-                <p className="text-xs text-gray-600">Идэвхгүй</p>
+                <p className="text-2xl font-bold text-indigo-700">{employeeStats.noKpi}</p>
+                <p className="text-xs text-indigo-600">KPI тооцохгүй</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-cyan-700">{employeeStats.pendingIconnect}</p>
+                <p className="text-xs text-cyan-600">Iconnect хүлээгдэж байгаа</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Status cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-teal-700">{employeeStats.active_transaction}</p>
+                <p className="text-xs text-teal-600">Идэвхитэй гүйлгээтэй</p>
               </div>
             </div>
           </div>
@@ -487,7 +508,33 @@ export function Dashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
-                <p className="text-xs text-orange-600">Идэвхтэй, гүйлгээгүй</p>
+                <p className="text-xs text-orange-600">Идэвхитэй, гүйлгээгүй</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
+                <p className="text-xs text-yellow-600">Идэвхигүй, гүйлгээтэй</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-100 border-l-4 border-gray-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
+                <p className="text-xs text-gray-600">Идэвхигүй</p>
               </div>
             </div>
           </div>
@@ -499,8 +546,8 @@ export function Dashboard() {
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave}</p>
-                <p className="text-xs text-purple-600">Чөлөөтэй</p>
+                <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave_iconnect}</p>
+                <p className="text-xs text-purple-600">Чөлөөтэй iconnect-тэй</p>
               </div>
             </div>
           </div>
@@ -508,77 +555,12 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-pink-700">{employeeStats.maternity_leave}</p>
-                <p className="text-xs text-pink-600">Жирэмсний амралт</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-indigo-700">{employeeStats.team_member}</p>
-                <p className="text-xs text-indigo-600">Багийн гишүүн</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-cyan-700">{employeeStats.month_6_12}</p>
-                <p className="text-xs text-cyan-600">6-12 сар</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-lime-50 border-l-4 border-lime-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-lime-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-lime-700">{employeeStats.experienced_1_3}</p>
-                <p className="text-xs text-lime-600">1-3 жил</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-700">{employeeStats.over_3_years}</p>
-                <p className="text-xs text-amber-600">3+ жил</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-rose-700">{employeeStats.top}</p>
-                <p className="text-xs text-rose-600">Топ</p>
+                <p className="text-2xl font-bold text-pink-700">{employeeStats.on_leave_closed}</p>
+                <p className="text-xs text-pink-600">Чөлөөтэй Iconnect хаасан</p>
               </div>
             </div>
           </div>
@@ -586,25 +568,38 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-700">{employeeStats.hidden_iconnect}</p>
+                <p className="text-xs text-red-600">Iconnect нуусан</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-700">{employeeStats.resigned}</p>
-                <p className="text-xs text-red-600">Гарсан</p>
+                <p className="text-2xl font-bold text-rose-700">{employeeStats.left_team}</p>
+                <p className="text-xs text-rose-600">Багаас гарсан</p>
               </div>
             </div>
           </div>
-          <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-teal-700">{employeeStats.totalIconnect}</p>
-                <p className="text-xs text-teal-600">Нийт iConnect</p>
+                <p className="text-2xl font-bold text-amber-700">{employeeStats.resigned}</p>
+                <p className="text-xs text-amber-600">Гарсан</p>
               </div>
             </div>
           </div>

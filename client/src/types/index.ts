@@ -216,9 +216,11 @@ export interface Employee {
   // Employee specific
   employmentStartDate?: string; // Ажилд орсон огноо
   officeName?: string; // Ажилладаг оффис
-  status: 'active' | 'new_0_6' | 'month_6_12' | 'experienced_1_3' | 'over_3_years' | 'inactive_transaction' | 'inactive' | 'active_no_transaction' | 'on_leave' | 'maternity_leave' | 'team_member' | 'top';
+  status: 'active_transaction' | 'active_no_transaction' | 'inactive_transaction' | 'inactive' | 'on_leave_iconnect' | 'on_leave_closed' | 'hidden_iconnect' | 'left_team';
   // Additional tag fields
   hasIConnect?: boolean; // iConnect-тэй эсэх
+  hasFirstTransaction?: boolean; // Анхны гүйлгээ хийсэн эсэх
+  excludeFromKpi?: boolean; // KPI тооцохгүй эсэх
   isAssistant?: boolean; // Туслах эсэх
   assistantOf?: string; // Хэний туслах
   hasSzhTraining?: boolean; // СЗХ сургалт суусан эсэх

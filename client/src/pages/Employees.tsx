@@ -17,18 +17,14 @@ const RANK_COLORS: Record<RankLevel, string> = {
 
 // Employee status options (without 'resigned' - that's a separate table now)
 const EMPLOYEE_STATUSES = [
-  { value: 'active', label: 'Идэвхтэй', color: 'bg-green-100 text-green-800' },
-  { value: 'new_0_6', label: 'Шинэ (0-6 сар)', color: 'bg-blue-100 text-blue-800' },
-  { value: 'month_6_12', label: '06-12 сар', color: 'bg-cyan-100 text-cyan-800' },
-  { value: 'experienced_1_3', label: 'Experienced (1-3 жил)', color: 'bg-teal-100 text-teal-800' },
-  { value: 'over_3_years', label: '3 жилээс дээш', color: 'bg-emerald-100 text-emerald-800' },
-  { value: 'inactive_transaction', label: 'Идэвхгүй, гүйлгээтэй', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'inactive', label: 'Идэвхгүй', color: 'bg-gray-100 text-gray-800' },
-  { value: 'active_no_transaction', label: 'Идэвхтэй, гүйлгээгүй', color: 'bg-orange-100 text-orange-800' },
-  { value: 'on_leave', label: 'Чөлөөтэй', color: 'bg-purple-100 text-purple-800' },
-  { value: 'maternity_leave', label: 'Жирэмсний амралт', color: 'bg-pink-100 text-pink-800' },
-  { value: 'team_member', label: 'Багийн гишүүн', color: 'bg-indigo-100 text-indigo-800' },
-  { value: 'top', label: 'ТОР', color: 'bg-amber-100 text-amber-800' }
+  { value: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй', color: 'bg-teal-100 text-teal-800' },
+  { value: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй', color: 'bg-orange-100 text-orange-800' },
+  { value: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'inactive', label: 'Идэвхигүй', color: 'bg-gray-100 text-gray-800' },
+  { value: 'on_leave_iconnect', label: 'Чөлөөтэй iconnect-тэй', color: 'bg-purple-100 text-purple-800' },
+  { value: 'on_leave_closed', label: 'Чөлөөтэй Iconnect хаасан', color: 'bg-pink-100 text-pink-800' },
+  { value: 'hidden_iconnect', label: 'Iconnect нуусан агент', color: 'bg-red-100 text-red-800' },
+  { value: 'left_team', label: 'Багаас гарсан', color: 'bg-rose-100 text-rose-800' }
 ];
 
 // Resignation reason options

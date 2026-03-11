@@ -54,7 +54,7 @@ export const employeeModel = {
       isTransfer: application.isTransfer,
       // Employee specific
       officeName: application.interestedOffice, // Default to interested office
-      status: 'new_0_6', // Default status for new employees
+      status: 'active_no_transaction', // Default status for new employees
       hiredDate: now,
       createdAt: now,
       updatedAt: now
@@ -108,7 +108,7 @@ export const employeeModel = {
       employmentStartDate: resignedAgent.employmentStartDate,
       officeName: resignedAgent.officeName,
       // Employee specific (reset status)
-      status: 'active',
+      status: 'active_no_transaction',
       hiredDate: now, // New hire date when re-joining
       createdAt: now,
       updatedAt: now

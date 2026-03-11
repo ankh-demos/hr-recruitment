@@ -16,10 +16,14 @@ ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_transfer BOOLEAN DEFAULT false
 -- 2. Update the status CHECK constraint to include all new statuses
 ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_status_check;
 ALTER TABLE employees ADD CONSTRAINT employees_status_check CHECK (status IN (
-  'active', 'new_0_3', 'new_0_6', 'month_6_12', 'experienced_1_3', 'over_3_years',
-  'inactive_transaction', 'inactive', 'active_no_transaction',
-  'on_leave', 'maternity_leave', 'team_member', 'top'
+  'active_transaction', 'active_no_transaction',
+  'inactive_transaction', 'inactive', 'on_leave_iconnect', 'on_leave_closed',
+  'hidden_iconnect', 'left_team'
 ));
+
+-- 2b. Add new tag boolean columns
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_first_transaction BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS exclude_from_kpi BOOLEAN DEFAULT false;
 
 -- 3. Add missing columns to resigned_agents table too
 ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS has_iconnect BOOLEAN DEFAULT false;
