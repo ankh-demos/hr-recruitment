@@ -36,10 +36,6 @@ export function Dashboard() {
     noKpi: 0,                // KPI тооцохгүй
     pendingIconnect: 0,      // Iconnect нээгдэхээр хүлээгдэж байгаа (fireup apps)
     resigned: 0,             // Гарсан
-    tenure_0_6: 0,           // Шинэ 0-6 сар
-    tenure_6_12: 0,          // 6-12 сар
-    tenure_1_3: 0,           // 1-3 жил
-    tenure_3_plus: 0,        // 3+ жил
     totalAgents: 0,          // Нийт агент
     quality: 0               // Чанар
   });
@@ -141,21 +137,6 @@ export function Dashboard() {
     const noKpiCount = filteredEmployees.filter((e: Employee) => e.excludeFromKpi).length;
     const pendingIconnectCount = filteredApplications.filter((a: Application) => a.status === 'fireup').length;
 
-    const getTenureMonths = (employee: Employee): number => {
-      const startDateRaw = employee.employmentStartDate || employee.hiredDate || employee.createdAt;
-      if (!startDateRaw) return 0;
-      const startDate = new Date(startDateRaw);
-      if (Number.isNaN(startDate.getTime())) return 0;
-      const now = new Date();
-      const monthDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-      return Math.max(0, monthDiff);
-    };
-
-    const tenure0To6 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) < 6).length;
-    const tenure6To12 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 6 && getTenureMonths(e) < 12).length;
-    const tenure1To3 = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 12 && getTenureMonths(e) < 36).length;
-    const tenure3Plus = filteredEmployees.filter((e: Employee) => getTenureMonths(e) >= 36).length;
-
     const totalAgents = filteredEmployees.length;
     const qualitySum = activeTransactionCount + inactiveTransactionCount;
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
@@ -174,10 +155,6 @@ export function Dashboard() {
       noKpi: noKpiCount,
       pendingIconnect: pendingIconnectCount,
       resigned: resignedCount,
-      tenure_0_6: tenure0To6,
-      tenure_6_12: tenure6To12,
-      tenure_1_3: tenure1To3,
-      tenure_3_plus: tenure3Plus,
       totalAgents: totalAgents,
       quality: quality
     });
@@ -450,34 +427,135 @@ export function Dashboard() {
       {/* Employee Status Stats */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {[
-            { label: 'Идэвхтэй, гүйлгээтэй', value: employeeStats.active_transaction, bg: 'bg-teal-50', border: 'border-teal-500', text: 'text-teal-700', iconBg: 'bg-teal-100', iconColor: 'text-teal-600', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label: 'Идэвхтэй, гүйлгээгүй', value: employeeStats.active_no_transaction, bg: 'bg-orange-50', border: 'border-orange-500', text: 'text-orange-700', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label: 'Идэвхигүй, гүйлгээтэй', value: employeeStats.inactive_transaction, bg: 'bg-yellow-50', border: 'border-yellow-500', text: 'text-yellow-700', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label: 'Идэвхигүй', value: employeeStats.inactive, bg: 'bg-gray-50', border: 'border-gray-500', text: 'text-gray-700', iconBg: 'bg-gray-100', iconColor: 'text-gray-600', icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' },
-            { label: 'Чөлөөтэй (iconnect)', value: employeeStats.on_leave_iconnect, bg: 'bg-purple-50', border: 'border-purple-500', text: 'text-purple-700', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-            { label: 'Чөлөөтэй хаасан', value: employeeStats.on_leave_closed, bg: 'bg-pink-50', border: 'border-pink-500', text: 'text-pink-700', iconBg: 'bg-pink-100', iconColor: 'text-pink-600', icon: 'M6 18L18 6M6 6l12 12' },
-            { label: 'Iconnect нуусан', value: employeeStats.hidden_iconnect, bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-700', iconBg: 'bg-red-100', iconColor: 'text-red-600', icon: 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21' },
-            { label: 'Багаас гарсан', value: employeeStats.left_team, bg: 'bg-rose-50', border: 'border-rose-500', text: 'text-rose-700', iconBg: 'bg-rose-100', iconColor: 'text-rose-600', icon: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1' },
-            { label: 'Нийт iconnect', value: employeeStats.totalIconnect, bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-700', iconBg: 'bg-green-100', iconColor: 'text-green-600', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
-            { label: 'Анхны гүйлгээ хийсэн', value: employeeStats.firstTransaction, bg: 'bg-blue-50', border: 'border-blue-500', text: 'text-blue-700', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label: 'KPI тооцохгүй', value: employeeStats.noKpi, bg: 'bg-indigo-50', border: 'border-indigo-500', text: 'text-indigo-700', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
-            { label: 'Iconnect хүлээгдэж байгаа', value: employeeStats.pendingIconnect, bg: 'bg-cyan-50', border: 'border-cyan-500', text: 'text-cyan-700', iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-            { label: 'Гарсан', value: employeeStats.resigned, bg: 'bg-amber-50', border: 'border-amber-500', text: 'text-amber-700', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', icon: 'M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6' },
-            { label: 'Нийт агент', value: employeeStats.totalAgents, bg: 'bg-slate-50', border: 'border-slate-500', text: 'text-slate-700', iconBg: 'bg-slate-100', iconColor: 'text-slate-600', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-            { label: 'Чанар', value: `${employeeStats.quality.toFixed(1)}%`, bg: 'bg-emerald-50', border: 'border-emerald-500', text: 'text-emerald-700', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-          ].map(item => (
-            <div key={item.label} className={`${item.bg} border-l-4 ${item.border} px-3 py-3 rounded-md`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 ${item.iconBg} rounded-full flex items-center justify-center shrink-0`}>
-                  <svg className={`w-4 h-4 ${item.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                  </svg>
-                </div>
-                <p className={`text-2xl font-bold ${item.text}`}>{item.value}</p>
+        
+        {/* Computed tags section */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
               </div>
-              <p className={`text-xs mt-1 ${item.text} opacity-80`}>{item.label}</p>
+              <div>
+                <p className="text-2xl font-bold text-green-700">{employeeStats.totalIconnect}</p>
+                <p className="text-xs text-green-600">Нийт iconnect</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-700">{employeeStats.firstTransaction}</p>
+                <p className="text-xs text-blue-600">Анхны гүйлгээ хийсэн</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-indigo-700">{employeeStats.noKpi}</p>
+                <p className="text-xs text-indigo-600">KPI тооцохгүй</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-cyan-700">{employeeStats.pendingIconnect}</p>
+                <p className="text-xs text-cyan-600">Iconnect хүлээгдэж байгаа</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Grouped status columns with percentages */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="border border-blue-100 rounded-lg p-4 bg-blue-50">
+            <h4 className="font-semibold text-blue-800 mb-3">Шинэ үе шат (хугацаа)</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Шинэ 0-6 сар', value: employeeStats.tenure_0_6 },
+                { label: '6-12 сар', value: employeeStats.tenure_6_12 },
+                { label: '1-3 жил', value: employeeStats.tenure_1_3 },
+                { label: '3+ жил', value: employeeStats.tenure_3_plus }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-blue-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-teal-100 rounded-lg p-4 bg-teal-50">
+            <h4 className="font-semibold text-teal-800 mb-3">Идэвх / Гүйлгээ</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Идэвхтэй, гүйлгээтэй', value: employeeStats.active_transaction },
+                { label: 'Идэвхтэй, гүйлгээгүй', value: employeeStats.active_no_transaction },
+                { label: 'Идэвхигүй, гүйлгээтэй', value: employeeStats.inactive_transaction },
+                { label: 'Идэвхигүй', value: employeeStats.inactive }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-teal-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-purple-100 rounded-lg p-4 bg-purple-50">
+            <h4 className="font-semibold text-purple-800 mb-3">Чөлөө / Багийн төлөв</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Чөлөөтэй (iconnect)', value: employeeStats.on_leave_iconnect },
+                { label: 'Жирэмсний/хаасан', value: employeeStats.on_leave_closed },
+                { label: 'Багаас гарсан', value: employeeStats.left_team }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-purple-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-rose-100 rounded-lg p-4 bg-rose-50">
+            <h4 className="font-semibold text-rose-800 mb-3">Бусад</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'Iconnect нуусан', value: employeeStats.hidden_iconnect },
+                { label: 'Гарсан', value: employeeStats.resigned }
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
+                  <span className="text-sm text-gray-700">{item.label}</span>
+                  <span className="text-sm font-semibold text-rose-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
+                </div>
+              ))}
+              <div className="mt-3 pt-2 border-t border-rose-200 flex items-center justify-between">
+                <span className="text-sm font-medium text-rose-800">Нийт агент</span>
+                <span className="text-sm font-bold text-rose-800">{employeeStats.totalAgents}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-rose-800">Чанар</span>
+                <span className="text-sm font-bold text-rose-800">{employeeStats.quality.toFixed(1)}%</span>
+              </div>
             </div>
           ))}
         </div>
