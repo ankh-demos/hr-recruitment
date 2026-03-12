@@ -157,10 +157,12 @@ export function Dashboard() {
     };
     const tenure0_6 = filteredEmployees.filter(e => getTenureMonths(e) < 6).length;
     const tenure6_12 = filteredEmployees.filter(e => { const m = getTenureMonths(e); return m >= 6 && m < 12; }).length;
-    const tenure1Plus = filteredEmployees.filter(e => getTenureMonths(e) >= 12).length;
+    // 1 жилээс дээш = >= 12 months AND < 36 months
+    const tenure1Plus = filteredEmployees.filter(e => { const m = getTenureMonths(e); return m >= 12 && m < 36; }).length;
     const tenure3Plus = filteredEmployees.filter(e => getTenureMonths(e) >= 36).length;
 
-    // TOP rank (Силвер, Голд, Платиниум, Даймонд) - match via mls/agentId
+    // TOP rank (Силвер, Голд, Платиниум, Даймонд = Цолтой, Стандарт = Цолгүй)
+    // Match employees via mls/agentId to agent_ranks table
     const topRankLevels = new Set(['Силвер', 'Голд', 'Платиниум', 'Даймонд']);
     const filteredRanksForOffice = selectedOffice === 'Бүгд'
       ? allAgentRanks
@@ -168,11 +170,22 @@ export function Dashboard() {
           const emp = allEmployees.find(e => e.mls === r.agentId);
           return emp && emp.officeName === selectedOffice;
         });
+    // Create set of MLS codes that have TOP rank (not Стандарт)
     const employeeMlsWithTopRank = new Set(
       filteredRanksForOffice.filter(r => topRankLevels.has(r.currentRank)).map(r => r.agentId)
     );
+    // Create set of MLS codes that have Стандарт rank (Цолгүй)
+    const employeeMlsWithStandardRank = new Set(
+      filteredRanksForOffice.filter(r => r.currentRank === 'Стандарт').map(r => r.agentId)
+    );
+    // Count employees with TOP rank (must have rank entry AND rank is not Стандарт)
     const hasTopRankCount = filteredEmployees.filter(e => e.mls && employeeMlsWithTopRank.has(e.mls)).length;
-    const noTopRankCount = filteredEmployees.length - hasTopRankCount;
+    // Count employees with Стандарт rank (Цолгүй = has rank entry with Стандарт, OR no rank entry at all)
+    const noTopRankCount = filteredEmployees.filter(e => 
+      !e.mls || 
+      employeeMlsWithStandardRank.has(e.mls) || 
+      (!employeeMlsWithTopRank.has(e.mls) && !employeeMlsWithStandardRank.has(e.mls))
+    ).length;
 
     const totalAgents = filteredEmployees.length;
     const qualitySum = activeTransactionCount + inactiveTransactionCount;

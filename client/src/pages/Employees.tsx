@@ -153,7 +153,9 @@ export function Employees() {
     assistantOf: '',
     hasSzhTraining: false,
     szhTrainingDate: '',
-    szhOfficialLetterNumber: ''
+    szhOfficialLetterNumber: '',
+    hasFirstTransaction: false,
+    excludeFromKpi: false
   });
 
   // CSV Import state
@@ -741,7 +743,9 @@ export function Employees() {
       assistantOf: selectedEmployee.assistantOf || '',
       hasSzhTraining: selectedEmployee.hasSzhTraining || false,
       szhTrainingDate: selectedEmployee.szhTrainingDate || '',
-      szhOfficialLetterNumber: selectedEmployee.szhOfficialLetterNumber || ''
+      szhOfficialLetterNumber: selectedEmployee.szhOfficialLetterNumber || '',
+      hasFirstTransaction: selectedEmployee.hasFirstTransaction || false,
+      excludeFromKpi: selectedEmployee.excludeFromKpi || false
     });
     setEditFieldsError(null);
     setEditFieldsOpen(true);
@@ -1160,6 +1164,8 @@ export function Employees() {
                       <div><span className="text-gray-500">СЗХ сургалт:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.hasSzhTraining ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.hasSzhTraining ? 'Тийм' : 'Үгүй'}</span></div>
                       {selectedEmployee.hasSzhTraining && <div><span className="text-gray-500">СЗХ сургалт огноо:</span> <span className="font-medium">{selectedEmployee.szhTrainingDate ? new Date(selectedEmployee.szhTrainingDate).toLocaleDateString('mn-MN') : '-'}</span></div>}
                       {selectedEmployee.hasSzhTraining && <div><span className="text-gray-500">СЗХ албан бичгийн дугаар:</span> <span className="font-medium">{selectedEmployee.szhOfficialLetterNumber || '-'}</span></div>}
+                      <div><span className="text-gray-500">Анхны гүйлгээ хийсэн:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.hasFirstTransaction ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.hasFirstTransaction ? 'Тийм' : 'Үгүй'}</span></div>
+                      <div><span className="text-gray-500">KPI тооцохгүй:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedEmployee.excludeFromKpi ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>{selectedEmployee.excludeFromKpi ? 'Тийм' : 'Үгүй'}</span></div>
                     </div>
                   </section>
 
@@ -1794,6 +1800,27 @@ export function Employees() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Дугаар оруулах" />
                 </div>
               )}
+
+              {/* Dashboard Tags Section */}
+              <div className="col-span-3 border-b pb-2 mb-2 mt-4">
+                <h4 className="font-medium text-gray-700">Дашбоард тооцоо</h4>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Анхны гүйлгээ хийсэн</label>
+                <select value={editFields.hasFirstTransaction ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, hasFirstTransaction: e.target.value === 'yes' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="yes">Тийм</option>
+                  <option value="no">Үгүй</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">KPI тооцохгүй</label>
+                <select value={editFields.excludeFromKpi ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, excludeFromKpi: e.target.value === 'yes' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="yes">Тийм</option>
+                  <option value="no">Үгүй</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-3 justify-end mt-6">
               <button
