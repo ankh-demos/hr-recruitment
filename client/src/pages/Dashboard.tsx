@@ -206,10 +206,6 @@ export function Dashboard() {
   }, [selectedOffice, allApplications, allEmployees, allResignedAgents]);
 
   const totalForChart = statusDistribution.reduce((sum, item) => sum + item.count, 0);
-  const formatEmployeePercent = (value: number) => {
-    if (employeeStats.totalAgents === 0) return '0.0';
-    return ((value / employeeStats.totalAgents) * 100).toFixed(1);
-  };
 
   // Categorize ranks by expiration status
   const { expiredRanks, expiringThisMonth, expiringNextMonth } = useMemo(() => {
@@ -453,139 +449,64 @@ export function Dashboard() {
 
       {/* Employee Status Stats */}
       <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-5">Ажилтнуудын статистик</h3>
         
         {/* Computed tags section */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-green-50 border-l-4 border-green-500 px-4 py-3 rounded-md min-h-[92px]">
+            <div className="flex items-center gap-3 h-full">
+              <div className="w-11 h-11 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-700">{employeeStats.totalIconnect}</p>
-                <p className="text-xs text-green-600">Нийт iconnect</p>
+                <p className="text-3xl sm:text-4xl leading-none font-bold text-green-700">{employeeStats.totalIconnect}</p>
+                <p className="text-sm font-medium text-green-600 mt-1">Нийт iconnect</p>
               </div>
             </div>
           </div>
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+          <div className="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-md min-h-[92px]">
+            <div className="flex items-center gap-3 h-full">
+              <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-700">{employeeStats.firstTransaction}</p>
-                <p className="text-xs text-blue-600">Анхны гүйлгээ хийсэн</p>
+                <p className="text-3xl sm:text-4xl leading-none font-bold text-blue-700">{employeeStats.firstTransaction}</p>
+                <p className="text-sm font-medium text-blue-600 mt-1">Анхны гүйлгээ хийсэн</p>
               </div>
             </div>
           </div>
-          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+          <div className="bg-indigo-50 border-l-4 border-indigo-500 px-4 py-3 rounded-md min-h-[92px]">
+            <div className="flex items-center gap-3 h-full">
+              <div className="w-11 h-11 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-indigo-700">{employeeStats.noKpi}</p>
-                <p className="text-xs text-indigo-600">KPI тооцохгүй</p>
+                <p className="text-3xl sm:text-4xl leading-none font-bold text-indigo-700">{employeeStats.noKpi}</p>
+                <p className="text-sm font-medium text-indigo-600 mt-1">KPI тооцохгүй</p>
               </div>
             </div>
           </div>
-          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
+          <div className="bg-cyan-50 border-l-4 border-cyan-500 px-4 py-3 rounded-md min-h-[92px]">
+            <div className="flex items-center gap-3 h-full">
+              <div className="w-11 h-11 bg-cyan-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-bold text-cyan-700">{employeeStats.pendingIconnect}</p>
-                <p className="text-xs text-cyan-600">Iconnect хүлээгдэж байгаа</p>
+                <p className="text-3xl sm:text-4xl leading-none font-bold text-cyan-700">{employeeStats.pendingIconnect}</p>
+                <p className="text-sm font-medium text-cyan-600 mt-1">Iconnect хүлээгдэж байгаа</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Grouped status columns with percentages */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="border border-blue-100 rounded-lg p-4 bg-blue-50">
-            <h4 className="font-semibold text-blue-800 mb-3">Шинэ үе шат (хугацаа)</h4>
-            <div className="space-y-2">
-              {[
-                { label: 'Шинэ 0-6 сар', value: employeeStats.tenure_0_6 },
-                { label: '6-12 сар', value: employeeStats.tenure_6_12 },
-                { label: '1-3 жил', value: employeeStats.tenure_1_3 },
-                { label: '3+ жил', value: employeeStats.tenure_3_plus }
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
-                  <span className="text-sm text-gray-700">{item.label}</span>
-                  <span className="text-sm font-semibold text-blue-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="border border-teal-100 rounded-lg p-4 bg-teal-50">
-            <h4 className="font-semibold text-teal-800 mb-3">Идэвх / Гүйлгээ</h4>
-            <div className="space-y-2">
-              {[
-                { label: 'Идэвхтэй, гүйлгээтэй', value: employeeStats.active_transaction },
-                { label: 'Идэвхтэй, гүйлгээгүй', value: employeeStats.active_no_transaction },
-                { label: 'Идэвхигүй, гүйлгээтэй', value: employeeStats.inactive_transaction },
-                { label: 'Идэвхигүй', value: employeeStats.inactive }
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
-                  <span className="text-sm text-gray-700">{item.label}</span>
-                  <span className="text-sm font-semibold text-teal-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="border border-purple-100 rounded-lg p-4 bg-purple-50">
-            <h4 className="font-semibold text-purple-800 mb-3">Чөлөө / Багийн төлөв</h4>
-            <div className="space-y-2">
-              {[
-                { label: 'Чөлөөтэй (iconnect)', value: employeeStats.on_leave_iconnect },
-                { label: 'Жирэмсний/хаасан', value: employeeStats.on_leave_closed },
-                { label: 'Багаас гарсан', value: employeeStats.left_team }
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
-                  <span className="text-sm text-gray-700">{item.label}</span>
-                  <span className="text-sm font-semibold text-purple-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="border border-rose-100 rounded-lg p-4 bg-rose-50">
-            <h4 className="font-semibold text-rose-800 mb-3">Бусад</h4>
-            <div className="space-y-2">
-              {[
-                { label: 'Iconnect нуусан', value: employeeStats.hidden_iconnect },
-                { label: 'Гарсан', value: employeeStats.resigned }
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between bg-white rounded px-2 py-1.5">
-                  <span className="text-sm text-gray-700">{item.label}</span>
-                  <span className="text-sm font-semibold text-rose-700">{item.value} ({formatEmployeePercent(item.value)}%)</span>
-                </div>
-              ))}
-              <div className="mt-3 pt-2 border-t border-rose-200 flex items-center justify-between">
-                <span className="text-sm font-medium text-rose-800">Нийт агент</span>
-                <span className="text-sm font-bold text-rose-800">{employeeStats.totalAgents}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-rose-800">Чанар</span>
-                <span className="text-sm font-bold text-rose-800">{employeeStats.quality.toFixed(1)}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Expiring Ranks Section */}

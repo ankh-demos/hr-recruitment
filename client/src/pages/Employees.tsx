@@ -54,6 +54,34 @@ function calculateMonthsDiff(startDate: string, endDate: string): number {
   return Math.max(0, months);
 }
 
+function normalizeDateForApi(value: string): string | null {
+  const raw = (value || '').trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const a = Number(slashMatch[1]);
+    const b = Number(slashMatch[2]);
+    const year = Number(slashMatch[3]);
+
+    let month = a;
+    let day = b;
+    if (a > 12 && b <= 12) {
+      day = a;
+      month = b;
+    }
+
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
+}
+
 export function Employees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [agentRanks, setAgentRanks] = useState<AgentRank[]>([]);
@@ -641,15 +669,25 @@ export function Employees() {
     setEditFieldsError(null);
 
     try {
+      const payload = {
+        ...editFields,
+        birthDate: normalizeDateForApi(editFields.birthDate),
+        employmentStartDate: normalizeDateForApi(editFields.employmentStartDate),
+        certificateDate: normalizeDateForApi(editFields.certificateDate),
+        szhTrainingDate: normalizeDateForApi(editFields.szhTrainingDate),
+        assistantOf: editFields.isAssistant ? editFields.assistantOf : '',
+        szhOfficialLetterNumber: editFields.hasSzhTraining ? editFields.szhOfficialLetterNumber : '',
+      };
+
       const response = await fetch(`${API_BASE}/employees/${selectedEmployee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editFields)
+        body: JSON.stringify(payload)
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Failed to update employee:', errorData);
-        alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (errorData.error || response.statusText));
+        alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
         return;
       }
       const updatedEmployee = await response.json();

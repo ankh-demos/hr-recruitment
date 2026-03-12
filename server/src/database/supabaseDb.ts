@@ -39,6 +39,67 @@ function toSnakeCase(obj: any): any {
   return converted;
 }
 
+const EMPLOYEE_DATE_FIELDS = new Set([
+  'birthDate',
+  'employmentStartDate',
+  'certificateDate',
+  'hiredDate',
+  'szhTrainingDate',
+  'trainingStartDate',
+  'trainingEndDate',
+  'fireupDate',
+]);
+
+function normalizeDateValue(value: any): string | null {
+  if (typeof value !== 'string') return value;
+  const raw = value.trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const a = Number(slashMatch[1]);
+    const b = Number(slashMatch[2]);
+    const year = Number(slashMatch[3]);
+
+    let month = a;
+    let day = b;
+    if (a > 12 && b <= 12) {
+      day = a;
+      month = b;
+    }
+
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
+}
+
+function sanitizeEmployeeUpdates(updates: Partial<Employee>): Partial<Employee> {
+  const sanitized: Partial<Employee> = { ...updates };
+
+  for (const key of Object.keys(sanitized) as (keyof Employee)[]) {
+    const value = sanitized[key];
+    if (typeof value === 'string' && value.trim() === '') {
+      // Keep empty strings for text fields, but not for date fields.
+      if (EMPLOYEE_DATE_FIELDS.has(String(key))) {
+        (sanitized as any)[key] = null;
+      }
+      continue;
+    }
+
+    if (EMPLOYEE_DATE_FIELDS.has(String(key))) {
+      (sanitized as any)[key] = normalizeDateValue(value);
+    }
+  }
+
+  return sanitized;
+}
+
 export const supabaseDatabase = {
   // ============ CANDIDATES ============
   getCandidates: async (): Promise<Candidate[]> => {
@@ -243,7 +304,8 @@ export const supabaseDatabase = {
   },
 
   updateEmployee: async (id: string, updates: Partial<Employee>): Promise<Employee | undefined> => {
-    const snakeCaseUpdates = toSnakeCase(updates);
+    const sanitizedUpdates = sanitizeEmployeeUpdates(updates);
+    const snakeCaseUpdates = toSnakeCase(sanitizedUpdates);
     
     // Remove fields that Supabase auto-manages
     delete snakeCaseUpdates.id;
@@ -313,12 +375,12 @@ export const supabaseDatabase = {
           const { data: retry2Data, error: retry2Error } = await supabase.from('employees').update(baseOnlyUpdates).eq('id', id).select().single();
           if (retry2Error) {
             console.error('Supabase updateEmployee final retry error:', retry2Error.message);
-            return undefined;
+            throw new Error(`Employee update failed: ${retry2Error.message}`);
           }
           console.log('Supabase updateEmployee success (without status) - ID:', retry2Data?.id);
           return toCamelCase(retry2Data);
         }
-        return undefined;
+        throw new Error(`Employee update failed: ${retryError.message}`);
       }
       console.log('Supabase updateEmployee retry success - ID:', retryData?.id);
       return toCamelCase(retryData);
