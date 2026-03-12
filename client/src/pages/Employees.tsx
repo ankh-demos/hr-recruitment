@@ -17,6 +17,7 @@ const RANK_COLORS: Record<RankLevel, string> = {
 
 // Employee status options (without 'resigned' - that's a separate table now)
 const EMPLOYEE_STATUSES = [
+  { value: 'active', label: 'Идэвхтэй', color: 'bg-green-100 text-green-800' },
   { value: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй', color: 'bg-teal-100 text-teal-800' },
   { value: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй', color: 'bg-orange-100 text-orange-800' },
   { value: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй', color: 'bg-yellow-100 text-yellow-800' },
