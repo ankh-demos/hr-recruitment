@@ -151,7 +151,7 @@ export function Ranks() {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  async function loadData() {
+  async function loadData(): Promise<AgentRank[]> {
     try {
       const [ranksData, employeesData] = await Promise.all([
         agentRanksApi.getAll(),
@@ -159,8 +159,10 @@ export function Ranks() {
       ]);
       setAgentRanks(ranksData);
       setEmployees(employeesData);
+      return ranksData;
     } catch (error) {
       console.error('Failed to load data:', error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -199,10 +201,9 @@ export function Ranks() {
       });
       setUpgradeModalOpen(false);
       setUpgradeForm({ rank: 'Стандарт', startDate: '' });
-      loadData();
-      // Refresh selected rank
-      const updated = await agentRanksApi.getById(selectedRank.id);
-      setSelectedRank(updated);
+      const freshRanks = await loadData();
+      const updated = freshRanks.find(r => r.id === selectedRank.id);
+      if (updated) setSelectedRank(updated);
     } catch (error) {
       console.error('Failed to upgrade rank:', error);
     }
@@ -239,10 +240,9 @@ export function Ranks() {
     try {
       await agentRanksApi.update(selectedRank.id, editForm);
       setEditModalOpen(false);
-      loadData();
-      // Refresh selected rank
-      const updated = await agentRanksApi.getById(selectedRank.id);
-      setSelectedRank(updated);
+      const freshRanks = await loadData();
+      const updated = freshRanks.find(r => r.id === selectedRank.id);
+      if (updated) setSelectedRank(updated);
     } catch (error) {
       console.error('Failed to update rank:', error);
     }

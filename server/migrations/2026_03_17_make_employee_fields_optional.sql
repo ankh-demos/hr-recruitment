@@ -8,6 +8,20 @@
 
 BEGIN;
 
+-- Ensure columns exist before changing nullability
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_iconnect BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_assistant BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS assistant_of TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_szh_training BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_training_date TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_official_letter_number TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS training_start_date DATE;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS training_end_date DATE;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS fireup_date DATE;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_transfer BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_first_transaction BOOLEAN DEFAULT false;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS exclude_from_kpi BOOLEAN DEFAULT false;
+
 ALTER TABLE employees ALTER COLUMN application_id DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN iconnect_name DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN family_name DROP NOT NULL;
@@ -65,5 +79,21 @@ ALTER TABLE employees ALTER COLUMN has_first_transaction DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN exclude_from_kpi DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN created_at DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN updated_at DROP NOT NULL;
+
+-- Fix status CHECK constraint to match the current status values used by the application.
+-- The original schema only had old values; new statuses were added in later migrations
+-- but the constraint may not have been updated in all environments.
+ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_status_check;
+ALTER TABLE employees ADD CONSTRAINT employees_status_check CHECK (status IN (
+  'active',
+  'active_transaction',
+  'active_no_transaction',
+  'inactive_transaction',
+  'inactive',
+  'on_leave_iconnect',
+  'on_leave_closed',
+  'hidden_iconnect',
+  'left_team'
+));
 
 COMMIT;

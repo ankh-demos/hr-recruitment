@@ -299,13 +299,10 @@ export function Applications() {
     try {
       await applicationsApi.update(selectedApplication.id, editForm);
 
-      // Reload all applications to ensure we have fresh data
-      await loadApplications();
-
-      // Update selected application from the reloaded list
-      // We need to fetch the fresh list first (which loadApplications does), 
-      // then find the updated application to set as selected
+      // Single fetch updates both the list and the selected application
       const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
       const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
 
       if (updatedApp) {
@@ -354,11 +351,12 @@ export function Applications() {
 
     try {
       await applicationsApi.update(selectedApplication.id, updateData);
-      await loadApplications();
-      // Update selected application with new data
-      const updatedApp = applications.find(a => a.id === selectedApplication.id);
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
+      const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
       if (updatedApp) {
-        setSelectedApplication({ ...updatedApp, ...updateData });
+        setSelectedApplication(updatedApp);
       }
       setMeetingModalOpen(false);
     } catch (error) {
