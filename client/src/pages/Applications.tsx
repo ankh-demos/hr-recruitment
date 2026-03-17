@@ -975,20 +975,20 @@ export function Applications() {
               />
             </div>
           </div>
-          <span className="text-sm font-medium text-gray-700">Төлөвөөр шүүх:</span>
-          <div className="relative">
+          {/* Status Filter */}
+          <div className="relative min-w-[200px]">
             <button
               onClick={() => setStatusFilterOpen(!statusFilterOpen)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center gap-2"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-between gap-2"
             >
-              <span>{selectedStatuses.length === 0 ? 'Бүгд' : `${selectedStatuses.length} сонгосон`}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="truncate">{selectedStatuses.length === 0 ? 'Бүх төлөв' : `${selectedStatuses.length} сонгосон`}</span>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             {statusFilterOpen && (
               <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
-                <div className="p-2">
+                <div className="p-2 max-h-64 overflow-y-auto">
                   {APPLICATION_STATUSES.map(status => (
                     <label
                       key={status.value}
