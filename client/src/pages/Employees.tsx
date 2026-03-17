@@ -53,9 +53,9 @@ function calculateMonthsDiff(startDate: string, endDate: string): number {
   return Math.max(0, months);
 }
 
-function normalizeDateForApi(value: string): string | null {
+function normalizeDateForApi(value: string): string | undefined {
   const raw = (value || '').trim();
-  if (!raw) return null;
+  if (!raw) return undefined;
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
 
   const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -77,7 +77,7 @@ function normalizeDateForApi(value: string): string | null {
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return null;
+  if (Number.isNaN(parsed.getTime())) return undefined;
   return parsed.toISOString().slice(0, 10);
 }
 
