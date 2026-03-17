@@ -4,8 +4,6 @@ import { Employee, RankLevel, AgentRank } from '../types';
 import { resignedAgentsApi, agentRanksApi, employeesApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
-const API_BASE = '/api';
-
 // Rank color mapping
 const RANK_COLORS: Record<RankLevel, string> = {
   'Стандарт': 'bg-gray-100 text-gray-800',
@@ -178,11 +176,10 @@ export function Employees() {
     try {
       setLoading(true);
       lastLoadRef.current = now;
-      const [employeesResponse, ranksData] = await Promise.all([
-        fetch(`${API_BASE}/employees`),
+      const [data, ranksData] = await Promise.all([
+        employeesApi.getAll(),
         agentRanksApi.getAll()
       ]);
-      const data = await employeesResponse.json();
       setEmployees(data);
       setAgentRanks(ranksData);
     } catch (error) {
@@ -468,11 +465,7 @@ export function Employees() {
 
   async function updateEmployeeStatus(id: string, status: Employee['status']) {
     try {
-      await fetch(`${API_BASE}/employees/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await employeesApi.update(id, { status });
       loadData();
       if (selectedEmployee?.id === id) {
         setSelectedEmployee({ ...selectedEmployee, status });
@@ -682,26 +675,15 @@ export function Employees() {
         szhOfficialLetterNumber: editFields.hasSzhTraining ? editFields.szhOfficialLetterNumber : '',
       };
 
-      const response = await fetch(`${API_BASE}/employees/${selectedEmployee.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to update employee:', errorData);
-        alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
-        return;
-      }
-      const updatedEmployee = await response.json();
+      const updatedEmployee = await employeesApi.update(selectedEmployee.id, payload);
       setEditFieldsOpen(false);
       setEditFieldsError(null);
       // Update the employee in the list immediately
       setEmployees(prev => prev.map(e => e.id === selectedEmployee.id ? { ...e, ...updatedEmployee } : e));
       setSelectedEmployee({ ...selectedEmployee, ...updatedEmployee });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update employee fields:', error);
-      alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа');
+      alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (error?.message || 'Unknown error'));
     }
   }
 

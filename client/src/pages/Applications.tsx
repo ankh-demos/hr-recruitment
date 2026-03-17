@@ -4,8 +4,6 @@ import { Application, ApplicationMeeting, User } from '../types';
 import { usersApi, applicationsApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
-const API_BASE = '/api';
-
 // Application status options
 const APPLICATION_STATUSES = [
   { value: 'new', label: 'Шинэ анкет', color: 'bg-blue-100 text-blue-800' },
@@ -88,8 +86,7 @@ export function Applications() {
     try {
       setLoading(true);
       lastLoadRef.current = now;
-      const response = await fetch(`${API_BASE}/applications`);
-      const data = await response.json();
+      const data = await applicationsApi.getAll();
       setApplications(data);
     } catch (error) {
       console.error('Failed to load applications:', error);
@@ -184,11 +181,7 @@ export function Applications() {
 
   async function updateStatus(id: string, status: Application['status']) {
     try {
-      await fetch(`${API_BASE}/applications/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await applicationsApi.update(id, { status });
       loadApplications();
     } catch (error) {
       console.error('Failed to update application:', error);
@@ -208,10 +201,11 @@ export function Applications() {
   async function saveFireUp() {
     if (!selectedApplication) return;
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate })
+      await applicationsApi.update(selectedApplication.id, {
+        status: 'fireup',
+        trainingNumber,
+        trainingStartDate,
+        trainingEndDate
       });
       setFireUpModalOpen(false);
       setTrainingNumber('');
@@ -235,24 +229,13 @@ export function Applications() {
   async function confirmIconnect() {
     if (!selectedApplication) return;
     try {
-      const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'iconnect' })
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('iConnect error:', errorData);
-        alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
-        setIconnectConfirmOpen(false);
-        return;
-      }
+      await applicationsApi.update(selectedApplication.id, { status: 'iconnect' });
       setIconnectConfirmOpen(false);
       setSelectedApplication(null);
       loadApplications();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to move to iConnect:', error);
-      alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа');
+      alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (error?.message || 'Unknown error'));
       setIconnectConfirmOpen(false);
     }
   }
@@ -260,7 +243,7 @@ export function Applications() {
   async function deleteApplication(id: string) {
     if (!confirm('Энэ анкетыг устгах уу?')) return;
     try {
-      await fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' });
+      await applicationsApi.delete(id);
       loadApplications();
       if (selectedApplication?.id === id) {
         setSelectedApplication(null);
@@ -314,11 +297,7 @@ export function Applications() {
     setEditError(null);
 
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
-      });
+      await applicationsApi.update(selectedApplication.id, editForm);
 
       // Reload all applications to ensure we have fresh data
       await loadApplications();
@@ -326,8 +305,7 @@ export function Applications() {
       // Update selected application from the reloaded list
       // We need to fetch the fresh list first (which loadApplications does), 
       // then find the updated application to set as selected
-      const response = await fetch(`${API_BASE}/applications`);
-      const data = await response.json();
+      const data = await applicationsApi.getAll();
       const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
 
       if (updatedApp) {

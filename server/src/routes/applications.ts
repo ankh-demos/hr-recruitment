@@ -98,7 +98,9 @@ router.put('/:id', async (req: Request, res: Response) => {
           });
         }
       } else {
-        console.log('[iConnect] Employee already exists, just updating status');
+        console.log('[iConnect] Employee already exists, deleting application to complete move');
+        await applicationModel.delete(req.params.id);
+        return res.json({ moved: true, message: 'Application already moved to employees' });
       }
     }
 
@@ -132,8 +134,9 @@ router.post('/bulk', async (req: Request, res: Response) => {
     }
     const created = await applicationModel.bulkCreate(applications);
     res.status(201).json({ success: true, count: created.length, applications: created });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to bulk import applications' });
+  } catch (error: any) {
+    console.error('Failed to bulk import applications:', error?.message || error);
+    res.status(500).json({ error: 'Failed to bulk import applications', details: error?.message });
   }
 });
 
