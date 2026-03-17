@@ -181,6 +181,9 @@ export function Applications() {
 
   async function updateStatus(id: string, status: Application['status']) {
     try {
+      setSelectedApplication(prev => prev && prev.id === id ? { ...prev, status } : prev);
+      setApplications(prev => prev.map(app => app.id === id ? { ...app, status } : app));
+
       await applicationsApi.update(id, { status });
       const data = await applicationsApi.getAll();
       setApplications(data);
@@ -1165,19 +1168,28 @@ export function Applications() {
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
-                    className={`px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 ${selectedApplication.status === 'new' ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'new'
+                      ? 'bg-blue-200 text-blue-900 border-blue-600 font-semibold'
+                      : 'bg-blue-100 text-blue-800 border-transparent hover:bg-blue-200'
+                      }`}
                   >
                     Шинэ
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
-                    className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 ${selectedApplication.status === 'interviewing' ? 'ring-2 ring-yellow-500 ring-offset-2' : ''}`}
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'interviewing'
+                      ? 'bg-yellow-200 text-yellow-900 border-yellow-600 font-semibold'
+                      : 'bg-yellow-100 text-yellow-800 border-transparent hover:bg-yellow-200'
+                      }`}
                   >
                     Ярилцлага хийж байгаа
                   </button>
                   <button
                     onClick={openFireUpModal}
-                    className={`px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 ${selectedApplication.status === 'fireup' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}`}
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'fireup'
+                      ? 'bg-purple-200 text-purple-900 border-purple-600 font-semibold'
+                      : 'bg-purple-100 text-purple-800 border-transparent hover:bg-purple-200'
+                      }`}
                   >
                     Fire UP
                     {selectedApplication.trainingNumber && (
@@ -1186,13 +1198,19 @@ export function Applications() {
                   </button>
                   <button
                     onClick={openIconnectConfirm}
-                    className={`px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 ${selectedApplication.status === 'iconnect' ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'iconnect'
+                      ? 'bg-green-200 text-green-900 border-green-600 font-semibold'
+                      : 'bg-green-100 text-green-800 border-transparent hover:bg-green-200'
+                      }`}
                   >
                     iConnect
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
-                    className={`px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 ${selectedApplication.status === 'cancelled' ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'cancelled'
+                      ? 'bg-red-200 text-red-900 border-red-600 font-semibold'
+                      : 'bg-red-100 text-red-800 border-transparent hover:bg-red-200'
+                      }`}
                   >
                     Цуцлах
                   </button>
