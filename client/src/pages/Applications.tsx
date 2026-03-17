@@ -29,9 +29,6 @@ export function Applications() {
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Status save feedback
-  const [statusSaveMessage, setStatusSaveMessage] = useState<string | null>(null);
-
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -185,21 +182,15 @@ export function Applications() {
   async function updateStatus(id: string, status: Application['status']) {
     try {
       await applicationsApi.update(id, { status });
-      // Immediately update UI
-      setSelectedApplication(prev => prev ? { ...prev, status } : null);
-      const updatedApp = applications.find(a => a.id === id);
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
+      const updatedApp = data.find((a: Application) => a.id === id);
       if (updatedApp) {
-        setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
+        setSelectedApplication(updatedApp);
       }
-      // Show success message
-      setStatusSaveMessage(`Төлөв "` + getStatusLabel(status) + `" болгож өөрчлөгдсөн`);
-      setTimeout(() => setStatusSaveMessage(null), 3000);
-      // Reload in background
-      loadApplications();
     } catch (error) {
       console.error('Failed to update application:', error);
-      setStatusSaveMessage('Төлөв өөрчлөхөд алдаа гарлаа');
-      setTimeout(() => setStatusSaveMessage(null), 3000);
     }
   }
 
@@ -1171,14 +1162,6 @@ export function Applications() {
                 </div>
 
                 {/* Status Actions */}
-                {statusSaveMessage && (
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    {statusSaveMessage}
-                  </div>
-                )}
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
