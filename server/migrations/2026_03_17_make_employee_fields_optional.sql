@@ -8,6 +8,23 @@
 
 BEGIN;
 
+-- Drop old status constraint first to allow updates
+ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_status_check;
+
+-- Update old status values to new ones BEFORE making columns nullable
+-- Map legacy statuses to their modern equivalents
+UPDATE employees SET status = 'active' WHERE status IS NULL OR status = '';
+UPDATE employees SET status = 'active_transaction' WHERE status IN ('new_0_3', 'new_0_6', 'new_6_12', 'new_', 'team_member');
+UPDATE employees SET status = 'on_leave_iconnect' WHERE status IN ('on_leave', 'maternity_leave');
+UPDATE employees SET status = 'inactive' WHERE status IN ('old', 'inactive');
+-- Catch-all: map any remaining unmapped statuses to 'active'
+UPDATE employees SET status = 'active' WHERE status NOT IN (
+  'active', 'active_transaction', 'active_no_transaction', 
+  'inactive_transaction', 'inactive', 'on_leave_iconnect', 
+  'on_leave_closed', 'hidden_iconnect', 'left_team'
+);
+
+-- Now make columns nullable
 -- Ensure columns exist before changing nullability
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_iconnect BOOLEAN DEFAULT false;
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_assistant BOOLEAN DEFAULT false;
@@ -63,7 +80,7 @@ ALTER TABLE employees ALTER COLUMN detailed_address DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN children_count DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN employment_start_date DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN office_name DROP NOT NULL;
-ALTER TABLE employees ALTER COLUMN status DROP NOT NULL;
+-- Keep status as NOT NULL (it's critical for the application)
 ALTER TABLE employees ALTER COLUMN hired_date DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN has_iconnect DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN is_assistant DROP NOT NULL;
@@ -83,7 +100,6 @@ ALTER TABLE employees ALTER COLUMN updated_at DROP NOT NULL;
 -- Fix status CHECK constraint to match the current status values used by the application.
 -- The original schema only had old values; new statuses were added in later migrations
 -- but the constraint may not have been updated in all environments.
-ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_status_check;
 ALTER TABLE employees ADD CONSTRAINT employees_status_check CHECK (status IN (
   'active',
   'active_transaction',

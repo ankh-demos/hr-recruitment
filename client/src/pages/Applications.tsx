@@ -29,6 +29,9 @@ export function Applications() {
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Status save feedback
+  const [statusSaveMessage, setStatusSaveMessage] = useState<string | null>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -182,9 +185,21 @@ export function Applications() {
   async function updateStatus(id: string, status: Application['status']) {
     try {
       await applicationsApi.update(id, { status });
+      // Immediately update UI
+      setSelectedApplication(prev => prev ? { ...prev, status } : null);
+      const updatedApp = applications.find(a => a.id === id);
+      if (updatedApp) {
+        setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
+      }
+      // Show success message
+      setStatusSaveMessage(`Төлөв "` + getStatusLabel(status) + `" болгож өөрчлөгдсөн`);
+      setTimeout(() => setStatusSaveMessage(null), 3000);
+      // Reload in background
       loadApplications();
     } catch (error) {
       console.error('Failed to update application:', error);
+      setStatusSaveMessage('Төлөв өөрчлөхөд алдаа гарлаа');
+      setTimeout(() => setStatusSaveMessage(null), 3000);
     }
   }
 
@@ -1023,49 +1038,6 @@ export function Applications() {
               ))}
             </select>
           </div>
-
-          {/* Status Filter Dropdown */}
-          <div className="relative min-w-[200px]">
-            <button
-              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-between gap-2"
-            >
-              <span className="truncate">{selectedStatuses.length === 0 ? 'Бүх төлөв' : `${selectedStatuses.length} сонгосон`}</span>
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {statusFilterOpen && (
-              <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
-                <div className="p-2 max-h-64 overflow-y-auto">
-                  {APPLICATION_STATUSES.map(status => (
-                    <label
-                      key={status.value}
-                      className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedStatuses.includes(status.value)}
-                        onChange={() => toggleStatusFilter(status.value)}
-                        className="rounded text-indigo-600"
-                      />
-                      <span className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <div className="border-t p-2">
-                  <button
-                    onClick={() => { setSelectedStatuses([]); setStatusFilterOpen(false); }}
-                    className="w-full text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Цэвэрлэх
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
           {(searchTerm || selectedStatuses.length > 0) && (
             <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-indigo-600 hover:text-indigo-800">
               Цэвэрлэх
@@ -1199,22 +1171,30 @@ export function Applications() {
                 </div>
 
                 {/* Status Actions */}
+                {statusSaveMessage && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    {statusSaveMessage}
+                  </div>
+                )}
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                    className={`px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 ${selectedApplication.status === 'new' ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
                   >
                     Шинэ
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
-                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                    className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 ${selectedApplication.status === 'interviewing' ? 'ring-2 ring-yellow-500 ring-offset-2' : ''}`}
                   >
                     Ярилцлага хийж байгаа
                   </button>
                   <button
                     onClick={openFireUpModal}
-                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                    className={`px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200 ${selectedApplication.status === 'fireup' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}`}
                   >
                     Fire UP
                     {selectedApplication.trainingNumber && (
@@ -1223,13 +1203,13 @@ export function Applications() {
                   </button>
                   <button
                     onClick={openIconnectConfirm}
-                    className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
+                    className={`px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 ${selectedApplication.status === 'iconnect' ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
                   >
                     iConnect
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
-                    className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                    className={`px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 ${selectedApplication.status === 'cancelled' ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
                   >
                     Цуцлах
                   </button>
