@@ -294,11 +294,69 @@ export const supabaseDatabase = {
   createEmployee: async (employee: Employee): Promise<Employee> => {
     const snakeCaseEmployee = toSnakeCase(employee);
     console.log('Supabase createEmployee - ID:', employee.id, 'Status:', employee.status);
-    const { data, error } = await supabase.from('employees').insert(snakeCaseEmployee).select().single();
+
+    const removeUndefined = (payload: Record<string, any>) => {
+      const cleaned: Record<string, any> = {};
+      for (const [key, value] of Object.entries(payload)) {
+        if (value !== undefined) {
+          cleaned[key] = value;
+        }
+      }
+      return cleaned;
+    };
+
+    const knownBaseColumns = new Set([
+      'id', 'application_id', 'iconnect_name', 'family_name', 'last_name', 'first_name',
+      'interested_office', 'birth_place', 'ethnicity', 'gender', 'birth_date',
+      'register_number', 'home_address', 'phone', 'emergency_phone', 'email',
+      'facebook', 'family_members', 'education', 'languages', 'work_experience',
+      'awards', 'other_skills', 'strengths_weaknesses', 'has_driver_license',
+      'photo_url', 'referral_source', 'signature_url', 'training_number',
+      'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
+      'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
+      'district', 'detailed_address', 'children_count', 'employment_start_date',
+      'office_name', 'status', 'hired_date', 'created_at', 'updated_at'
+    ]);
+
+    const toBaseColumnsOnly = (payload: Record<string, any>) => {
+      const filtered: Record<string, any> = {};
+      for (const [key, value] of Object.entries(payload)) {
+        if (knownBaseColumns.has(key)) {
+          filtered[key] = value;
+        }
+      }
+      return filtered;
+    };
+
+    const tryInsert = async (payload: Record<string, any>) => {
+      return supabase.from('employees').insert(payload).select().single();
+    };
+
+    // Attempt 1: full payload (undefined stripped)
+    const primaryPayload = removeUndefined(snakeCaseEmployee);
+    let { data, error } = await tryInsert(primaryPayload);
+
     if (error) {
-      console.error('Supabase createEmployee error:', error.message, error.code, error.details);
-      throw error;
+      console.error('Supabase createEmployee error (primary):', error.message, error.code, error.details);
+
+      // Attempt 2: base columns only + current status
+      const basePayload = toBaseColumnsOnly(primaryPayload);
+      ({ data, error } = await tryInsert(basePayload));
+
+      if (error) {
+        console.error('Supabase createEmployee error (base-columns retry):', error.message, error.code, error.details);
+
+        // Attempt 3: base columns + legacy-safe status fallback
+        const legacyPayload = { ...basePayload, status: 'active' };
+        ({ data, error } = await tryInsert(legacyPayload));
+
+        if (error) {
+          console.error('Supabase createEmployee error (legacy-status retry):', error.message, error.code, error.details);
+          throw error;
+        }
+      }
     }
+
     console.log('Supabase createEmployee success - ID:', data?.id);
     return toCamelCase(data);
   },
