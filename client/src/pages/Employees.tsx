@@ -766,7 +766,7 @@ export function Employees() {
       <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Ажилтнууд</h1>
+            <h1 className="text-2xl font-bold">Агентууд</h1>
             <p className="mt-1 text-green-100">iConnect-д зөвшөөрөгдсөн</p>
           </div>
           <div className="flex items-center gap-4">
