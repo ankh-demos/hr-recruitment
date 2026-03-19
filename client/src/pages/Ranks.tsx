@@ -36,6 +36,7 @@ export function Ranks() {
   const [selectedRank, setSelectedRank] = useState<AgentRank | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
+  const [selectedRankFilter, setSelectedRankFilter] = useState<RankLevel | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
 
   // Pagination state
@@ -73,7 +74,7 @@ export function Ranks() {
     loadData();
   }, []);
 
-  const filteredRanks = useMemo(() => {
+  const baseFilteredRanks = useMemo(() => {
     return agentRanks.filter(rank => {
       // Office filter - find employee by MLS (agentId) and check their officeName
       if (selectedOffice !== 'Бүгд') {
@@ -89,6 +90,13 @@ export function Ranks() {
         rank.agentId.toLowerCase().includes(searchLower);
     });
   }, [agentRanks, searchTerm, selectedOffice, employees]);
+
+  const filteredRanks = useMemo(() => {
+    if (selectedRankFilter === 'all') {
+      return baseFilteredRanks;
+    }
+    return baseFilteredRanks.filter(rank => rank.currentRank === selectedRankFilter);
+  }, [baseFilteredRanks, selectedRankFilter]);
 
   // Paginated ranks for table view
   const paginatedRanks = useMemo(() => {
@@ -138,18 +146,22 @@ export function Ranks() {
       'Платиниум': 0,
       'Даймонд': 0
     };
-    filteredRanks.forEach(rank => {
+    baseFilteredRanks.forEach(rank => {
       if (rank.currentRank in counts) {
         counts[rank.currentRank]++;
       }
     });
     return counts;
-  }, [filteredRanks]);
+  }, [baseFilteredRanks]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedOffice, selectedRankFilter]);
+
+  function handleRankFilterClick(rank: RankLevel) {
+    setSelectedRankFilter(prev => (prev === rank ? 'all' : rank));
+  }
 
   async function loadData(): Promise<AgentRank[]> {
     try {
@@ -391,10 +403,15 @@ export function Ranks() {
         </h3>
         <div className="grid grid-cols-5 gap-4">
           {RANK_LEVELS.map(rank => (
-            <div key={rank} className={`${RANK_COLORS[rank]} rounded-lg p-4 text-center border-2 border-transparent hover:border-purple-400 transition-all`}>
+            <button
+              key={rank}
+              type="button"
+              onClick={() => handleRankFilterClick(rank)}
+              className={`${RANK_COLORS[rank]} rounded-lg p-4 text-center border-2 transition-all ${selectedRankFilter === rank ? 'border-purple-600 ring-2 ring-purple-200' : 'border-transparent hover:border-purple-400'}`}
+            >
               <p className="text-2xl font-bold">{rankCounts[rank]}</p>
               <p className="text-sm font-medium">{rank}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -444,6 +461,9 @@ export function Ranks() {
         </div>
         <div className="mt-2 text-sm text-gray-500">
           {filteredRanks.length} бүртгэл олдлоо
+          {selectedRankFilter !== 'all' && (
+            <span className="ml-2 text-purple-700 font-medium">| Шүүлтүүр: {selectedRankFilter}</span>
+          )}
         </div>
       </div>
 

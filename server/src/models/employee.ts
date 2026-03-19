@@ -19,6 +19,7 @@ export const employeeModel = {
     const now = new Date().toISOString();
     const safeString = (value?: string) => value || '';
     const safeArray = <T>(value?: T[]) => Array.isArray(value) ? value : [];
+
     const employee: Employee = {
       id: uuidv4(),
       applicationId: application.id,

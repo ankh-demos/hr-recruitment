@@ -104,7 +104,7 @@ export function Applications() {
 
   // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
-    return applications.filter(app => {
+    const filtered = applications.filter(app => {
       // Office filter
       if (selectedOffice !== 'Бүгд' && app.interestedOffice !== selectedOffice) {
         return false;
@@ -132,6 +132,13 @@ export function Applications() {
         if (!matches) return false;
       }
       return true;
+    });
+
+    // Sort by created date (newest first)
+    return filtered.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
     });
   }, [applications, selectedStatuses, selectedOffice, searchTerm]);
 
