@@ -205,7 +205,7 @@ export function Employees() {
 
   // Filtered employees
   const filteredEmployees = useMemo(() => {
-    return employees.filter(employee => {
+    const filtered = employees.filter(employee => {
       // Office filter - use officeName only
       if (selectedOffice !== 'Бүгд' && employee.officeName !== selectedOffice) {
         return false;
@@ -234,15 +234,16 @@ export function Employees() {
         const searchLower = searchTerm.toLowerCase();
         const matchFields = [
           employee.firstName,
+          employee.mls,
+          employee.iConnectName,
+          employee.remaxEmail,
           employee.lastName,
           employee.familyName,
           employee.email,
           employee.phone,
           employee.interestedOffice,
           employee.officeName,
-          employee.registerNumber,
-          employee.iConnectName,
-          employee.mls
+          employee.registerNumber
         ];
         const matchesSearch = matchFields.some(field =>
           field && field.toLowerCase().includes(searchLower)
@@ -251,6 +252,18 @@ export function Employees() {
       }
 
       return true;
+    });
+
+    // Sort by MLS (ascending), keep empty MLS at the end
+    return filtered.sort((a, b) => {
+      const aMls = (a.mls || '').trim();
+      const bMls = (b.mls || '').trim();
+
+      if (!aMls && !bMls) return 0;
+      if (!aMls) return 1;
+      if (!bMls) return -1;
+
+      return aMls.localeCompare(bMls, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter, mlsFilter]);
 
@@ -808,7 +821,7 @@ export function Employees() {
               </div>
               <input
                 type="text"
-                placeholder="Нэр, имэйл, оффисоор хайх..."
+                placeholder="Нэр, MLS, iConnect нэр, Remax имэйлээр хайх..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -1349,6 +1362,7 @@ export function Employees() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MLS</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">iConnect нэр</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
@@ -1365,7 +1379,6 @@ export function Employees() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ИБД</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">СЗХ</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remax имэйл</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MLS</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Банк</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Данс</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дүүрэг</th>
@@ -1390,6 +1403,7 @@ export function Employees() {
                         onClick={() => { setSelectedEmployee(emp); setViewMode('list'); }}
                         className="hover:bg-gray-50 cursor-pointer"
                       >
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.mls || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.iConnectName || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           {emp.photoUrl ? (
@@ -1416,7 +1430,6 @@ export function Employees() {
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.citizenRegistrationNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.szhCertificateNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.remaxEmail || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.mls || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.bank || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.accountNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.district || '-'}</td>
