@@ -182,8 +182,17 @@ export function Ranks() {
 
   // Get employees with MLS that don't have rank records yet
   const availableEmployees = useMemo(() => {
-    const existingAgentIds = agentRanks.map(r => r.agentId);
-    return employees.filter(e => e.mls && !existingAgentIds.includes(e.mls));
+    const normalizeMls = (value?: string) => (value || '').trim().toLowerCase();
+    const existingAgentIds = new Set(
+      agentRanks
+        .map(r => normalizeMls(r.agentId))
+        .filter(Boolean)
+    );
+
+    return employees.filter(e => {
+      const employeeMls = normalizeMls(e.mls);
+      return !!employeeMls && !existingAgentIds.has(employeeMls);
+    });
   }, [employees, agentRanks]);
 
   async function handleCreate() {

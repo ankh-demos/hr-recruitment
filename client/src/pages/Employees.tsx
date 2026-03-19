@@ -94,6 +94,7 @@ export function Employees() {
   // New filters
   const [iConnectFilter, setIConnectFilter] = useState<'all' | 'yes' | 'no'>('all');
   const [szhFilter, setSzhFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [mlsFilter, setMlsFilter] = useState<'all' | 'filled' | 'empty'>('all');
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -223,6 +224,11 @@ export function Employees() {
       if (szhFilter === 'yes' && !employee.hasSzhTraining) return false;
       if (szhFilter === 'no' && employee.hasSzhTraining) return false;
 
+      // MLS filter
+      const hasMls = !!employee.mls?.trim();
+      if (mlsFilter === 'filled' && !hasMls) return false;
+      if (mlsFilter === 'empty' && hasMls) return false;
+
       // Search filter
       if (searchTerm !== '') {
         const searchLower = searchTerm.toLowerCase();
@@ -246,7 +252,7 @@ export function Employees() {
 
       return true;
     });
-  }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter]);
+  }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter, mlsFilter]);
 
   // Paginated employees for table view
   const paginatedEmployees = useMemo(() => {
@@ -257,7 +263,7 @@ export function Employees() {
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedStatuses]);
+  }, [searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter, mlsFilter]);
 
   // Get current valid rank for an employee by MLS
   function getCurrentRankForEmployee(mls: string | undefined): AgentRank | null {
@@ -892,6 +898,19 @@ export function Employees() {
             </select>
           </div>
 
+          {/* MLS Filter */}
+          <div className="min-w-[140px]">
+            <select
+              value={mlsFilter}
+              onChange={(e) => setMlsFilter(e.target.value as 'all' | 'filled' | 'empty')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">MLS бүгд</option>
+              <option value="filled">MLS-тэй</option>
+              <option value="empty">MLS хоосон</option>
+            </select>
+          </div>
+
           {/* View Toggle */}
           <div className="flex rounded-lg overflow-hidden border border-gray-300">
             <button
@@ -922,8 +941,8 @@ export function Employees() {
               })}
             </div>
           )}
-          {(searchTerm || selectedStatuses.length > 0) && (
-            <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-green-600 hover:text-green-800">
+          {(searchTerm || selectedStatuses.length > 0 || selectedOffice !== 'Бүгд' || iConnectFilter !== 'all' || szhFilter !== 'all' || mlsFilter !== 'all') && (
+            <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); setSelectedOffice('Бүгд'); setIConnectFilter('all'); setSzhFilter('all'); setMlsFilter('all'); }} className="text-sm text-green-600 hover:text-green-800">
               Цэвэрлэх
             </button>
           )}
