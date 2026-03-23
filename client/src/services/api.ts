@@ -13,17 +13,31 @@ function getAuthHeaders(): HeadersInit {
   return headers;
 }
 
+async function parseResponseBody(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!text) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 // Simple API wrapper for general API calls
 export const api = {
   get: async (url: string) => {
     const response = await fetch(`${API_BASE}${url}`, {
       headers: getAuthHeaders()
     });
+    const body = await parseResponseBody(response);
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'An error occurred' }));
+      const error = body || { error: 'An error occurred' };
       throw { response: { data: error } };
     }
-    return { data: await response.json() };
+    return { data: body };
   },
   
   post: async (url: string, data: any) => {
@@ -32,11 +46,12 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
+    const body = await parseResponseBody(response);
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'An error occurred' }));
+      const error = body || { error: 'An error occurred' };
       throw { response: { data: error } };
     }
-    return { data: await response.json() };
+    return { data: body };
   },
   
   put: async (url: string, data: any) => {
@@ -45,11 +60,12 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
+    const body = await parseResponseBody(response);
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'An error occurred' }));
+      const error = body || { error: 'An error occurred' };
       throw { response: { data: error } };
     }
-    return { data: await response.json() };
+    return { data: body };
   },
   
   delete: async (url: string) => {
@@ -57,27 +73,27 @@ export const api = {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
+    const body = await parseResponseBody(response);
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'An error occurred' }));
+      const error = body || { error: 'An error occurred' };
       throw { response: { data: error } };
     }
     if (response.status === 204) {
       return { data: null };
     }
-    return { data: await response.json() };
+    return { data: body };
   }
 };
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  const responseText = await response.text();
-  const parsed = responseText ? JSON.parse(responseText) : undefined;
+  const parsed = await parseResponseBody(response);
 
   if (!response.ok) {
     const error = parsed || { error: 'An error occurred' };
     const message = error.details ? `${error.error || 'An error occurred'}: ${error.details}` : (error.error || 'An error occurred');
     throw new Error(message);
   }
-  if (response.status === 204 || !responseText) {
+  if (response.status === 204 || parsed === undefined) {
     return undefined as T;
   }
   return parsed as T;
