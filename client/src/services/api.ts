@@ -69,15 +69,18 @@ export const api = {
 };
 
 async function handleResponse<T>(response: Response): Promise<T> {
+  const responseText = await response.text();
+  const parsed = responseText ? JSON.parse(responseText) : undefined;
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'An error occurred' }));
+    const error = parsed || { error: 'An error occurred' };
     const message = error.details ? `${error.error || 'An error occurred'}: ${error.details}` : (error.error || 'An error occurred');
     throw new Error(message);
   }
-  if (response.status === 204) {
+  if (response.status === 204 || !responseText) {
     return undefined as T;
   }
-  return response.json();
+  return parsed as T;
 }
 
 // Candidates API

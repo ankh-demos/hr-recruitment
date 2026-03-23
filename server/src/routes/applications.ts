@@ -2,8 +2,11 @@ import { Router, Request, Response } from 'express';
 import { applicationModel, employeeModel } from '../models';
 import { db } from '../database/unifiedDb';
 import { emailService } from '../services/emailService';
+import { getCachedResponse, invalidateCacheByPrefixes, setCachedResponse } from '../utils/routeCache';
 
 const router = Router();
+const LIST_TTL_MS = 45 * 1000;
+const STATS_TTL_MS = 120 * 1000;
 
 async function moveApplicationToEmployees(applicationId: string, applicationData: any) {
   console.log('[iConnect] Starting iConnect flow for application:', applicationId);
@@ -35,7 +38,16 @@ function normalizeStatus(status: unknown) {
 // Get all applications
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const cacheKey = req.originalUrl;
+    const cached = getCachedResponse<any[]>(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+
     const applications = await applicationModel.getAll();
+    setCachedResponse(cacheKey, applications, LIST_TTL_MS);
+    res.setHeader('X-Cache', 'MISS');
     res.json(applications);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch applications' });
@@ -45,10 +57,19 @@ router.get('/', async (req: Request, res: Response) => {
 // Get statistics
 router.get('/statistics', async (req: Request, res: Response) => {
   try {
+    const cacheKey = req.originalUrl;
+    const cached = getCachedResponse<any>(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+
     const month = req.query.month as string;
     const period = req.query.period as 'monthly' | 'quarterly' | 'yearly' | undefined;
     console.log('[Statistics Route] Fetching statistics - month:', month || 'current', 'period:', period || 'monthly');
     const stats = await db.getStatistics(month, period);
+    setCachedResponse(cacheKey, stats, STATS_TTL_MS);
+    res.setHeader('X-Cache', 'MISS');
     res.json(stats);
   } catch (error: any) {
     console.error('[Statistics Route] Error:', error?.message || error);
@@ -73,6 +94,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const application = await applicationModel.create(req.body);
+    invalidateCacheByPrefixes(['/api/applications']);
 
     // Send email notification to admins (async, don't wait)
     emailService.notifyNewApplication(application).catch(err => {
@@ -118,6 +140,8 @@ router.post('/sync-iconnect', async (_req: Request, res: Response) => {
       }
     }
 
+    invalidateCacheByPrefixes(['/api/applications', '/api/employees']);
+
     res.json(summary);
   } catch (error: any) {
     console.error('Failed to sync iConnect applications:', error);
@@ -148,6 +172,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (normalizedStatus === 'iconnect' || currentApplication.status === 'iconnect') {
       try {
         const result = await moveApplicationToEmployees(req.params.id, currentApplication);
+        invalidateCacheByPrefixes(['/api/applications', '/api/employees']);
         if (result.alreadyExisted) {
           return res.json({ moved: true, message: 'Application already moved to employees' });
         }
@@ -163,6 +188,10 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const updates = normalizedStatus === undefined ? rest : { status: normalizedStatus, ...rest };
     const application = await applicationModel.update(req.params.id, updates);
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    invalidateCacheByPrefixes(['/api/applications']);
     res.json(application);
   } catch (error: any) {
     console.error('Failed to update application:', error);
@@ -177,6 +206,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(404).json({ error: 'Application not found' });
     }
+    invalidateCacheByPrefixes(['/api/applications']);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete application' });
@@ -191,6 +221,7 @@ router.post('/bulk', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Request body must be an array of applications' });
     }
     const created = await applicationModel.bulkCreate(applications);
+    invalidateCacheByPrefixes(['/api/applications']);
     res.status(201).json({ success: true, count: created.length, applications: created });
   } catch (error: any) {
     console.error('Failed to bulk import applications:', error?.message || error);

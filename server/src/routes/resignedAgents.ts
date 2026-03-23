@@ -1,12 +1,23 @@
 import { Router, Request, Response } from 'express';
 import { resignedAgentModel, employeeModel } from '../models';
+import { getCachedResponse, invalidateCacheByPrefixes, setCachedResponse } from '../utils/routeCache';
 
 const router = Router();
+const LIST_TTL_MS = 60 * 1000;
 
 // Get all resigned agents
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const cacheKey = req.originalUrl;
+    const cached = getCachedResponse<any[]>(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+
     const resignedAgents = await resignedAgentModel.getAll();
+    setCachedResponse(cacheKey, resignedAgents, LIST_TTL_MS);
+    res.setHeader('X-Cache', 'MISS');
     res.json(resignedAgents);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch resigned agents' });
@@ -47,6 +58,8 @@ router.post('/from-employee/:employeeId', async (req: Request, res: Response) =>
     // Delete employee from employees table
     await employeeModel.delete(req.params.employeeId);
 
+    invalidateCacheByPrefixes(['/api/resigned-agents', '/api/employees', '/api/applications/statistics']);
+
     res.status(201).json(resignedAgent);
   } catch (error) {
     console.error('Error moving employee to resigned:', error);
@@ -68,6 +81,8 @@ router.post('/to-employee/:resignedAgentId', async (req: Request, res: Response)
     // Delete resigned agent
     await resignedAgentModel.delete(req.params.resignedAgentId);
 
+    invalidateCacheByPrefixes(['/api/resigned-agents', '/api/employees', '/api/applications/statistics']);
+
     res.status(201).json(employee);
   } catch (error) {
     console.error('Error moving resigned agent back to employees:', error);
@@ -82,6 +97,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (!resignedAgent) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }
+    invalidateCacheByPrefixes(['/api/resigned-agents']);
     res.json(resignedAgent);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update resigned agent' });
@@ -95,6 +111,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(404).json({ error: 'Resigned agent not found' });
     }
+    invalidateCacheByPrefixes(['/api/resigned-agents']);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete resigned agent' });

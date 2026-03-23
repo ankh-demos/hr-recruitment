@@ -1,13 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { agentRankModel } from '../models';
 import { RankLevel } from '../types';
+import { getCachedResponse, invalidateCacheByPrefixes, setCachedResponse } from '../utils/routeCache';
 
 const router = Router();
+const LIST_TTL_MS = 90 * 1000;
 
 // Get all agent ranks
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const cacheKey = req.originalUrl;
+    const cached = getCachedResponse<any[]>(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+
     const agentRanks = await agentRankModel.getAll();
+    setCachedResponse(cacheKey, agentRanks, LIST_TTL_MS);
+    res.setHeader('X-Cache', 'MISS');
     res.json(agentRanks);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch agent ranks' });
@@ -69,6 +80,7 @@ router.post('/', async (req: Request, res: Response) => {
       rank: rank as RankLevel,
       startDate
     });
+    invalidateCacheByPrefixes(['/api/agent-ranks']);
     res.status(201).json(agentRank);
   } catch (error) {
     console.error('Error creating agent rank:', error);
@@ -88,6 +100,7 @@ router.put('/:id/rank', async (req: Request, res: Response) => {
     if (!agentRank) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
+    invalidateCacheByPrefixes(['/api/agent-ranks']);
     res.json(agentRank);
   } catch (error) {
     console.error('Error updating rank:', error);
@@ -102,6 +115,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (!agentRank) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
+    invalidateCacheByPrefixes(['/api/agent-ranks']);
     res.json(agentRank);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update agent rank' });
@@ -115,6 +129,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(404).json({ error: 'Agent rank not found' });
     }
+    invalidateCacheByPrefixes(['/api/agent-ranks']);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete agent rank' });
