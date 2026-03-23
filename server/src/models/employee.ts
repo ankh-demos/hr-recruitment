@@ -58,6 +58,7 @@ export const employeeModel = {
       // Employee specific
       officeName: safeString(application.interestedOffice), // Default to interested office
       status: 'active_no_transaction', // Default status for new employees
+      hasTop: false,
       employmentStartDate: startDate,
       hiredDate: now,
       createdAt: now,
@@ -110,6 +111,7 @@ export const employeeModel = {
       district: resignedAgent.district,
       detailedAddress: resignedAgent.detailedAddress,
       childrenCount: resignedAgent.childrenCount,
+      hasTop: resignedAgent.hasTop || false,
       employmentStartDate: startDate,
       officeName: resignedAgent.officeName,
       // Employee specific (reset status)

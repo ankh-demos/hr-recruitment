@@ -5,12 +5,14 @@ import { Candidate, Job, Interview, Application, User, Employee, ResignedAgent, 
 const FIELD_MAPPINGS: Record<string, string> = {
   iConnectName: 'iconnect_name',
   hasIConnect: 'has_iconnect',
+  hasTop: 'has_top',
 };
 
 // Reverse mappings (snake_case -> camelCase)
 const REVERSE_FIELD_MAPPINGS: Record<string, string> = {
   iconnect_name: 'iConnectName',
   has_iconnect: 'hasIConnect',
+  has_top: 'hasTop',
 };
 
 // Helper to convert snake_case to camelCase
@@ -315,7 +317,7 @@ export const supabaseDatabase = {
       'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
       'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
       'district', 'detailed_address', 'children_count', 'employment_start_date',
-      'office_name', 'status', 'hired_date', 'created_at', 'updated_at'
+      'office_name', 'status', 'hired_date', 'has_top', 'created_at', 'updated_at'
     ]);
 
     const toBaseColumnsOnly = (payload: Record<string, any>) => {
@@ -394,7 +396,7 @@ export const supabaseDatabase = {
       'certificate_number', 'citizen_registration_number', 'szh_certificate_number',
       'certificate_date', 'remax_email', 'mls', 'bank', 'account_number',
       'district', 'detailed_address', 'children_count', 'employment_start_date',
-      'office_name', 'status', 'hired_date'
+      'office_name', 'status', 'hired_date', 'has_top'
     ]);
     
     // Extended columns (may or may not exist depending on migration status)
@@ -402,7 +404,7 @@ export const supabaseDatabase = {
       'has_iconnect', 'is_assistant', 'assistant_of',
       'has_szh_training', 'szh_training_date', 'szh_official_letter_number',
       'training_start_date', 'training_end_date', 'fireup_date', 'is_transfer',
-      'has_first_transaction', 'exclude_from_kpi'
+      'has_first_transaction', 'exclude_from_kpi', 'has_top'
     ]);
     
     const { data, error } = await supabase.from('employees').update(snakeCaseUpdates).eq('id', id).select().single();

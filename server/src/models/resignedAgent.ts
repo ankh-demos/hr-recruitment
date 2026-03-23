@@ -63,6 +63,7 @@ export const resignedAgentModel = {
       district: employee.district,
       detailedAddress: employee.detailedAddress,
       childrenCount: employee.childrenCount,
+      hasTop: employee.hasTop,
       hiredDate: employee.hiredDate,
       employmentStartDate: employee.employmentStartDate,
       officeName: employee.officeName,

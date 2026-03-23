@@ -30,6 +30,7 @@ ALTER TABLE employees ADD COLUMN IF NOT EXISTS assistant_of TEXT;
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_szh_training BOOLEAN DEFAULT false;
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_training_date TEXT;
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS szh_official_letter_number TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS has_top BOOLEAN DEFAULT false;
 
 -- Date / flag columns
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS training_start_date DATE;
@@ -91,6 +92,7 @@ ALTER TABLE employees ALTER COLUMN assistant_of DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN has_szh_training DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN szh_training_date DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN szh_official_letter_number DROP NOT NULL;
+ALTER TABLE employees ALTER COLUMN has_top DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN training_start_date DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN training_end_date DROP NOT NULL;
 ALTER TABLE employees ALTER COLUMN fireup_date DROP NOT NULL;
@@ -140,6 +142,7 @@ ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS assistant_of TEXT;
 ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS has_szh_training BOOLEAN DEFAULT false;
 ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS szh_training_date TEXT;
 ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS szh_official_letter_number TEXT;
+ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS has_top BOOLEAN DEFAULT false;
 
 -- Date / flag columns
 ALTER TABLE resigned_agents ADD COLUMN IF NOT EXISTS training_start_date DATE;

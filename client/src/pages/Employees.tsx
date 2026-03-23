@@ -15,7 +15,7 @@ const RANK_COLORS: Record<RankLevel, string> = {
 
 // Employee status options (without 'resigned' - that's a separate table now)
 const EMPLOYEE_STATUSES = [
-  { value: 'active', label: 'Идэвхтэй', color: 'bg-green-100 text-green-800' },
+  { value: 'active', label: 'Идэвхитэй', color: 'bg-green-100 text-green-800' },
   { value: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй', color: 'bg-teal-100 text-teal-800' },
   { value: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй', color: 'bg-orange-100 text-orange-800' },
   { value: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй', color: 'bg-yellow-100 text-yellow-800' },
@@ -148,6 +148,7 @@ export function Employees() {
     officeName: '',
     status: 'active' as Employee['status'],
     hasIConnect: false,
+    hasTop: false,
     isAssistant: false,
     assistantOf: '',
     hasSzhTraining: false,
@@ -299,7 +300,7 @@ export function Employees() {
       'Certificate дугаар', 'Иргэний бүртгэлийн дугаар', 'СЗХ сертификатын дугаар',
       'Сертификат авсан огноо', 'Remax имэйл', 'MLS', 'Банк', 'Дансны дугаар',
       'Хүүхдийн тоо', 'Ажилд орсон огноо', 'Төлөв', 'Цол',
-      'iConnect', 'Туслах эсэх', 'Хэний туслах',
+      'iConnect', 'TOP', 'Туслах эсэх', 'Хэний туслах',
       'СЗХ сургалт', 'СЗХ сургалт огноо', 'СЗХ албан бичгийн дугаар'
     ];
 
@@ -336,6 +337,7 @@ export function Employees() {
         getStatusInfo(emp.status).label,
         rank?.currentRank || '',
         emp.hasIConnect ? 'Тийм' : 'Үгүй',
+        emp.hasTop ? 'Тийм' : 'Үгүй',
         emp.isAssistant ? 'Тийм' : 'Үгүй',
         emp.assistantOf || '',
         emp.hasSzhTraining ? 'Тийм' : 'Үгүй',
@@ -365,7 +367,7 @@ export function Employees() {
     'certificateNumber', 'citizenRegistrationNumber', 'szhCertificateNumber',
     'certificateDate', 'remaxEmail', 'mls', 'bank', 'accountNumber',
     'childrenCount', 'employmentStartDate', 'status',
-    'hasIConnect', 'isAssistant', 'assistantOf',
+    'hasIConnect', 'hasTop', 'isAssistant', 'assistantOf',
     'hasSzhTraining', 'szhTrainingDate', 'szhOfficialLetterNumber'
   ];
 
@@ -379,7 +381,7 @@ export function Employees() {
       'CERT001', 'REG001', 'SZH001',
       '2024-01-01', 'remax@email.com', 'MLS001', 'Хаан банк', '5000123456',
       '2', '2024-01-01', 'active',
-      'true', 'false', '',
+      'true', 'false', 'false', '',
       'true', '2024-06-01', 'SZH-001'
     ].join(',');
 
@@ -420,15 +422,15 @@ export function Employees() {
 
       headers.forEach((header, index) => {
         const value = values[index] || '';
-        if (header === 'hasDriverLicense' || header === 'hasIConnect' || header === 'isAssistant' || header === 'hasSzhTraining') {
+        if (header === 'hasDriverLicense' || header === 'hasIConnect' || header === 'hasTop' || header === 'isAssistant' || header === 'hasSzhTraining') {
           (employee as any)[header] = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'тийм';
         } else if (header === 'childrenCount') {
           (employee as any)[header] = parseInt(value) || 0;
         } else if (header === 'gender') {
           (employee as any)[header] = value.toLowerCase() === 'female' || value.toLowerCase() === 'эмэгтэй' ? 'female' : 'male';
         } else if (header === 'status') {
-          const validStatuses = ['active', 'new_0_6', 'month_6_12', 'experienced_1_3', 'over_3_years', 'inactive_transaction', 'inactive', 'active_no_transaction', 'on_leave', 'maternity_leave', 'team_member', 'top'];
-          (employee as any)[header] = validStatuses.includes(value) ? value : 'active';
+          const validStatuses = EMPLOYEE_STATUSES.map(s => s.value);
+          (employee as any)[header] = validStatuses.includes(value) ? value : 'active_no_transaction';
         } else {
           (employee as any)[header] = value;
         }
@@ -740,6 +742,7 @@ export function Employees() {
       officeName: selectedEmployee.officeName || '',
       status: selectedEmployee.status,
       hasIConnect: selectedEmployee.hasIConnect || false,
+      hasTop: selectedEmployee.hasTop || false,
       isAssistant: selectedEmployee.isAssistant || false,
       assistantOf: selectedEmployee.assistantOf || '',
       hasSzhTraining: selectedEmployee.hasSzhTraining || false,
@@ -1772,6 +1775,14 @@ export function Employees() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">iConnect</label>
                 <select value={editFields.hasIConnect ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, hasIConnect: e.target.value === 'yes' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  <option value="yes">Тийм</option>
+                  <option value="no">Үгүй</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">TOP</label>
+                <select value={editFields.hasTop ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, hasTop: e.target.value === 'yes' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="yes">Тийм</option>
                   <option value="no">Үгүй</option>

@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 const EMPLOYEE_STATUS_METRICS = [
-  { key: 'active', label: 'Идэвхтэй' },
   { key: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй' },
   { key: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй' },
   { key: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй' },
@@ -75,7 +74,6 @@ export function Dashboard() {
     newThisWeek: 0
   });
   const [employeeStats, setEmployeeStats] = useState({
-    active: 0,
     active_transaction: 0,
     active_no_transaction: 0,
     inactive_transaction: 0,
@@ -184,7 +182,6 @@ export function Dashboard() {
     });
 
     // Calculate employee stats (8 actual statuses)
-    const activeCount = filteredEmployees.filter((e: Employee) => (e.status as string) === 'active').length;
     const activeTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_transaction').length;
     const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
     const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
@@ -233,13 +230,15 @@ export function Dashboard() {
     const employeeMlsWithStandardRank = new Set(
       filteredRanksForOffice.filter(r => r.currentRank === 'Стандарт').map(r => r.agentId)
     );
-    // Count employees with TOP rank (must have rank entry AND rank is not Стандарт)
-    const hasTopRankCount = filteredEmployees.filter(e => e.mls && employeeMlsWithTopRank.has(e.mls)).length;
-    // Count employees with Стандарт rank (Цолгүй = has rank entry with Стандарт, OR no rank entry at all)
+    // TOP цолтой = TOP tag checked + TOP rank (Силвер/Голд/Платиниум/Даймонд)
+    const hasTopRankCount = filteredEmployees.filter(e => e.hasTop && !!e.mls && employeeMlsWithTopRank.has(e.mls)).length;
+    // TOP цолгүй = TOP tag checked + Стандарт rank or no rank
     const noTopRankCount = filteredEmployees.filter(e => 
-      !e.mls || 
-      employeeMlsWithStandardRank.has(e.mls) || 
-      (!employeeMlsWithTopRank.has(e.mls) && !employeeMlsWithStandardRank.has(e.mls))
+      e.hasTop && (
+        !e.mls ||
+        employeeMlsWithStandardRank.has(e.mls) ||
+        (!employeeMlsWithTopRank.has(e.mls) && !employeeMlsWithStandardRank.has(e.mls))
+      )
     ).length;
 
     const totalAgents = filteredEmployees.length;
@@ -247,7 +246,6 @@ export function Dashboard() {
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
 
     setEmployeeStats({
-      active: activeCount,
       active_transaction: activeTransactionCount,
       active_no_transaction: activeNoTransactionCount,
       inactive_transaction: inactiveTransactionCount,
@@ -446,12 +444,6 @@ export function Dashboard() {
         },
       ],
       [
-        {
-          key: 'active', count: statusMetricMap.active, label: 'Идэвхтэй',
-          cardClass: 'bg-green-50 border-l-4 border-green-500', iconWrapClass: 'bg-green-100', iconClass: 'text-green-600',
-          valueClass: 'text-green-700', labelClass: 'text-green-600',
-          iconPath: 'M5 13l4 4L19 7'
-        },
         {
           key: 'active_transaction', count: statusMetricMap.active_transaction, label: 'Идэвхитэй гүйлгээтэй',
           cardClass: 'bg-teal-50 border-l-4 border-teal-500', iconWrapClass: 'bg-teal-100', iconClass: 'text-teal-600',

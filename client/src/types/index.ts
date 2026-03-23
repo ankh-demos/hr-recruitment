@@ -219,6 +219,7 @@ export interface Employee {
   status: 'active_transaction' | 'active_no_transaction' | 'inactive_transaction' | 'inactive' | 'on_leave_iconnect' | 'on_leave_closed' | 'hidden_iconnect' | 'left_team';
   // Additional tag fields
   hasIConnect?: boolean; // iConnect-тэй эсэх
+  hasTop?: boolean; // TOP tag (тийм/үгүй)
   hasFirstTransaction?: boolean; // Анхны гүйлгээ хийсэн эсэх
   excludeFromKpi?: boolean; // KPI тооцохгүй эсэх
   isAssistant?: boolean; // Туслах эсэх
@@ -278,6 +279,7 @@ export interface ResignedAgent {
   hiredDate: string;
   employmentStartDate?: string; // Ажилд орсон огноо
   officeName?: string; // Ажилладаг оффис
+  hasTop?: boolean; // TOP tag (тийм/үгүй)
   // Resignation specific fields
   workedMonths: number; // Ажилласан хугацаа сараар (auto-calculated)
   resignedDate: string; // Гарсан он сар
