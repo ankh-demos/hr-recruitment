@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** March 17, 2026
+**Last Updated:** March 23, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,82 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (March 23, 2026)
+
+### Dashboard and Tenure Logic Alignment
+
+#### Completed
+- Updated tenure metrics on Dashboard to calculate from `employmentStartDate` (`Ажилд орсон огноо`) instead of application creation date.
+- Ensured employee creation/move flows default `employmentStartDate` correctly when missing.
+- Aligned dashboard employee status counting with Employees page status filters.
+- Added percentage badges to dashboard metric cards.
+- Removed the "Идэвхитэй" tile per latest dashboard requirement.
+
+#### Files Updated
+- `client/src/pages/Dashboard.tsx`
+- `server/src/models/employee.ts`
+
+---
+
+### Resigned Agents Analytics Expansion
+
+#### Completed
+- Added dashboard-style metrics on Resigned Agents page.
+- Included worked-duration bucket summaries and resignation-reason summaries.
+- Displayed percentages alongside counts for easier comparison.
+
+#### Files Updated
+- `client/src/pages/ResignedAgents.tsx`
+
+---
+
+### TOP Tag (hasTop) End-to-End Support
+
+#### Completed
+- Added TOP Yes/No tag support in Employee and ResignedAgent types.
+- Added TOP field in Employees edit flow and CSV import/export mappings.
+- Updated dashboard TOP/No-TOP counting to use `hasTop` with rank-specific rules.
+- Added DB mapping and schema/migration support for `has_top`.
+
+#### Files Updated
+- `client/src/pages/Employees.tsx`
+- `client/src/types/index.ts`
+- `server/src/types/index.ts`
+- `server/src/models/employee.ts`
+- `server/src/models/resignedAgent.ts`
+- `server/src/database/supabaseDb.ts`
+- `server/migrations/2026_03_23_add_has_top_tag.sql`
+- `server/migrations/2026_03_11_full_sync.sql`
+- `server/migrations/2026_03_17_make_employee_fields_optional.sql`
+- `server/supabase-schema.sql`
+
+---
+
+### Applications Fire UP Save Fix + Status Tooltips
+
+#### Completed
+- Fixed Fire UP status save reliability by normalizing optional dates and improving refresh/error flow.
+- Added status meaning tooltips in Applications and Employees:
+  - Table status badges
+  - Status action buttons in detail panels
+
+#### Files Updated
+- `client/src/pages/Applications.tsx`
+- `client/src/pages/Employees.tsx`
+
+---
+
+### Git Sync and Merge Resolution
+
+#### Completed
+- Synced local with remote `main`, resolved merge conflicts, and pushed final changes successfully.
+
+#### Conflict Resolution Files
+- `client/src/pages/Dashboard.tsx`
+- `server/src/models/employee.ts`
 
 ---
 
