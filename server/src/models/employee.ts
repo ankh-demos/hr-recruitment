@@ -17,6 +17,7 @@ export const employeeModel = {
 
   async createFromApplication(application: Application): Promise<Employee> {
     const now = new Date().toISOString();
+    const startDate = now.slice(0, 10);
     const employee: Employee = {
       id: uuidv4(),
       applicationId: application.id,
@@ -55,6 +56,7 @@ export const employeeModel = {
       // Employee specific
       officeName: application.interestedOffice, // Default to interested office
       status: 'active_no_transaction', // Default status for new employees
+      employmentStartDate: startDate,
       hiredDate: now,
       createdAt: now,
       updatedAt: now
@@ -64,6 +66,7 @@ export const employeeModel = {
 
   async createFromResignedAgent(resignedAgent: ResignedAgent): Promise<Employee> {
     const now = new Date().toISOString();
+    const startDate = now.slice(0, 10);
     const employee: Employee = {
       id: uuidv4(),
       applicationId: resignedAgent.applicationId,
@@ -105,7 +108,7 @@ export const employeeModel = {
       district: resignedAgent.district,
       detailedAddress: resignedAgent.detailedAddress,
       childrenCount: resignedAgent.childrenCount,
-      employmentStartDate: resignedAgent.employmentStartDate,
+      employmentStartDate: startDate,
       officeName: resignedAgent.officeName,
       // Employee specific (reset status)
       status: 'active_no_transaction',
@@ -120,6 +123,7 @@ export const employeeModel = {
     const now = new Date().toISOString();
     const employee: Employee = {
       ...data,
+      employmentStartDate: data.employmentStartDate || now.slice(0, 10),
       id: uuidv4(),
       createdAt: now,
       updatedAt: now

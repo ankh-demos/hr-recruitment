@@ -6,6 +6,59 @@ import { useAuth } from '../context/AuthContext';
 
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
+const EMPLOYEE_STATUS_METRICS = [
+  { key: 'active', label: 'Идэвхтэй' },
+  { key: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй' },
+  { key: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй' },
+  { key: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй' },
+  { key: 'inactive', label: 'Идэвхигүй' },
+  { key: 'on_leave_iconnect', label: 'Чөлөөтэй iconnect-тэй' },
+  { key: 'on_leave_closed', label: 'Чөлөөтэй Iconnect хаасан' },
+  { key: 'hidden_iconnect', label: 'Iconnect нуусан агент' },
+  { key: 'left_team', label: 'Багаас гарсан' },
+] as const;
+
+type EmployeeMetricCardProps = {
+  count: number | string;
+  label: string;
+  badge: string;
+  cardClass: string;
+  iconWrapClass: string;
+  iconClass: string;
+  valueClass: string;
+  labelClass: string;
+  iconPath: string;
+};
+
+function EmployeeMetricCard({
+  count,
+  label,
+  badge,
+  cardClass,
+  iconWrapClass,
+  iconClass,
+  valueClass,
+  labelClass,
+  iconPath,
+}: EmployeeMetricCardProps) {
+  return (
+    <div className={`${cardClass} p-4 rounded-lg relative`}>
+      <span className="absolute top-2 right-2 text-[10px] font-semibold text-gray-500">{badge}</span>
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconWrapClass}`}>
+          <svg className={`w-5 h-5 ${iconClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPath} />
+          </svg>
+        </div>
+        <div>
+          <p className={`text-2xl font-bold ${valueClass}`}>{count}</p>
+          <p className={`text-xs ${labelClass}`}>{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const { user } = useAuth();
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
@@ -22,6 +75,7 @@ export function Dashboard() {
     newThisWeek: 0
   });
   const [employeeStats, setEmployeeStats] = useState({
+    active: 0,
     active_transaction: 0,
     active_no_transaction: 0,
     inactive_transaction: 0,
@@ -130,6 +184,7 @@ export function Dashboard() {
     });
 
     // Calculate employee stats (8 actual statuses)
+    const activeCount = filteredEmployees.filter((e: Employee) => (e.status as string) === 'active').length;
     const activeTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_transaction').length;
     const activeNoTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'active_no_transaction').length;
     const inactiveTransactionCount = filteredEmployees.filter((e: Employee) => e.status === 'inactive_transaction').length;
@@ -148,7 +203,7 @@ export function Dashboard() {
 
     // Tenure calculation
     const getTenureMonths = (emp: Employee): number => {
-      const raw = emp.employmentStartDate || emp.hiredDate || emp.createdAt;
+      const raw = emp.employmentStartDate;
       if (!raw) return 0;
       const d = new Date(raw);
       if (Number.isNaN(d.getTime())) return 0;
@@ -192,6 +247,7 @@ export function Dashboard() {
     const quality = totalAgents > 0 ? (qualitySum / totalAgents) * 100 : 0;
 
     setEmployeeStats({
+      active: activeCount,
       active_transaction: activeTransactionCount,
       active_no_transaction: activeNoTransactionCount,
       inactive_transaction: inactiveTransactionCount,
@@ -340,6 +396,166 @@ export function Dashboard() {
     return { fireUpThisMonth, iConnectThisMonth };
   }, [allApplications, allEmployees, selectedOffice]);
 
+  const employeePercent = useCallback((value: number) => {
+    if (employeeStats.totalAgents <= 0) return '0.0%';
+    return `${((value / employeeStats.totalAgents) * 100).toFixed(1)}%`;
+  }, [employeeStats.totalAgents]);
+
+  const employeeMetricRows = useMemo(() => {
+    const statusMetricMap = Object.fromEntries(
+      EMPLOYEE_STATUS_METRICS.map((metric) => [metric.key, (employeeStats as Record<string, number>)[metric.key] || 0])
+    );
+
+    return [
+      [
+        {
+          key: 'tenure_0_6', count: employeeStats.tenure_0_6, label: 'Шинэ (0-6 сар)',
+          cardClass: 'bg-sky-50 border-l-4 border-sky-500', iconWrapClass: 'bg-sky-100', iconClass: 'text-sky-600',
+          valueClass: 'text-sky-700', labelClass: 'text-sky-600',
+          iconPath: 'M12 6v6m0 0v6m0-6h6m-6 0H6'
+        },
+        {
+          key: 'tenure_6_12', count: employeeStats.tenure_6_12, label: '06-12 сар',
+          cardClass: 'bg-blue-50 border-l-4 border-blue-400', iconWrapClass: 'bg-blue-100', iconClass: 'text-blue-600',
+          valueClass: 'text-blue-700', labelClass: 'text-blue-600',
+          iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+        },
+        {
+          key: 'tenure_1_plus', count: employeeStats.tenure_1_plus, label: '1 жилээс дээш',
+          cardClass: 'bg-violet-50 border-l-4 border-violet-500', iconWrapClass: 'bg-violet-100', iconClass: 'text-violet-600',
+          valueClass: 'text-violet-700', labelClass: 'text-violet-600',
+          iconPath: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+        },
+        {
+          key: 'tenure_3_plus', count: employeeStats.tenure_3_plus, label: '3 жилээс дээш',
+          cardClass: 'bg-fuchsia-50 border-l-4 border-fuchsia-500', iconWrapClass: 'bg-fuchsia-100', iconClass: 'text-fuchsia-600',
+          valueClass: 'text-fuchsia-700', labelClass: 'text-fuchsia-600',
+          iconPath: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z'
+        },
+        {
+          key: 'hasTopRank', count: employeeStats.hasTopRank, label: 'TOP цолтой',
+          cardClass: 'bg-yellow-50 border-l-4 border-yellow-500', iconWrapClass: 'bg-yellow-100', iconClass: 'text-yellow-600',
+          valueClass: 'text-yellow-700', labelClass: 'text-yellow-600',
+          iconPath: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z'
+        },
+        {
+          key: 'noTopRank', count: employeeStats.noTopRank, label: 'TOP цолгүй',
+          cardClass: 'bg-stone-50 border-l-4 border-stone-400', iconWrapClass: 'bg-stone-100', iconClass: 'text-stone-500',
+          valueClass: 'text-stone-700', labelClass: 'text-stone-500',
+          iconPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+        },
+      ],
+      [
+        {
+          key: 'active', count: statusMetricMap.active, label: 'Идэвхтэй',
+          cardClass: 'bg-green-50 border-l-4 border-green-500', iconWrapClass: 'bg-green-100', iconClass: 'text-green-600',
+          valueClass: 'text-green-700', labelClass: 'text-green-600',
+          iconPath: 'M5 13l4 4L19 7'
+        },
+        {
+          key: 'active_transaction', count: statusMetricMap.active_transaction, label: 'Идэвхитэй гүйлгээтэй',
+          cardClass: 'bg-teal-50 border-l-4 border-teal-500', iconWrapClass: 'bg-teal-100', iconClass: 'text-teal-600',
+          valueClass: 'text-teal-700', labelClass: 'text-teal-600',
+          iconPath: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+        },
+        {
+          key: 'active_no_transaction', count: statusMetricMap.active_no_transaction, label: 'Идэвхитэй, гүйлгээгүй',
+          cardClass: 'bg-orange-50 border-l-4 border-orange-500', iconWrapClass: 'bg-orange-100', iconClass: 'text-orange-600',
+          valueClass: 'text-orange-700', labelClass: 'text-orange-600',
+          iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+        },
+        {
+          key: 'inactive_transaction', count: statusMetricMap.inactive_transaction, label: 'Идэвхигүй, гүйлгээтэй',
+          cardClass: 'bg-yellow-50 border-l-4 border-yellow-400', iconWrapClass: 'bg-yellow-100', iconClass: 'text-yellow-600',
+          valueClass: 'text-yellow-700', labelClass: 'text-yellow-600',
+          iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        {
+          key: 'inactive', count: statusMetricMap.inactive, label: 'Идэвхигүй',
+          cardClass: 'bg-gray-100 border-l-4 border-gray-500', iconWrapClass: 'bg-gray-200', iconClass: 'text-gray-600',
+          valueClass: 'text-gray-700', labelClass: 'text-gray-600',
+          iconPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+        },
+        {
+          key: 'left_team', count: statusMetricMap.left_team, label: 'Багаас гарсан',
+          cardClass: 'bg-rose-50 border-l-4 border-rose-500', iconWrapClass: 'bg-rose-100', iconClass: 'text-rose-600',
+          valueClass: 'text-rose-700', labelClass: 'text-rose-600',
+          iconPath: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'
+        },
+      ],
+      [
+        {
+          key: 'firstTransaction', count: employeeStats.firstTransaction, label: 'Анхны гүйлгээ хийсэн',
+          cardClass: 'bg-blue-50 border-l-4 border-blue-500', iconWrapClass: 'bg-blue-100', iconClass: 'text-blue-600',
+          valueClass: 'text-blue-700', labelClass: 'text-blue-600',
+          iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        {
+          key: 'noKpi', count: employeeStats.noKpi, label: 'KPI тооцохгүй',
+          cardClass: 'bg-indigo-50 border-l-4 border-indigo-500', iconWrapClass: 'bg-indigo-100', iconClass: 'text-indigo-600',
+          valueClass: 'text-indigo-700', labelClass: 'text-indigo-600',
+          iconPath: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z'
+        },
+        {
+          key: 'pendingIconnect', count: employeeStats.pendingIconnect, label: 'Iconnect хүлээгдэж байгаа',
+          cardClass: 'bg-cyan-50 border-l-4 border-cyan-500', iconWrapClass: 'bg-cyan-100', iconClass: 'text-cyan-600',
+          valueClass: 'text-cyan-700', labelClass: 'text-cyan-600',
+          iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        {
+          key: 'on_leave_iconnect', count: statusMetricMap.on_leave_iconnect, label: 'Чөлөөтэй iconnect-тэй',
+          cardClass: 'bg-purple-50 border-l-4 border-purple-500', iconWrapClass: 'bg-purple-100', iconClass: 'text-purple-600',
+          valueClass: 'text-purple-700', labelClass: 'text-purple-600',
+          iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+        },
+        {
+          key: 'on_leave_closed', count: statusMetricMap.on_leave_closed, label: 'Чөлөөтэй Iconnect хаасан',
+          cardClass: 'bg-pink-50 border-l-4 border-pink-500', iconWrapClass: 'bg-pink-100', iconClass: 'text-pink-600',
+          valueClass: 'text-pink-700', labelClass: 'text-pink-600',
+          iconPath: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636'
+        },
+        {
+          key: 'hidden_iconnect', count: statusMetricMap.hidden_iconnect, label: 'Iconnect нуусан',
+          cardClass: 'bg-red-50 border-l-4 border-red-500', iconWrapClass: 'bg-red-100', iconClass: 'text-red-600',
+          valueClass: 'text-red-700', labelClass: 'text-red-600',
+          iconPath: 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21'
+        },
+      ],
+      [
+        {
+          key: 'teamMember', count: employeeStats.teamMember, label: 'Багийн гишүүн',
+          cardClass: 'bg-lime-50 border-l-4 border-lime-500', iconWrapClass: 'bg-lime-100', iconClass: 'text-lime-600',
+          valueClass: 'text-lime-700', labelClass: 'text-lime-600',
+          iconPath: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'
+        },
+        {
+          key: 'resigned', count: employeeStats.resigned, label: 'Гарсан',
+          cardClass: 'bg-amber-50 border-l-4 border-amber-500', iconWrapClass: 'bg-amber-100', iconClass: 'text-amber-600',
+          valueClass: 'text-amber-700', labelClass: 'text-amber-600',
+          iconPath: 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'
+        },
+        {
+          key: 'totalAgents', count: employeeStats.totalAgents, label: 'Нийт агент',
+          cardClass: 'bg-slate-100 border-l-4 border-slate-500', iconWrapClass: 'bg-slate-200', iconClass: 'text-slate-600',
+          valueClass: 'text-slate-700', labelClass: 'text-slate-600',
+          iconPath: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'
+        },
+        {
+          key: 'totalIconnect', count: employeeStats.totalIconnect, label: 'Нийт iconnect',
+          cardClass: 'bg-green-50 border-l-4 border-green-500', iconWrapClass: 'bg-green-100', iconClass: 'text-green-600',
+          valueClass: 'text-green-700', labelClass: 'text-green-600',
+          iconPath: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1'
+        },
+        {
+          key: 'quality', count: `${employeeStats.quality.toFixed(1)}%`, label: 'Чанар',
+          cardClass: 'bg-emerald-100 border-l-4 border-emerald-500', iconWrapClass: 'bg-emerald-200', iconClass: 'text-emerald-600',
+          valueClass: 'text-emerald-700', labelClass: 'text-emerald-600',
+          iconPath: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+        },
+      ],
+    ];
+  }, [employeeStats]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -426,7 +642,7 @@ export function Dashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Ажилтнууд</dt>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Агентууд</dt>
                   <dd className="text-2xl font-bold text-gray-900">{stats.totalEmployees}</dd>
                 </dl>
               </div>
@@ -484,308 +700,27 @@ export function Dashboard() {
       {/* Employee Status Stats */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
-        
-        {/* Row 1: Tenure & Rank - Ажилласан хугацаа */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-          <div className="bg-sky-50 border-l-4 border-sky-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-sky-700">{employeeStats.tenure_0_6}</p>
-                <p className="text-xs text-sky-600">Шинэ (0-6 сар)</p>
-              </div>
-            </div>
+        {employeeMetricRows.map((row, rowIndex) => (
+          <div
+            key={rowIndex}
+            className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 ${rowIndex < employeeMetricRows.length - 1 ? 'mb-4' : ''}`}
+          >
+            {row.map((metric) => (
+              <EmployeeMetricCard
+                key={metric.key}
+                count={metric.count}
+                label={metric.label}
+                badge={metric.key === 'totalAgents' ? '100.0%' : metric.key === 'quality' ? `${employeeStats.quality.toFixed(1)}%` : employeePercent(Number(metric.count) || 0)}
+                cardClass={metric.cardClass}
+                iconWrapClass={metric.iconWrapClass}
+                iconClass={metric.iconClass}
+                valueClass={metric.valueClass}
+                labelClass={metric.labelClass}
+                iconPath={metric.iconPath}
+              />
+            ))}
           </div>
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-blue-700">{employeeStats.tenure_6_12}</p>
-                <p className="text-xs text-blue-600">06-12 сар</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-violet-50 border-l-4 border-violet-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-violet-700">{employeeStats.tenure_1_plus}</p>
-                <p className="text-xs text-violet-600">1 жилээс дээш</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-fuchsia-50 border-l-4 border-fuchsia-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-fuchsia-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-fuchsia-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-fuchsia-700">{employeeStats.tenure_3_plus}</p>
-                <p className="text-xs text-fuchsia-600">3 жилээс дээш</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-yellow-700">{employeeStats.hasTopRank}</p>
-                <p className="text-xs text-yellow-600">ТОР цолтой</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-stone-50 border-l-4 border-stone-400 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-stone-700">{employeeStats.noTopRank}</p>
-                <p className="text-xs text-stone-500">ТОР цолгүй</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Activity Status - Идэвхи */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-          <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-teal-700">{employeeStats.active_transaction}</p>
-                <p className="text-xs text-teal-600">Идэвхитэй гүйлгээтэй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-orange-700">{employeeStats.active_no_transaction}</p>
-                <p className="text-xs text-orange-600">Идэвхитэй, гүйлгээгүй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-yellow-700">{employeeStats.inactive_transaction}</p>
-                <p className="text-xs text-yellow-600">Идэвхигүй, гүйлгээтэй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-100 border-l-4 border-gray-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-700">{employeeStats.inactive}</p>
-                <p className="text-xs text-gray-600">Идэвхигүй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-lime-50 border-l-4 border-lime-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-lime-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-lime-700">{employeeStats.teamMember}</p>
-                <p className="text-xs text-lime-600">Багийн гишүүн</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-700">{employeeStats.resigned}</p>
-                <p className="text-xs text-amber-600">Гарсан</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3: iConnect & Special statuses */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-blue-700">{employeeStats.firstTransaction}</p>
-                <p className="text-xs text-blue-600">Анхны гүйлгээ хийсэн</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-indigo-700">{employeeStats.noKpi}</p>
-                <p className="text-xs text-indigo-600">KPI тооцохгүй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-cyan-700">{employeeStats.pendingIconnect}</p>
-                <p className="text-xs text-cyan-600">Iconnect хүлээгдэж байгаа</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-purple-700">{employeeStats.on_leave_iconnect}</p>
-                <p className="text-xs text-purple-600">Чөлөөтэй iconnect-тэй</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-pink-700">{employeeStats.on_leave_closed}</p>
-                <p className="text-xs text-pink-600">Чөлөөтэй Iconnect хаасан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-700">{employeeStats.hidden_iconnect}</p>
-                <p className="text-xs text-red-600">Iconnect нуусан</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 4: Summary totals */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-rose-700">{employeeStats.left_team}</p>
-                <p className="text-xs text-rose-600">Багаас гарсан</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-100 border-l-4 border-slate-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-700">{employeeStats.totalAgents}</p>
-                <p className="text-xs text-slate-600">Нийт агент</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-700">{employeeStats.totalIconnect}</p>
-                <p className="text-xs text-green-600">Нийт iconnect</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-emerald-100 border-l-4 border-emerald-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-emerald-700">{employeeStats.quality.toFixed(1)}%</p>
-                <p className="text-xs text-emerald-600">Чанар</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Expiring Ranks Section */}

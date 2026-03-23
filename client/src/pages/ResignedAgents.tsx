@@ -5,6 +5,24 @@ import { Pagination } from '../components/Pagination';
 
 // Office options
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
+const RESIGNATION_REASONS = [
+  'Шилжсэн',
+  'Ажиллах чадваргүй',
+  'Зайлшгүй шалтгаан',
+  'Байгууллагын соёл таалагдаагүй',
+  'Давхар ажилтай',
+  'Оффисын зүгээс гэрээ цуцалсан',
+  'Урт хугацааны чөлөө авсан'
+] as const;
+
+type ResignedMetricCard = {
+  key: string;
+  label: string;
+  count: number;
+  cardClass: string;
+  textClass: string;
+  labelClass: string;
+};
 
 export function ResignedAgents() {
   const [resignedAgents, setResignedAgents] = useState<ResignedAgent[]>([]);
@@ -42,6 +60,81 @@ export function ResignedAgents() {
         (agent.interestedOffice && agent.interestedOffice.toLowerCase().includes(searchLower));
     });
   }, [resignedAgents, searchTerm, selectedOffice]);
+
+  const resignedTotal = filteredAgents.length;
+
+  const resignedPercent = (count: number) => {
+    if (resignedTotal <= 0) return '0.0%';
+    return `${((count / resignedTotal) * 100).toFixed(1)}%`;
+  };
+
+  const workedDurationMetrics = useMemo<ResignedMetricCard[]>(() => {
+    const tenure_0_6 = filteredAgents.filter(agent => (agent.workedMonths || 0) < 6).length;
+    const tenure_6_12 = filteredAgents.filter(agent => {
+      const m = agent.workedMonths || 0;
+      return m >= 6 && m < 12;
+    }).length;
+    const tenure_1_plus = filteredAgents.filter(agent => {
+      const m = agent.workedMonths || 0;
+      return m >= 12 && m < 36;
+    }).length;
+    const tenure_3_plus = filteredAgents.filter(agent => (agent.workedMonths || 0) >= 36).length;
+
+    return [
+      { key: 'tenure_0_6', label: 'Шинэ (0-6 сар)', count: tenure_0_6, cardClass: 'bg-sky-50 border-l-4 border-sky-500', textClass: 'text-sky-700', labelClass: 'text-sky-600' },
+      { key: 'tenure_6_12', label: '06-12 сар', count: tenure_6_12, cardClass: 'bg-blue-50 border-l-4 border-blue-500', textClass: 'text-blue-700', labelClass: 'text-blue-600' },
+      { key: 'tenure_1_plus', label: '1 жилээс дээш', count: tenure_1_plus, cardClass: 'bg-violet-50 border-l-4 border-violet-500', textClass: 'text-violet-700', labelClass: 'text-violet-600' },
+      { key: 'tenure_3_plus', label: '3 жилээс дээш', count: tenure_3_plus, cardClass: 'bg-fuchsia-50 border-l-4 border-fuchsia-500', textClass: 'text-fuchsia-700', labelClass: 'text-fuchsia-600' },
+    ];
+  }, [filteredAgents]);
+
+  const resignationReasonMetrics = useMemo(() => {
+    const reasonCounts = filteredAgents.reduce((acc, agent) => {
+      const reason = agent.resignationReason || 'Бусад';
+      acc[reason] = (acc[reason] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const knownReasons: Array<{ key: string; label: string; count: number }> = RESIGNATION_REASONS.map(reason => ({
+      key: reason,
+      label: reason,
+      count: reasonCounts[reason] || 0,
+    }));
+
+    const knownReasonSet = new Set(RESIGNATION_REASONS as readonly string[]);
+    const otherCount = Object.entries(reasonCounts)
+      .filter(([reason]) => !knownReasonSet.has(reason))
+      .reduce((sum, [, count]) => sum + count, 0);
+
+    const baseMetrics: ResignedMetricCard[] = knownReasons.map((item, index) => {
+      const colorSet = [
+        { card: 'bg-red-50 border-l-4 border-red-500', text: 'text-red-700', label: 'text-red-600' },
+        { card: 'bg-orange-50 border-l-4 border-orange-500', text: 'text-orange-700', label: 'text-orange-600' },
+        { card: 'bg-amber-50 border-l-4 border-amber-500', text: 'text-amber-700', label: 'text-amber-600' },
+        { card: 'bg-rose-50 border-l-4 border-rose-500', text: 'text-rose-700', label: 'text-rose-600' },
+      ];
+      const chosen = colorSet[index % colorSet.length];
+      return {
+        ...item,
+        cardClass: chosen.card,
+        textClass: chosen.text,
+        labelClass: chosen.label,
+      };
+    });
+
+    if (otherCount > 0) {
+      baseMetrics.push({
+        key: 'other',
+        label: 'Бусад',
+        count: otherCount,
+        cardClass: 'bg-gray-100 border-l-4 border-gray-500',
+        textClass: 'text-gray-700',
+        labelClass: 'text-gray-600',
+      });
+    }
+
+    return baseMetrics;
+  }, [filteredAgents]);
 
   // Paginated agents for table view
   const paginatedAgents = useMemo(() => {
@@ -247,6 +340,36 @@ export function ResignedAgents() {
         </div>
         <div className="mt-2 text-sm text-gray-500">
           {filteredAgents.length} агент олдлоо
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Гарсан агентын үзүүлэлт</h2>
+
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Ажилласан хугацаа</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {workedDurationMetrics.map(metric => (
+              <div key={metric.key} className={`${metric.cardClass} p-4 rounded-lg relative`}>
+                <span className="absolute top-2 right-2 text-[10px] font-semibold text-gray-500">{resignedPercent(metric.count)}</span>
+                <p className={`text-2xl font-bold ${metric.textClass}`}>{metric.count}</p>
+                <p className={`text-xs ${metric.labelClass}`}>{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Гарсан шалтгаан</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {resignationReasonMetrics.map(metric => (
+              <div key={metric.key} className={`${metric.cardClass} p-4 rounded-lg relative`}>
+                <span className="absolute top-2 right-2 text-[10px] font-semibold text-gray-500">{resignedPercent(metric.count)}</span>
+                <p className={`text-2xl font-bold ${metric.textClass}`}>{metric.count}</p>
+                <p className={`text-xs ${metric.labelClass}`}>{metric.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
