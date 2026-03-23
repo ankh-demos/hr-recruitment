@@ -1,5 +1,5 @@
 # Development Session State
-**Last Updated:** March 10, 2026
+**Last Updated:** March 17, 2026
 
 ## Project Overview
 Remax Sky HR Web Application - Full-stack HR system for managing candidates, job postings, applicant tracking, interview scheduling, and employee management.
@@ -10,6 +10,55 @@ Remax Sky HR Web Application - Full-stack HR system for managing candidates, job
 - **Database:** Supabase (PostgreSQL)
 - **Hosting:** Vercel (frontend), Render (backend)
 - **Repository:** https://github.com/ankhbileg01/remaxskymn
+
+---
+
+## Recent Session Changes (March 17, 2026)
+
+### Fixed: Applications status filter duplication + status change UX
+
+#### Problems
+- Applications filter row showed duplicated status dropdown behavior in UI.
+- In detail view, status changes felt delayed and users could not clearly recognize current selected status.
+
+#### Solution
+- Cleaned Applications filter row so only one status dropdown is rendered/used.
+- Updated status-change flow to refresh from API after update and synchronize both list + selected detail item.
+- Strengthened active status visual state in detail actions (selected status button now has clearly distinct active style).
+
+#### Files Updated
+- `client/src/pages/Applications.tsx`
+
+---
+
+### Fixed: Employees build failure on Vercel (TypeScript TS2345)
+
+#### Problem
+Build failed at `src/pages/Employees.tsx` because payload passed to `employeesApi.update` included date fields with `null`, while `Partial<Employee>` expects optional string (`string | undefined`).
+
+#### Solution
+- Changed `normalizeDateForApi` return type and behavior from `string | null` to `string | undefined`.
+- Empty/invalid dates now return `undefined` (type-compatible with `Partial<Employee>`).
+
+#### Files Updated
+- `client/src/pages/Employees.tsx`
+
+#### Verification
+- `npm run build` completed successfully.
+
+---
+
+### DevOps: Vercel deployment unblock (GitHub committer mapping)
+
+#### Problem
+Vercel blocked deployment because commit author/committer email could not be associated with a GitHub user.
+
+#### Actions Taken
+- Updated repo git email to GitHub noreply address.
+- Created and pushed an empty commit to trigger a fresh deployment event.
+
+#### Result
+- New commit pushed to `main` with GitHub-associated committer email.
 
 ---
 

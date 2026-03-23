@@ -5,6 +5,33 @@ import { emailService } from '../services/emailService';
 
 const router = Router();
 
+async function moveApplicationToEmployees(applicationId: string, applicationData: any) {
+  console.log('[iConnect] Starting iConnect flow for application:', applicationId);
+
+  const existingEmployee = await employeeModel.getByApplicationId(applicationId);
+  console.log('[iConnect] Existing employee check:', existingEmployee ? 'FOUND' : 'NOT FOUND');
+
+  if (!existingEmployee) {
+    console.log('[iConnect] Creating employee from application...');
+    const employee = await employeeModel.createFromApplication(applicationData);
+    console.log('[iConnect] Employee created:', employee.id);
+    await applicationModel.delete(applicationId);
+    console.log('[iConnect] Application deleted');
+    return { alreadyExisted: false };
+  }
+
+  console.log('[iConnect] Employee already exists, deleting application to complete move');
+  await applicationModel.delete(applicationId);
+  return { alreadyExisted: true };
+}
+
+function normalizeStatus(status: unknown) {
+  if (typeof status !== 'string') {
+    return status;
+  }
+  return status.trim().toLowerCase();
+}
+
 // Get all applications
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -60,10 +87,52 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// Backfill: move all applications with status 'iconnect' into employees
+router.post('/sync-iconnect', async (_req: Request, res: Response) => {
+  try {
+    const applications = await applicationModel.getAll();
+    const iconnectApplications = applications.filter(app => app.status === 'iconnect');
+
+    const summary = {
+      total: iconnectApplications.length,
+      moved: 0,
+      alreadyMoved: 0,
+      failed: 0,
+      errors: [] as Array<{ applicationId: string; error: string }>
+    };
+
+    for (const application of iconnectApplications) {
+      try {
+        const result = await moveApplicationToEmployees(application.id, application);
+        if (result.alreadyExisted) {
+          summary.alreadyMoved += 1;
+        } else {
+          summary.moved += 1;
+        }
+      } catch (error: any) {
+        summary.failed += 1;
+        summary.errors.push({
+          applicationId: application.id,
+          error: error?.message || 'Unknown error'
+        });
+      }
+    }
+
+    res.json(summary);
+  } catch (error: any) {
+    console.error('Failed to sync iConnect applications:', error);
+    res.status(500).json({
+      error: 'Failed to sync iConnect applications',
+      details: error?.message
+    });
+  }
+});
+
 // Update application status
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { status, ...rest } = req.body;
+    const normalizedStatus = normalizeStatus(status) as typeof status;
     const currentApplication = await applicationModel.getById(req.params.id);
 
     if (!currentApplication) {
@@ -71,38 +140,29 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     // If status is changing to 'fireup', set fireupDate
-    if (status === 'fireup' && currentApplication.status !== 'fireup') {
+    if (normalizedStatus === 'fireup' && currentApplication.status !== 'fireup') {
       rest.fireupDate = new Date().toISOString().split('T')[0];
     }
 
-    // If status is changing to 'iconnect', create an employee and delete application
-    if (status === 'iconnect' && currentApplication.status !== 'iconnect') {
-      console.log('[iConnect] Starting iConnect flow for application:', req.params.id);
-      // Check if employee already exists for this application
-      const existingEmployee = await employeeModel.getByApplicationId(req.params.id);
-      console.log('[iConnect] Existing employee check:', existingEmployee ? 'FOUND' : 'NOT FOUND');
-      if (!existingEmployee) {
-        try {
-          console.log('[iConnect] Creating employee from application...');
-          const employee = await employeeModel.createFromApplication(currentApplication);
-          console.log('[iConnect] Employee created:', employee.id);
-          // Delete the application only after successfully creating employee
-          await applicationModel.delete(req.params.id);
-          console.log('[iConnect] Application deleted');
-          return res.json({ moved: true, message: 'Application moved to employees' });
-        } catch (createError: any) {
-          console.error('[iConnect] Failed to create employee:', createError?.message, createError?.code, createError?.details);
-          return res.status(500).json({ 
-            error: 'Failed to create employee', 
-            details: createError?.message || 'Database error - check status constraint'
-          });
+    // If status is iconnect, or this row is already iconnect, move to employees
+    if (normalizedStatus === 'iconnect' || currentApplication.status === 'iconnect') {
+      try {
+        const result = await moveApplicationToEmployees(req.params.id, currentApplication);
+        if (result.alreadyExisted) {
+          return res.json({ moved: true, message: 'Application already moved to employees' });
         }
-      } else {
-        console.log('[iConnect] Employee already exists, just updating status');
+        return res.json({ moved: true, message: 'Application moved to employees' });
+      } catch (createError: any) {
+        console.error('[iConnect] Failed to create employee:', createError?.message, createError?.code, createError?.details);
+        return res.status(500).json({
+          error: 'Failed to create employee',
+          details: createError?.message || 'Database error - check status constraint'
+        });
       }
     }
 
-    const application = await applicationModel.update(req.params.id, { status, ...rest });
+    const updates = normalizedStatus === undefined ? rest : { status: normalizedStatus, ...rest };
+    const application = await applicationModel.update(req.params.id, updates);
     res.json(application);
   } catch (error: any) {
     console.error('Failed to update application:', error);
@@ -132,8 +192,9 @@ router.post('/bulk', async (req: Request, res: Response) => {
     }
     const created = await applicationModel.bulkCreate(applications);
     res.status(201).json({ success: true, count: created.length, applications: created });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to bulk import applications' });
+  } catch (error: any) {
+    console.error('Failed to bulk import applications:', error?.message || error);
+    res.status(500).json({ error: 'Failed to bulk import applications', details: error?.message });
   }
 });
 

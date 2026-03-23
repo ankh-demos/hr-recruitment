@@ -31,9 +31,13 @@ export const config = {
   database: {
     mode: (process.env.DATABASE_MODE || 'json') as 'json' | 'supabase',
     supabaseUrl: process.env.SUPABASE_URL || '',
-    supabaseKey: process.env.SUPABASE_ANON_KEY || ''
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   },
   
   isProduction: process.env.NODE_ENV === 'production',
-  useSupabase: process.env.DATABASE_MODE === 'supabase' && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_ANON_KEY
+  useSupabase:
+    process.env.DATABASE_MODE === 'supabase' &&
+    !!process.env.SUPABASE_URL &&
+    (!!process.env.SUPABASE_SERVICE_ROLE_KEY || !!process.env.SUPABASE_ANON_KEY)
 };

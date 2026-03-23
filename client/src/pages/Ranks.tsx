@@ -36,6 +36,7 @@ export function Ranks() {
   const [selectedRank, setSelectedRank] = useState<AgentRank | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOffice, setSelectedOffice] = useState<string>('Бүгд');
+  const [selectedRankFilter, setSelectedRankFilter] = useState<RankLevel | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
 
   // Pagination state
@@ -73,7 +74,7 @@ export function Ranks() {
     loadData();
   }, []);
 
-  const filteredRanks = useMemo(() => {
+  const baseFilteredRanks = useMemo(() => {
     return agentRanks.filter(rank => {
       // Office filter - find employee by MLS (agentId) and check their officeName
       if (selectedOffice !== 'Бүгд') {
@@ -89,6 +90,13 @@ export function Ranks() {
         rank.agentId.toLowerCase().includes(searchLower);
     });
   }, [agentRanks, searchTerm, selectedOffice, employees]);
+
+  const filteredRanks = useMemo(() => {
+    if (selectedRankFilter === 'all') {
+      return baseFilteredRanks;
+    }
+    return baseFilteredRanks.filter(rank => rank.currentRank === selectedRankFilter);
+  }, [baseFilteredRanks, selectedRankFilter]);
 
   // Paginated ranks for table view
   const paginatedRanks = useMemo(() => {
@@ -138,20 +146,24 @@ export function Ranks() {
       'Платиниум': 0,
       'Даймонд': 0
     };
-    filteredRanks.forEach(rank => {
+    baseFilteredRanks.forEach(rank => {
       if (rank.currentRank in counts) {
         counts[rank.currentRank]++;
       }
     });
     return counts;
-  }, [filteredRanks]);
+  }, [baseFilteredRanks]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedOffice, selectedRankFilter]);
 
-  async function loadData() {
+  function handleRankFilterClick(rank: RankLevel) {
+    setSelectedRankFilter(prev => (prev === rank ? 'all' : rank));
+  }
+
+  async function loadData(): Promise<AgentRank[]> {
     try {
       const [ranksData, employeesData] = await Promise.all([
         agentRanksApi.getAll(),
@@ -159,8 +171,10 @@ export function Ranks() {
       ]);
       setAgentRanks(ranksData);
       setEmployees(employeesData);
+      return ranksData;
     } catch (error) {
       console.error('Failed to load data:', error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -168,9 +182,26 @@ export function Ranks() {
 
   // Get employees with MLS that don't have rank records yet
   const availableEmployees = useMemo(() => {
-    const existingAgentIds = agentRanks.map(r => r.agentId);
-    return employees.filter(e => e.mls && !existingAgentIds.includes(e.mls));
+    const normalizeMls = (value?: string) => (value || '').trim().toLowerCase();
+    const existingAgentIds = new Set(
+      agentRanks
+        .map(r => normalizeMls(r.agentId))
+        .filter(Boolean)
+    );
+
+    return employees.filter(e => {
+      const employeeMls = normalizeMls(e.mls);
+      return !!employeeMls && !existingAgentIds.has(employeeMls);
+    });
   }, [employees, agentRanks]);
+
+  // In Create modal, respect selected office filter from the page
+  const availableEmployeesForCreate = useMemo(() => {
+    if (selectedOffice === 'Бүгд') {
+      return availableEmployees;
+    }
+    return availableEmployees.filter(emp => emp.officeName === selectedOffice);
+  }, [availableEmployees, selectedOffice]);
 
   async function handleCreate() {
     if (!createForm.agentId || !createForm.startDate) return;
@@ -199,10 +230,9 @@ export function Ranks() {
       });
       setUpgradeModalOpen(false);
       setUpgradeForm({ rank: 'Стандарт', startDate: '' });
-      loadData();
-      // Refresh selected rank
-      const updated = await agentRanksApi.getById(selectedRank.id);
-      setSelectedRank(updated);
+      const freshRanks = await loadData();
+      const updated = freshRanks.find(r => r.id === selectedRank.id);
+      if (updated) setSelectedRank(updated);
     } catch (error) {
       console.error('Failed to upgrade rank:', error);
     }
@@ -239,10 +269,9 @@ export function Ranks() {
     try {
       await agentRanksApi.update(selectedRank.id, editForm);
       setEditModalOpen(false);
-      loadData();
-      // Refresh selected rank
-      const updated = await agentRanksApi.getById(selectedRank.id);
-      setSelectedRank(updated);
+      const freshRanks = await loadData();
+      const updated = freshRanks.find(r => r.id === selectedRank.id);
+      if (updated) setSelectedRank(updated);
     } catch (error) {
       console.error('Failed to update rank:', error);
     }
@@ -391,10 +420,15 @@ export function Ranks() {
         </h3>
         <div className="grid grid-cols-5 gap-4">
           {RANK_LEVELS.map(rank => (
-            <div key={rank} className={`${RANK_COLORS[rank]} rounded-lg p-4 text-center border-2 border-transparent hover:border-purple-400 transition-all`}>
+            <button
+              key={rank}
+              type="button"
+              onClick={() => handleRankFilterClick(rank)}
+              className={`${RANK_COLORS[rank]} rounded-lg p-4 text-center border-2 transition-all ${selectedRankFilter === rank ? 'border-purple-600 ring-2 ring-purple-200' : 'border-transparent hover:border-purple-400'}`}
+            >
               <p className="text-2xl font-bold">{rankCounts[rank]}</p>
               <p className="text-sm font-medium">{rank}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -444,6 +478,9 @@ export function Ranks() {
         </div>
         <div className="mt-2 text-sm text-gray-500">
           {filteredRanks.length} бүртгэл олдлоо
+          {selectedRankFilter !== 'all' && (
+            <span className="ml-2 text-purple-700 font-medium">| Шүүлтүүр: {selectedRankFilter}</span>
+          )}
         </div>
       </div>
 
@@ -719,7 +756,7 @@ export function Ranks() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Сонгоно уу...</option>
-                  {availableEmployees.map(emp => (
+                  {availableEmployeesForCreate.map(emp => (
                     <option key={emp.mls} value={emp.mls}>
                       {emp.firstName} {emp.lastName} (MLS: {emp.mls})
                     </option>

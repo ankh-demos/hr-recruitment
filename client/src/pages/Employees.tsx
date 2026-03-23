@@ -4,8 +4,6 @@ import { Employee, RankLevel, AgentRank } from '../types';
 import { resignedAgentsApi, agentRanksApi, employeesApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
-const API_BASE = '/api';
-
 // Rank color mapping
 const RANK_COLORS: Record<RankLevel, string> = {
   'Стандарт': 'bg-gray-100 text-gray-800',
@@ -55,9 +53,9 @@ function calculateMonthsDiff(startDate: string, endDate: string): number {
   return Math.max(0, months);
 }
 
-function normalizeDateForApi(value: string): string | null {
+function normalizeDateForApi(value: string): string | undefined {
   const raw = (value || '').trim();
-  if (!raw) return null;
+  if (!raw) return undefined;
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
 
   const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -79,7 +77,7 @@ function normalizeDateForApi(value: string): string | null {
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return null;
+  if (Number.isNaN(parsed.getTime())) return undefined;
   return parsed.toISOString().slice(0, 10);
 }
 
@@ -96,6 +94,7 @@ export function Employees() {
   // New filters
   const [iConnectFilter, setIConnectFilter] = useState<'all' | 'yes' | 'no'>('all');
   const [szhFilter, setSzhFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [mlsFilter, setMlsFilter] = useState<'all' | 'filled' | 'empty'>('all');
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,11 +177,10 @@ export function Employees() {
     try {
       setLoading(true);
       lastLoadRef.current = now;
-      const [employeesResponse, ranksData] = await Promise.all([
-        fetch(`${API_BASE}/employees`),
+      const [data, ranksData] = await Promise.all([
+        employeesApi.getAll(),
         agentRanksApi.getAll()
       ]);
-      const data = await employeesResponse.json();
       setEmployees(data);
       setAgentRanks(ranksData);
     } catch (error) {
@@ -207,7 +205,7 @@ export function Employees() {
 
   // Filtered employees
   const filteredEmployees = useMemo(() => {
-    return employees.filter(employee => {
+    const filtered = employees.filter(employee => {
       // Office filter - use officeName only
       if (selectedOffice !== 'Бүгд' && employee.officeName !== selectedOffice) {
         return false;
@@ -226,20 +224,26 @@ export function Employees() {
       if (szhFilter === 'yes' && !employee.hasSzhTraining) return false;
       if (szhFilter === 'no' && employee.hasSzhTraining) return false;
 
+      // MLS filter
+      const hasMls = !!employee.mls?.trim();
+      if (mlsFilter === 'filled' && !hasMls) return false;
+      if (mlsFilter === 'empty' && hasMls) return false;
+
       // Search filter
       if (searchTerm !== '') {
         const searchLower = searchTerm.toLowerCase();
         const matchFields = [
           employee.firstName,
+          employee.mls,
+          employee.iConnectName,
+          employee.remaxEmail,
           employee.lastName,
           employee.familyName,
           employee.email,
           employee.phone,
           employee.interestedOffice,
           employee.officeName,
-          employee.registerNumber,
-          employee.iConnectName,
-          employee.mls
+          employee.registerNumber
         ];
         const matchesSearch = matchFields.some(field =>
           field && field.toLowerCase().includes(searchLower)
@@ -249,7 +253,19 @@ export function Employees() {
 
       return true;
     });
-  }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter]);
+
+    // Sort by MLS (ascending), keep empty MLS at the end
+    return filtered.sort((a, b) => {
+      const aMls = (a.mls || '').trim();
+      const bMls = (b.mls || '').trim();
+
+      if (!aMls && !bMls) return 0;
+      if (!aMls) return 1;
+      if (!bMls) return -1;
+
+      return aMls.localeCompare(bMls, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [employees, searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter, mlsFilter]);
 
   // Paginated employees for table view
   const paginatedEmployees = useMemo(() => {
@@ -260,7 +276,7 @@ export function Employees() {
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedStatuses]);
+  }, [searchTerm, selectedStatuses, selectedOffice, iConnectFilter, szhFilter, mlsFilter]);
 
   // Get current valid rank for an employee by MLS
   function getCurrentRankForEmployee(mls: string | undefined): AgentRank | null {
@@ -468,11 +484,7 @@ export function Employees() {
 
   async function updateEmployeeStatus(id: string, status: Employee['status']) {
     try {
-      await fetch(`${API_BASE}/employees/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await employeesApi.update(id, { status });
       loadData();
       if (selectedEmployee?.id === id) {
         setSelectedEmployee({ ...selectedEmployee, status });
@@ -682,26 +694,15 @@ export function Employees() {
         szhOfficialLetterNumber: editFields.hasSzhTraining ? editFields.szhOfficialLetterNumber : '',
       };
 
-      const response = await fetch(`${API_BASE}/employees/${selectedEmployee.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to update employee:', errorData);
-        alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
-        return;
-      }
-      const updatedEmployee = await response.json();
+      const updatedEmployee = await employeesApi.update(selectedEmployee.id, payload);
       setEditFieldsOpen(false);
       setEditFieldsError(null);
       // Update the employee in the list immediately
       setEmployees(prev => prev.map(e => e.id === selectedEmployee.id ? { ...e, ...updatedEmployee } : e));
       setSelectedEmployee({ ...selectedEmployee, ...updatedEmployee });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update employee fields:', error);
-      alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа');
+      alert('Ажилтны мэдээлэл хадгалахад алдаа гарлаа: ' + (error?.message || 'Unknown error'));
     }
   }
 
@@ -765,7 +766,7 @@ export function Employees() {
       <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Ажилтнууд</h1>
+            <h1 className="text-2xl font-bold">Агентууд</h1>
             <p className="mt-1 text-green-100">iConnect-д зөвшөөрөгдсөн</p>
           </div>
           <div className="flex items-center gap-4">
@@ -820,7 +821,7 @@ export function Employees() {
               </div>
               <input
                 type="text"
-                placeholder="Нэр, имэйл, оффисоор хайх..."
+                placeholder="Нэр, MLS, iConnect нэр, Remax имэйлээр хайх..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -910,6 +911,19 @@ export function Employees() {
             </select>
           </div>
 
+          {/* MLS Filter */}
+          <div className="min-w-[140px]">
+            <select
+              value={mlsFilter}
+              onChange={(e) => setMlsFilter(e.target.value as 'all' | 'filled' | 'empty')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">MLS бүгд</option>
+              <option value="filled">MLS-тэй</option>
+              <option value="empty">MLS хоосон</option>
+            </select>
+          </div>
+
           {/* View Toggle */}
           <div className="flex rounded-lg overflow-hidden border border-gray-300">
             <button
@@ -940,8 +954,8 @@ export function Employees() {
               })}
             </div>
           )}
-          {(searchTerm || selectedStatuses.length > 0) && (
-            <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-green-600 hover:text-green-800">
+          {(searchTerm || selectedStatuses.length > 0 || selectedOffice !== 'Бүгд' || iConnectFilter !== 'all' || szhFilter !== 'all' || mlsFilter !== 'all') && (
+            <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); setSelectedOffice('Бүгд'); setIConnectFilter('all'); setSzhFilter('all'); setMlsFilter('all'); }} className="text-sm text-green-600 hover:text-green-800">
               Цэвэрлэх
             </button>
           )}
@@ -1348,6 +1362,7 @@ export function Employees() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MLS</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">iConnect нэр</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Зураг</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Нэр</th>
@@ -1364,7 +1379,6 @@ export function Employees() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ИБД</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">СЗХ</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remax имэйл</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MLS</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Банк</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Данс</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дүүрэг</th>
@@ -1389,6 +1403,7 @@ export function Employees() {
                         onClick={() => { setSelectedEmployee(emp); setViewMode('list'); }}
                         className="hover:bg-gray-50 cursor-pointer"
                       >
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.mls || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.iConnectName || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           {emp.photoUrl ? (
@@ -1415,7 +1430,6 @@ export function Employees() {
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.citizenRegistrationNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.szhCertificateNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.remaxEmail || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.mls || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.bank || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.accountNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{emp.district || '-'}</td>

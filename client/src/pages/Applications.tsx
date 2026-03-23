@@ -4,8 +4,6 @@ import { Application, ApplicationMeeting, User } from '../types';
 import { usersApi, applicationsApi } from '../services/api';
 import { Pagination } from '../components/Pagination';
 
-const API_BASE = '/api';
-
 // Application status options
 const APPLICATION_STATUSES = [
   { value: 'new', label: 'Шинэ анкет', color: 'bg-blue-100 text-blue-800' },
@@ -88,8 +86,7 @@ export function Applications() {
     try {
       setLoading(true);
       lastLoadRef.current = now;
-      const response = await fetch(`${API_BASE}/applications`);
-      const data = await response.json();
+      const data = await applicationsApi.getAll();
       setApplications(data);
     } catch (error) {
       console.error('Failed to load applications:', error);
@@ -107,7 +104,7 @@ export function Applications() {
 
   // Filtered applications based on selected statuses, office, and search
   const filteredApplications = useMemo(() => {
-    return applications.filter(app => {
+    const filtered = applications.filter(app => {
       // Office filter
       if (selectedOffice !== 'Бүгд' && app.interestedOffice !== selectedOffice) {
         return false;
@@ -135,6 +132,13 @@ export function Applications() {
         if (!matches) return false;
       }
       return true;
+    });
+
+    // Sort by created date (newest first)
+    return filtered.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
     });
   }, [applications, selectedStatuses, selectedOffice, searchTerm]);
 
@@ -184,12 +188,17 @@ export function Applications() {
 
   async function updateStatus(id: string, status: Application['status']) {
     try {
-      await fetch(`${API_BASE}/applications/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      loadApplications();
+      setSelectedApplication(prev => prev && prev.id === id ? { ...prev, status } : prev);
+      setApplications(prev => prev.map(app => app.id === id ? { ...app, status } : app));
+
+      await applicationsApi.update(id, { status });
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
+      const updatedApp = data.find((a: Application) => a.id === id);
+      if (updatedApp) {
+        setSelectedApplication(updatedApp);
+      }
     } catch (error) {
       console.error('Failed to update application:', error);
     }
@@ -208,10 +217,11 @@ export function Applications() {
   async function saveFireUp() {
     if (!selectedApplication) return;
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate })
+      await applicationsApi.update(selectedApplication.id, {
+        status: 'fireup',
+        trainingNumber,
+        trainingStartDate,
+        trainingEndDate
       });
       setFireUpModalOpen(false);
       setTrainingNumber('');
@@ -235,24 +245,13 @@ export function Applications() {
   async function confirmIconnect() {
     if (!selectedApplication) return;
     try {
-      const response = await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'iconnect' })
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('iConnect error:', errorData);
-        alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (errorData.details || errorData.error || response.statusText));
-        setIconnectConfirmOpen(false);
-        return;
-      }
+      await applicationsApi.update(selectedApplication.id, { status: 'iconnect' });
       setIconnectConfirmOpen(false);
       setSelectedApplication(null);
       loadApplications();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to move to iConnect:', error);
-      alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа');
+      alert('Ажилтан руу шилжүүлэхэд алдаа гарлаа: ' + (error?.message || 'Unknown error'));
       setIconnectConfirmOpen(false);
     }
   }
@@ -260,7 +259,7 @@ export function Applications() {
   async function deleteApplication(id: string) {
     if (!confirm('Энэ анкетыг устгах уу?')) return;
     try {
-      await fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' });
+      await applicationsApi.delete(id);
       loadApplications();
       if (selectedApplication?.id === id) {
         setSelectedApplication(null);
@@ -314,20 +313,12 @@ export function Applications() {
     setEditError(null);
 
     try {
-      await fetch(`${API_BASE}/applications/${selectedApplication.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
-      });
+      await applicationsApi.update(selectedApplication.id, editForm);
 
-      // Reload all applications to ensure we have fresh data
-      await loadApplications();
-
-      // Update selected application from the reloaded list
-      // We need to fetch the fresh list first (which loadApplications does), 
-      // then find the updated application to set as selected
-      const response = await fetch(`${API_BASE}/applications`);
-      const data = await response.json();
+      // Single fetch updates both the list and the selected application
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
       const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
 
       if (updatedApp) {
@@ -376,11 +367,12 @@ export function Applications() {
 
     try {
       await applicationsApi.update(selectedApplication.id, updateData);
-      await loadApplications();
-      // Update selected application with new data
-      const updatedApp = applications.find(a => a.id === selectedApplication.id);
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
+      const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
       if (updatedApp) {
-        setSelectedApplication({ ...updatedApp, ...updateData });
+        setSelectedApplication(updatedApp);
       }
       setMeetingModalOpen(false);
     } catch (error) {
@@ -993,62 +985,7 @@ export function Applications() {
               />
             </div>
           </div>
-          <span className="text-sm font-medium text-gray-700">Төлөвөөр шүүх:</span>
-          <div className="relative">
-            <button
-              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center gap-2"
-            >
-              <span>{selectedStatuses.length === 0 ? 'Бүгд' : `${selectedStatuses.length} сонгосон`}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {statusFilterOpen && (
-              <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg">
-                <div className="p-2">
-                  {APPLICATION_STATUSES.map(status => (
-                    <label
-                      key={status.value}
-                      className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedStatuses.includes(status.value)}
-                        onChange={() => toggleStatusFilter(status.value)}
-                        className="rounded text-indigo-600"
-                      />
-                      <span className={`px-2 py-1 text-xs rounded-full ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <div className="border-t p-2">
-                  <button
-                    onClick={() => { setSelectedStatuses([]); setStatusFilterOpen(false); }}
-                    className="w-full text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Цэвэрлэх
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          {/* Office Filter */}
-          <div className="min-w-[150px]">
-            <select
-              value={selectedOffice}
-              onChange={(e) => setSelectedOffice(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
-            >
-              {OFFICES.map(office => (
-                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter Dropdown */}
+          {/* Status Filter */}
           <div className="relative min-w-[200px]">
             <button
               onClick={() => setStatusFilterOpen(!statusFilterOpen)}
@@ -1089,6 +1026,18 @@ export function Applications() {
                 </div>
               </div>
             )}
+          </div>
+          {/* Office Filter */}
+          <div className="min-w-[150px]">
+            <select
+              value={selectedOffice}
+              onChange={(e) => setSelectedOffice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500"
+            >
+              {OFFICES.map(office => (
+                <option key={office} value={office}>{office === 'Бүгд' ? 'Бүх оффис' : office}</option>
+              ))}
+            </select>
           </div>
           {(searchTerm || selectedStatuses.length > 0) && (
             <button onClick={() => { setSearchTerm(''); setSelectedStatuses([]); }} className="text-sm text-indigo-600 hover:text-indigo-800">
@@ -1226,19 +1175,28 @@ export function Applications() {
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'new'
+                      ? 'bg-blue-200 text-blue-900 border-blue-600 font-semibold'
+                      : 'bg-blue-100 text-blue-800 border-transparent hover:bg-blue-200'
+                      }`}
                   >
                     Шинэ
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
-                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'interviewing'
+                      ? 'bg-yellow-200 text-yellow-900 border-yellow-600 font-semibold'
+                      : 'bg-yellow-100 text-yellow-800 border-transparent hover:bg-yellow-200'
+                      }`}
                   >
                     Ярилцлага хийж байгаа
                   </button>
                   <button
                     onClick={openFireUpModal}
-                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'fireup'
+                      ? 'bg-purple-200 text-purple-900 border-purple-600 font-semibold'
+                      : 'bg-purple-100 text-purple-800 border-transparent hover:bg-purple-200'
+                      }`}
                   >
                     Fire UP
                     {selectedApplication.trainingNumber && (
@@ -1247,13 +1205,19 @@ export function Applications() {
                   </button>
                   <button
                     onClick={openIconnectConfirm}
-                    className="px-3 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200"
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'iconnect'
+                      ? 'bg-green-200 text-green-900 border-green-600 font-semibold'
+                      : 'bg-green-100 text-green-800 border-transparent hover:bg-green-200'
+                      }`}
                   >
                     iConnect
                   </button>
                   <button
                     onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
-                    className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                    className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'cancelled'
+                      ? 'bg-red-200 text-red-900 border-red-600 font-semibold'
+                      : 'bg-red-100 text-red-800 border-transparent hover:bg-red-200'
+                      }`}
                   >
                     Цуцлах
                   </button>

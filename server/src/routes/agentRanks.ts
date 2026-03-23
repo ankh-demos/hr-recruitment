@@ -14,20 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// Get agent rank by ID
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const agentRank = await agentRankModel.getById(req.params.id);
-    if (!agentRank) {
-      return res.status(404).json({ error: 'Agent rank not found' });
-    }
-    res.json(agentRank);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch agent rank' });
-  }
-});
-
-// Get agent rank by agent ID (MLS)
+// Get agent rank by agent ID (MLS) - must be before /:id to avoid shadowing
 router.get('/by-agent/:agentId', async (req: Request, res: Response) => {
   try {
     const agentRank = await agentRankModel.getByAgentId(req.params.agentId);
@@ -40,7 +27,7 @@ router.get('/by-agent/:agentId', async (req: Request, res: Response) => {
   }
 });
 
-// Get current valid rank for agent
+// Get current valid rank for agent - must be before /:id to avoid shadowing
 router.get('/current/:agentId', async (req: Request, res: Response) => {
   try {
     const checkDate = req.query.date as string | undefined;
@@ -48,6 +35,19 @@ router.get('/current/:agentId', async (req: Request, res: Response) => {
     res.json({ rank: currentRank });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get current rank' });
+  }
+});
+
+// Get agent rank by ID
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const agentRank = await agentRankModel.getById(req.params.id);
+    if (!agentRank) {
+      return res.status(404).json({ error: 'Agent rank not found' });
+    }
+    res.json(agentRank);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch agent rank' });
   }
 });
 

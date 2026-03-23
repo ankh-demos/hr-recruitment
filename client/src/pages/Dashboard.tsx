@@ -570,7 +570,7 @@ export function Dashboard() {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Сайн байна у|у, {user?.fullName || 'Менежер'}! 👋</h1>
+            <h1 className="text-2xl font-bold">Сайн байна уу, {user?.fullName || 'Менежер'}! 👋</h1>
             <p className="mt-2 text-blue-100">Remax HR системийн хяналтын самбар</p>
           </div>
           <div className="flex items-center gap-2">
@@ -662,7 +662,7 @@ export function Dashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Энэ 7 хоногт шинэ</dt>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Энэ долоо хоногийн шинэ анкет</dt>
                   <dd className="text-2xl font-bold text-gray-900">{stats.newThisWeek}</dd>
                 </dl>
               </div>
@@ -692,7 +692,7 @@ export function Dashboard() {
             </span>
           </div>
           <div className="mt-2">
-            <span className="text-green-600 text-sm font-medium">Ажилтан болсон</span>
+            <span className="text-green-600 text-sm font-medium">Агент болсон</span>
           </div>
         </div>
       </div>

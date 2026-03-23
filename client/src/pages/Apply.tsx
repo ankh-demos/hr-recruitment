@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FamilyMember, Education, Language, WorkExperience, Award } from '../types';
-
-const API_BASE = '/api';
+import { applicationsApi } from '../services/api';
 
 // Mongolian Cyrillic regex - allows spaces and Mongolian letters
 const MONGOLIAN_CYRILLIC_REGEX = /^[а-яА-ЯөӨүҮёЁ\s]+$/;
@@ -452,20 +451,7 @@ export function Apply() {
         awards
       };
 
-      const response = await fetch(`${API_BASE}/applications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(applicationData)
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Submit error:', response.status, errData);
-        if (response.status === 413) {
-          throw new Error('Зураг хэт том байна. Жижиг зураг оруулна уу.');
-        }
-        throw new Error(errData?.error || 'Анкет илгээхэд алдаа гарлаа');
-      }
+      await applicationsApi.create(applicationData);
 
       setSubmitted(true);
     } catch (err: any) {

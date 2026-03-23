@@ -71,7 +71,8 @@ export const api = {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'An error occurred' }));
-    throw new Error(error.error || 'An error occurred');
+    const message = error.details ? `${error.error || 'An error occurred'}: ${error.details}` : (error.error || 'An error occurred');
+    throw new Error(message);
   }
   if (response.status === 204) {
     return undefined as T;
@@ -194,12 +195,12 @@ export const applicationsApi = {
   delete: (id: string): Promise<void> =>
     fetch(`${API_BASE}/applications/${id}`, { method: 'DELETE' }).then(res => handleResponse<void>(res)),
 
-  bulkCreate: (data: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>[]): Promise<Application[]> =>
+  bulkCreate: (data: Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'>[]): Promise<{ success: boolean; count: number; applications: Application[] }> =>
     fetch(`${API_BASE}/applications/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(res => handleResponse<Application[]>(res))
+    }).then(res => handleResponse<{ success: boolean; count: number; applications: Application[] }>(res))
 };
 
 // Employees API
