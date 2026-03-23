@@ -13,6 +13,14 @@ const APPLICATION_STATUSES = [
   { value: 'cancelled', label: 'Ажиллахаа больсон', color: 'bg-red-100 text-red-800' }
 ];
 
+const STATUS_TOOLTIPS: Record<string, string> = {
+  'Шинэ анкет': '0-6 сарын хугацаанд ажиллаж байгаа агентуудыг бүртгэнэ',
+  'Ярилцлага хийж байгаа': '6-12 сарын хугацаанд ажиллаж байгаа агентуудыг бүртгэнэ',
+  'Fire UP товлосон': 'Тухайн сард iconnect нээгдэхээр хүлээгдэж байгаа агентуудыг бүртгэнэ',
+  'iConnect нээлгэсэн': 'Тухайн сард анхны гүйлгээ гаргасан агентыг бүртгэнэ',
+  'Ажиллахаа больсон': 'Тухайн оффист ярилцлаганд орсон боловч үргэлжлүүлэхгүй болсон хүнийг бүртгэнэ'
+};
+
 // Office options
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
@@ -217,21 +225,33 @@ export function Applications() {
   async function saveFireUp() {
     if (!selectedApplication) return;
     try {
+      const normalizeOptionalDate = (value: string): string | undefined => {
+        const raw = (value || '').trim();
+        return raw || undefined;
+      };
+
       await applicationsApi.update(selectedApplication.id, {
         status: 'fireup',
         trainingNumber,
-        trainingStartDate,
-        trainingEndDate
+        trainingStartDate: normalizeOptionalDate(trainingStartDate),
+        trainingEndDate: normalizeOptionalDate(trainingEndDate)
       });
+
+      const data = await applicationsApi.getAll();
+      setApplications(data);
+      lastLoadRef.current = Date.now();
+      const updatedApp = data.find((a: Application) => a.id === selectedApplication.id);
+
       setFireUpModalOpen(false);
       setTrainingNumber('');
       setTrainingStartDate('');
       setTrainingEndDate('');
-      loadApplications();
-      // Update selected application
-      setSelectedApplication({ ...selectedApplication, status: 'fireup', trainingNumber, trainingStartDate, trainingEndDate });
-    } catch (error) {
+      if (updatedApp) {
+        setSelectedApplication(updatedApp);
+      }
+    } catch (error: any) {
       console.error('Failed to update to Fire UP:', error);
+      alert('Fire UP хадгалахад алдаа гарлаа: ' + (error?.message || 'Unknown error'));
     }
   }
 
@@ -386,6 +406,11 @@ export function Applications() {
 
   function getStatusLabel(status: string) {
     return APPLICATION_STATUSES.find(s => s.value === status)?.label || status;
+  }
+
+  function getStatusTooltip(statusOrLabel: string) {
+    const label = getStatusLabel(statusOrLabel);
+    return STATUS_TOOLTIPS[label] || '';
   }
 
   // Print application
@@ -1089,12 +1114,15 @@ export function Applications() {
                           {new Date(app.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                      <span
+                        title={getStatusTooltip(app.status)}
+                        className={`px-2 py-1 text-xs rounded-full ${app.status === 'new' ? 'bg-blue-100 text-blue-800' :
                         app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' :
                           app.status === 'iconnect' ? 'bg-green-100 text-green-800' :
                             app.status === 'fireup' ? 'bg-purple-100 text-purple-800' :
                               'bg-red-100 text-red-800'
-                        }`}>
+                        }`}
+                      >
                         {app.status === 'new' ? 'Шинэ' :
                           app.status === 'interviewing' ? 'Ярилцлага хийж байгаа' :
                             app.status === 'iconnect' ? 'iConnect' :
@@ -1712,7 +1740,10 @@ export function Applications() {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-500">{app.trainingNumber || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}>
+                          <span
+                            title={getStatusTooltip(statusInfo?.label || app.status)}
+                            className={`px-2 py-0.5 text-xs rounded-full ${statusInfo?.color || 'bg-gray-100 text-gray-800'}`}
+                          >
                             {statusInfo?.label || app.status}
                           </span>
                         </td>

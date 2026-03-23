@@ -40,8 +40,23 @@ const RESIGNATION_REASONS = [
 // Office options
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
+const EMPLOYEE_STATUS_TOOLTIPS: Record<string, string> = {
+  'Идэвхитэй гүйлгээтэй': 'Тухайн сард 1-2 гүйлгээтэй агентуудыг бүртгэнэ',
+  'Идэвхитэй, гүйлгээгүй': 'Тухайн сард оффис дээр ирдэг хэрнээ гүйлгээ гаргаагүй агентыг бүртгэнэ',
+  'Идэвхигүй, гүйлгээтэй': 'Тухайн сард оффис дээр ирдэггүй хэрнээ гүйлгээ гаргадаг агентыг бүртгэнэ',
+  'Идэвхигүй': 'Оффис дээр огт ирдэггүй агентыг бүртгэнэ',
+  'Чөлөөтэй iconnect-тэй': 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн бүртгэнэ',
+  'Чөлөөтэй Iconnect хаасан': 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн, брокер эзэмшигчийн шийдвэрээр бүртгэнэ',
+  'Iconnect нуусан агент': 'Тухайн сард оффис фий-ний өр төлбөртэй байснаас албан бичиг авсан iconnect-оо нуух болсон агентыг бүртгэнэ'
+};
+
 function getStatusInfo(status: string) {
   return EMPLOYEE_STATUSES.find(s => s.value === status) || { value: status, label: status, color: 'bg-gray-100 text-gray-800' };
+}
+
+function getEmployeeStatusTooltip(status: string) {
+  const label = getStatusInfo(status).label;
+  return EMPLOYEE_STATUS_TOOLTIPS[label] || '';
 }
 
 // Calculate months between two dates
@@ -1447,7 +1462,7 @@ export function Employees() {
                           )}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusInfo(emp.status).color}`}>
+                          <span title={getEmployeeStatusTooltip(emp.status)} className={`px-2 py-0.5 text-xs rounded-full ${getStatusInfo(emp.status).color}`}>
                             {getStatusInfo(emp.status).label}
                           </span>
                         </td>
@@ -1804,7 +1819,7 @@ export function Employees() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">СЗХ сургалт суусан эсэх</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">СЗХ бүртгүүлсэн эсэх</label>
                 <select value={editFields.hasSzhTraining ? 'yes' : 'no'} onChange={(e) => setEditFields({ ...editFields, hasSzhTraining: e.target.value === 'yes' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   <option value="yes">Тийм</option>
@@ -1906,7 +1921,7 @@ export function Employees() {
                         <td className="px-3 py-2">{emp.email}</td>
                         <td className="px-3 py-2">{emp.phone}</td>
                         <td className="px-3 py-2">
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusInfo(emp.status || 'active').color}`}>
+                          <span title={getEmployeeStatusTooltip(emp.status || 'active')} className={`px-2 py-1 text-xs rounded-full ${getStatusInfo(emp.status || 'active').color}`}>
                             {getStatusInfo(emp.status || 'active').label}
                           </span>
                         </td>
