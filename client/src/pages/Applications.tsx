@@ -1202,6 +1202,7 @@ export function Applications() {
                 {/* Status Actions */}
                 <div className="mb-6 flex flex-wrap gap-2">
                   <button
+                    title={getStatusTooltip('new')}
                     onClick={() => updateStatus(selectedApplication.id, 'new')}
                     className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'new'
                       ? 'bg-blue-200 text-blue-900 border-blue-600 font-semibold'
@@ -1211,6 +1212,7 @@ export function Applications() {
                     Шинэ
                   </button>
                   <button
+                    title={getStatusTooltip('interviewing')}
                     onClick={() => updateStatus(selectedApplication.id, 'interviewing')}
                     className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'interviewing'
                       ? 'bg-yellow-200 text-yellow-900 border-yellow-600 font-semibold'
@@ -1220,6 +1222,7 @@ export function Applications() {
                     Ярилцлага хийж байгаа
                   </button>
                   <button
+                    title={getStatusTooltip('fireup')}
                     onClick={openFireUpModal}
                     className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'fireup'
                       ? 'bg-purple-200 text-purple-900 border-purple-600 font-semibold'
@@ -1232,6 +1235,7 @@ export function Applications() {
                     )}
                   </button>
                   <button
+                    title={getStatusTooltip('iconnect')}
                     onClick={openIconnectConfirm}
                     className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'iconnect'
                       ? 'bg-green-200 text-green-900 border-green-600 font-semibold'
@@ -1241,6 +1245,7 @@ export function Applications() {
                     iConnect
                   </button>
                   <button
+                    title={getStatusTooltip('cancelled')}
                     onClick={() => updateStatus(selectedApplication.id, 'cancelled')}
                     className={`px-3 py-1 rounded border-2 transition-colors ${selectedApplication.status === 'cancelled'
                       ? 'bg-red-200 text-red-900 border-red-600 font-semibold'
