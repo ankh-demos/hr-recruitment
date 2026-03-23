@@ -251,6 +251,11 @@ export function Applications() {
       }
     } catch (error: any) {
       console.error('Failed to update to Fire UP:', error);
+      if (error?.message === 'Application not found') {
+        await loadApplications(true);
+        setSelectedApplication(null);
+        setFireUpModalOpen(false);
+      }
       alert('Fire UP хадгалахад алдаа гарлаа: ' + (error?.message || 'Unknown error'));
     }
   }

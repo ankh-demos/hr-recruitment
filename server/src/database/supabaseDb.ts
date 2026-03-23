@@ -202,7 +202,12 @@ export const supabaseDatabase = {
 
   getApplicationById: async (id: string): Promise<Application | undefined> => {
     const { data, error } = await supabase.from('applications').select('*').eq('id', id).single();
-    if (error) return undefined;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return undefined;
+      }
+      throw error;
+    }
     return toCamelCase(data);
   },
 
@@ -214,7 +219,12 @@ export const supabaseDatabase = {
 
   updateApplication: async (id: string, updates: Partial<Application>): Promise<Application | undefined> => {
     const { data, error } = await supabase.from('applications').update(toSnakeCase(updates)).eq('id', id).select().single();
-    if (error) return undefined;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return undefined;
+      }
+      throw error;
+    }
     return toCamelCase(data);
   },
 
