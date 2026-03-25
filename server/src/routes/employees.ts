@@ -99,6 +99,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     res.json(employee);
   } catch (error: any) {
     console.error('Failed to update employee:', error);
+    if (error?.message?.includes('employees_mls_key')) {
+      return res.status(400).json({
+        error: 'Failed to update employee',
+        details: 'MLS давхардсан байна. Өөр MLS дугаар оруулна уу.'
+      });
+    }
     res.status(500).json({ error: 'Failed to update employee', details: error?.message });
   }
 });

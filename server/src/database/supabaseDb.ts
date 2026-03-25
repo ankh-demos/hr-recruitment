@@ -86,6 +86,13 @@ function sanitizeEmployeeUpdates(updates: Partial<Employee>): Partial<Employee> 
 
   for (const key of Object.keys(sanitized) as (keyof Employee)[]) {
     const value = sanitized[key];
+
+    if (key === 'mls' && typeof value === 'string') {
+      const normalizedMls = value.trim();
+      (sanitized as any)[key] = normalizedMls ? normalizedMls : null;
+      continue;
+    }
+
     if (typeof value === 'string' && value.trim() === '') {
       // Keep empty strings for text fields, but not for date fields.
       if (EMPLOYEE_DATE_FIELDS.has(String(key))) {
