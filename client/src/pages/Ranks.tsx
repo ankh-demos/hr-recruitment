@@ -277,6 +277,24 @@ export function Ranks() {
     }
   }
 
+  async function handleDelete() {
+    if (!selectedRank) return;
+
+    const confirmed = window.confirm(
+      `${selectedRank.agentName} (MLS: ${selectedRank.agentId}) цолын бүртгэлийг устгах уу?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await agentRanksApi.delete(selectedRank.id);
+      setSelectedRank(null);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to delete rank:', error);
+    }
+  }
+
   function handleEmployeeSelect(e: React.ChangeEvent<HTMLSelectElement>) {
     const mls = e.target.value;
     const employee = employees.find(emp => emp.mls === mls);
@@ -607,6 +625,12 @@ export function Ranks() {
                       className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200"
                     >
                       Засах
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                    >
+                      Устгах
                     </button>
                     <button
                       onClick={openUpgradeModal}
