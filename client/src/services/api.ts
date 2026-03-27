@@ -244,6 +244,12 @@ export const employeesApi = {
       body: JSON.stringify(data)
     }).then(res => handleResponse<Employee>(res)),
 
+  moveToApplications: (id: string): Promise<{ success: boolean }> =>
+    fetch(`${API_BASE}/employees/to-application/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }).then(res => handleResponse<{ success: boolean }>(res)),
+
   delete: (id: string): Promise<void> =>
     fetch(`${API_BASE}/employees/${id}`, { method: 'DELETE' }).then(res => handleResponse<void>(res))
 };

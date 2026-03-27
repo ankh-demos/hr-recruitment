@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { employeeModel, agentRankModel } from '../models';
+import { applicationModel, employeeModel, agentRankModel } from '../models';
 import { getCachedResponse, invalidateCacheByPrefixes, setCachedResponse } from '../utils/routeCache';
 
 const router = Router();
@@ -52,6 +52,31 @@ router.post('/bulk', async (req: Request, res: Response) => {
     res.status(201).json({ success: true, count: created.length, employees: created });
   } catch (error) {
     res.status(500).json({ error: 'Failed to bulk import employees' });
+  }
+});
+
+// Move employee back to applications table
+router.post('/to-application/:employeeId', async (req: Request, res: Response) => {
+  try {
+    const employeeId = req.params.employeeId;
+    const employee = await employeeModel.getById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    const applicationPayload = employeeModel.toApplicationPayload(employee);
+    await applicationModel.create(applicationPayload);
+
+    const deleted = await employeeModel.delete(employeeId);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Failed to remove employee after moving to applications' });
+    }
+
+    invalidateCacheByPrefixes(['/api/employees', '/api/applications', '/api/applications/statistics']);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to move employee to applications' });
   }
 });
 

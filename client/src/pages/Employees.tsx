@@ -15,7 +15,6 @@ const RANK_COLORS: Record<RankLevel, string> = {
 
 // Employee status options (without 'resigned' - that's a separate table now)
 const EMPLOYEE_STATUSES = [
-  { value: 'active', label: 'Идэвхитэй', color: 'bg-green-100 text-green-800' },
   { value: 'active_transaction', label: 'Идэвхитэй гүйлгээтэй', color: 'bg-teal-100 text-teal-800' },
   { value: 'active_no_transaction', label: 'Идэвхитэй, гүйлгээгүй', color: 'bg-orange-100 text-orange-800' },
   { value: 'inactive_transaction', label: 'Идэвхигүй, гүйлгээтэй', color: 'bg-yellow-100 text-yellow-800' },
@@ -23,6 +22,7 @@ const EMPLOYEE_STATUSES = [
   { value: 'on_leave_iconnect', label: 'Чөлөөтэй iconnect-тэй', color: 'bg-purple-100 text-purple-800' },
   { value: 'on_leave_closed', label: 'Чөлөөтэй Iconnect хаасан', color: 'bg-pink-100 text-pink-800' },
   { value: 'hidden_iconnect', label: 'Iconnect нуусан агент', color: 'bg-red-100 text-red-800' },
+  { value: 'team_member', label: 'Багийн гишүүн', color: 'bg-cyan-100 text-cyan-800' },
   { value: 'left_team', label: 'Багаас гарсан', color: 'bg-rose-100 text-rose-800' }
 ];
 
@@ -41,7 +41,6 @@ const RESIGNATION_REASONS = [
 const OFFICES = ['Бүгд', 'Гэгээнтэн', 'Ривер', 'Даун таун'];
 
 const EMPLOYEE_STATUS_TOOLTIPS: Record<string, string> = {
-  'Идэвхитэй': 'Тухайн сард оффисын үйл ажиллагаанд тогтмол оролцож байгаа агентыг бүртгэнэ',
   'Идэвхитэй гүйлгээтэй': 'Тухайн сард 1-2 гүйлгээтэй агентуудыг бүртгэнэ',
   'Идэвхитэй, гүйлгээгүй': 'Тухайн сард оффис дээр ирдэг хэрнээ гүйлгээ гаргаагүй агентыг бүртгэнэ',
   'Идэвхигүй, гүйлгээтэй': 'Тухайн сард оффис дээр ирдэггүй хэрнээ гүйлгээ гаргадаг агентыг бүртгэнэ',
@@ -49,6 +48,7 @@ const EMPLOYEE_STATUS_TOOLTIPS: Record<string, string> = {
   'Чөлөөтэй iconnect-тэй': 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн бүртгэнэ',
   'Чөлөөтэй Iconnect хаасан': 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн, брокер эзэмшигчийн шийдвэрээр бүртгэнэ',
   'Iconnect нуусан агент': 'Тухайн сард оффис фий-ний өр төлбөртэй байснаас албан бичиг авсан iconnect-оо нуух болсон агентыг бүртгэнэ',
+  'Багийн гишүүн': 'Оффисын багт шилжиж ажиллаж буй агентыг бүртгэнэ',
   'Багаас гарсан': 'Тухайн сард оффисын багаас гарсан агентыг бүртгэнэ'
 };
 
@@ -163,7 +163,7 @@ export function Employees() {
     detailedAddress: '',
     childrenCount: 0,
     officeName: '',
-    status: 'active' as Employee['status'],
+    status: 'active_transaction' as Employee['status'],
     hasIConnect: false,
     hasTop: false,
     isAssistant: false,
@@ -698,6 +698,25 @@ export function Employees() {
     }
   }
 
+  async function handleSendBackToApplications() {
+    if (!selectedEmployee) return;
+
+    const confirmed = window.confirm(
+      `${selectedEmployee.firstName} ${selectedEmployee.lastName}-г Анкет хүснэгт рүү буцаах уу?\n\nБуцаасны дараа ажилтны жагсаалтаас хасагдана.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await employeesApi.moveToApplications(selectedEmployee.id);
+      setSelectedEmployee(null);
+      await loadData(true);
+    } catch (error) {
+      console.error('Failed to move employee back to applications:', error);
+      alert('Анкет руу буцаахад алдаа гарлаа.');
+    }
+  }
+
   async function updateEmployeeFields() {
     if (!selectedEmployee) return;
     setEditFieldsError(null);
@@ -1093,6 +1112,12 @@ export function Employees() {
                           {s.label}
                         </button>
                       ))}
+                      <button
+                        onClick={handleSendBackToApplications}
+                        className="px-3 py-1 text-sm rounded-full transition-colors bg-amber-100 text-amber-800 hover:bg-amber-200"
+                      >
+                        Анкет руу буцаах
+                      </button>
                       {/* Resigned button - separate action */}
                       <button
                         onClick={handleResignClick}
@@ -1924,8 +1949,8 @@ export function Employees() {
                         <td className="px-3 py-2">{emp.email}</td>
                         <td className="px-3 py-2">{emp.phone}</td>
                         <td className="px-3 py-2">
-                          <span title={getEmployeeStatusTooltip(emp.status || 'active')} className={`px-2 py-1 text-xs rounded-full ${getStatusInfo(emp.status || 'active').color}`}>
-                            {getStatusInfo(emp.status || 'active').label}
+                          <span title={getEmployeeStatusTooltip(emp.status || 'active_transaction')} className={`px-2 py-1 text-xs rounded-full ${getStatusInfo(emp.status || 'active_transaction').color}`}>
+                            {getStatusInfo(emp.status || 'active_transaction').label}
                           </span>
                         </td>
                       </tr>

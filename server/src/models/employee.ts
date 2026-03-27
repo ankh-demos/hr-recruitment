@@ -123,6 +123,49 @@ export const employeeModel = {
     return db.createEmployee(employee);
   },
 
+  toApplicationPayload(employee: Employee): Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'status'> {
+    const safeString = (value?: string) => value || '';
+    const safeArray = <T>(value?: T[]) => Array.isArray(value) ? value : [];
+
+    return {
+      familyName: safeString(employee.familyName),
+      lastName: safeString(employee.lastName),
+      firstName: safeString(employee.firstName),
+      interestedOffice: safeString(employee.interestedOffice || employee.officeName),
+      availableDate: safeString(employee.employmentStartDate || employee.hiredDate?.slice(0, 10)),
+      birthPlace: safeString(employee.birthPlace),
+      ethnicity: safeString(employee.ethnicity),
+      gender: employee.gender || 'male',
+      birthDate: safeString(employee.birthDate),
+      registerNumber: safeString(employee.registerNumber),
+      homeAddress: safeString(employee.homeAddress),
+      phone: safeString(employee.phone),
+      emergencyPhone: safeString(employee.emergencyPhone),
+      email: safeString(employee.email),
+      facebook: safeString(employee.facebook),
+      familyMembers: safeArray(employee.familyMembers),
+      education: safeArray(employee.education),
+      languages: safeArray(employee.languages),
+      workExperience: safeArray(employee.workExperience),
+      awards: safeArray(employee.awards),
+      otherSkills: safeString(employee.otherSkills),
+      strengthsWeaknesses: safeString(employee.strengthsWeaknesses),
+      hasDriverLicense: employee.hasDriverLicense || false,
+      photoUrl: safeString(employee.photoUrl),
+      referralSource: safeString(employee.referralSource),
+      referredAgentName: '',
+      signatureUrl: safeString(employee.signatureUrl),
+      trainingNumber: safeString(employee.trainingNumber),
+      fireupDate: employee.fireupDate,
+      trainingStartDate: employee.trainingStartDate,
+      trainingEndDate: employee.trainingEndDate,
+      isTransfer: employee.isTransfer || false,
+      meeting1: undefined,
+      meeting2: undefined,
+      meeting3: undefined,
+    };
+  },
+
   async create(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> {
     const now = new Date().toISOString();
     const employee: Employee = {

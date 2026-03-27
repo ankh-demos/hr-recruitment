@@ -366,7 +366,7 @@ export const supabaseDatabase = {
         console.error('Supabase createEmployee error (base-columns retry):', error.message, error.code, error.details);
 
         // Attempt 3: base columns + legacy-safe status fallback
-        const legacyPayload = { ...basePayload, status: 'active' };
+        const legacyPayload = { ...basePayload, status: 'active_transaction' };
         ({ data, error } = await tryInsert(legacyPayload));
 
         if (error) {

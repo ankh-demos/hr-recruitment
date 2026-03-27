@@ -215,7 +215,7 @@ export interface Employee {
   // Employee specific
   employmentStartDate?: string; // Ажилд орсон огноо
   officeName?: string; // Ажилладаг оффис
-  status: 'active_transaction' | 'active_no_transaction' | 'inactive_transaction' | 'inactive' | 'on_leave_iconnect' | 'on_leave_closed' | 'hidden_iconnect' | 'left_team';
+  status: 'active_transaction' | 'active_no_transaction' | 'inactive_transaction' | 'inactive' | 'on_leave_iconnect' | 'on_leave_closed' | 'hidden_iconnect' | 'team_member' | 'left_team';
   // Additional tag fields
   hasIConnect?: boolean; // iConnect-тэй эсэх
   hasTop?: boolean; // TOP tag (тийм/үгүй)
