@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 import { Employee, Application, AgentRank } from '../types';
-import { database } from '../database';
 
 // Email configuration - will use environment variables
 const createTransporter = () => {
@@ -27,31 +26,19 @@ const createTransporter = () => {
   });
 };
 
-// Get admin emails from environment AND from database admin users
+// Get admin emails from a single source: ADMIN_EMAILS environment variable
 const getAdminEmails = async (): Promise<string[]> => {
-  const emails: Set<string> = new Set();
+  const envEmails = process.env.ADMIN_EMAILS || 'Remaxsky.downtown@gmail.com,Info.skydowntown@remax.mn';
+  const emails = envEmails
+    .split(',')
+    .map((e: string) => e.trim())
+    .filter((e: string) => e);
 
-  // 1. From environment variable
-  const envEmails = process.env.ADMIN_EMAILS || '';
-  if (envEmails) {
-    envEmails.split(',').map((e: string) => e.trim()).filter((e: string) => e).forEach((e: string) => emails.add(e.toLowerCase()));
+  if (emails.length === 0) {
+    console.warn('No admin emails found in ADMIN_EMAILS. Notifications will not be sent.');
   }
 
-  // 2. From database admin users
-  try {
-    const users = await database.getUsers();
-    users
-      .filter(u => u.role === 'admin' && u.isActive && u.email)
-      .forEach(u => emails.add(u.email.toLowerCase()));
-  } catch (error) {
-    console.error('Failed to fetch admin users from DB for email notifications:', error);
-  }
-
-  if (emails.size === 0) {
-    console.warn('No admin emails found (env or DB). Notifications will not be sent.');
-  }
-
-  return Array.from(emails);
+  return emails;
 };
 
 // Email templates

@@ -21,6 +21,7 @@ type EmployeeMetricCardProps = {
   count: number | string;
   label: string;
   badge: string;
+  description?: string;
   cardClass: string;
   iconWrapClass: string;
   iconClass: string;
@@ -33,6 +34,7 @@ function EmployeeMetricCard({
   count,
   label,
   badge,
+  description,
   cardClass,
   iconWrapClass,
   iconClass,
@@ -54,9 +56,27 @@ function EmployeeMetricCard({
           <p className={`text-xs ${labelClass}`}>{label}</p>
         </div>
       </div>
+      {description && (
+        <p className="mt-2 text-[10px] sm:text-[11px] leading-snug text-gray-700/70">
+          {description}
+        </p>
+      )}
     </div>
   );
 }
+
+const EMPLOYEE_METRIC_DESCRIPTIONS: Record<string, string> = {
+  active_transaction: 'Тухайн сард 1-2 гүйлгээтэй агентуудыг бүртгэнэ',
+  active_no_transaction: 'Тухайн сард оффис дээр ирдэг хэрнээ гүйлгээ гаргаагүй агентыг бүртгэнэ',
+  inactive_transaction: 'Тухайн сард оффис дээр ирдэггүй хэрнээ гүйлгээ гаргадаг агентыг бүртгэнэ',
+  inactive: 'Оффис дээр огт ирдэггүй агентыг бүртгэнэ',
+  on_leave_iconnect: 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн бүртгэнэ',
+  on_leave_closed: 'Тухайн сард чөлөө авч байгаа агентын чөлөөний хүсэлтийг үндэслэн, брокер эзэмшигчийн шийдвэрээр бүртгэнэ',
+  hidden_iconnect: 'Тухайн сард оффис фий-ний өр төлбөртэй байснаас албан бичиг авсан iconnect-оо нуух болсон агентыг бүртгэнэ',
+  teamMember: 'Оффисын багт шилжиж ажиллаж буй агентыг бүртгэнэ',
+  left_team: 'Тухайн сард оффисын багаас гарсан агентыг бүртгэнэ',
+  quality: 'Чанар = (Идэвхигүй, гүйлгээтэй + Идэвхитэй гүйлгээтэй) / Нийт агент * 100',
+};
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -691,7 +711,7 @@ export function Dashboard() {
 
       {/* Employee Status Stats */}
       <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Ажилтнуудын статистик</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Агентуудын статистик</h3>
         {employeeMetricRows.map((row, rowIndex) => (
           <div
             key={rowIndex}
@@ -703,6 +723,7 @@ export function Dashboard() {
                 count={metric.count}
                 label={metric.label}
                 badge={metric.key === 'totalAgents' ? '100.0%' : metric.key === 'quality' ? `${employeeStats.quality.toFixed(1)}%` : employeePercent(Number(metric.count) || 0)}
+                description={EMPLOYEE_METRIC_DESCRIPTIONS[metric.key]}
                 cardClass={metric.cardClass}
                 iconWrapClass={metric.iconWrapClass}
                 iconClass={metric.iconClass}
