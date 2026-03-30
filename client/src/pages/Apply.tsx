@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { FamilyMember, Education, Language, WorkExperience, Award } from '../types';
 import { applicationsApi } from '../services/api';
 
-// Mongolian Cyrillic regex - allows spaces and Mongolian letters
-const MONGOLIAN_CYRILLIC_REGEX = /^[а-яА-ЯөӨүҮёЁ\s]+$/;
 // Register number: 2 uppercase Cyrillic letters + 8 digits
 const REGISTER_NUMBER_REGEX = /^[А-ЯӨҮЁ]{2}\d{8}$/;
 // Phone: exactly 8 digits
@@ -123,10 +121,9 @@ export function Apply() {
     signatureUrl: ''
   });
 
-  // Validation function for Mongolian Cyrillic fields
-  const validateCyrillicField = (value: string, fieldName: string): string => {
+  // Validate required text field
+  const validateRequiredField = (value: string, fieldName: string): string => {
     if (!value.trim()) return `${fieldName} оруулна уу`;
-    if (!MONGOLIAN_CYRILLIC_REGEX.test(value)) return `${fieldName} зөвхөн Монгол кирилл үсэг оруулна уу`;
     return '';
   };
 
@@ -138,8 +135,8 @@ export function Apply() {
   };
 
   // Validate phone number (8 digits)
-  const validatePhone = (value: string): string => {
-    if (!value) return 'Утасны дугаар оруулна уу';
+  const validatePhone = (value: string, isRequired = true): string => {
+    if (!value) return isRequired ? 'Утасны дугаар оруулна уу' : '';
     if (!PHONE_REGEX.test(value)) return 'Утасны дугаар: 8 оронтой тоо оруулна уу';
     return '';
   };
@@ -352,8 +349,8 @@ export function Apply() {
   const validateForm = (): Record<string, string> => {
     const errors: Record<string, string> = {};
 
-    // Validate Cyrillic fields
-    const cyrillicFields = [
+    // Validate required text fields
+    const requiredTextFields = [
       { field: 'familyName', name: 'Ургийн овог' },
       { field: 'lastName', name: 'Овог' },
       { field: 'firstName', name: 'Нэр' },
@@ -366,22 +363,9 @@ export function Apply() {
       errors.homeAddress = 'Гэрийн хаяг оруулна уу';
     }
 
-    // Validate optional Cyrillic fields only if they have a value
-    const optionalCyrillicFields = [
-      { field: 'otherSkills', name: 'Бусад ур чадвар' },
-      { field: 'strengthsWeaknesses', name: 'Давуу болон сул тал' }
-    ];
-
-    for (const { field, name } of cyrillicFields) {
-      const err = validateCyrillicField(formData[field as keyof typeof formData] as string, name);
+    for (const { field, name } of requiredTextFields) {
+      const err = validateRequiredField(formData[field as keyof typeof formData] as string, name);
       if (err) errors[field] = err;
-    }
-
-    for (const { field, name } of optionalCyrillicFields) {
-      const value = formData[field as keyof typeof formData] as string;
-      if (value && value.trim() && !MONGOLIAN_CYRILLIC_REGEX.test(value)) {
-        errors[field] = `${name} зөвхөн Монгол кирилл үсэг оруулна уу`;
-      }
     }
 
     // Validate register number
@@ -392,7 +376,7 @@ export function Apply() {
     const phoneErr = validatePhone(formData.phone);
     if (phoneErr) errors.phone = phoneErr;
 
-    const emergencyPhoneErr = validatePhone(formData.emergencyPhone);
+    const emergencyPhoneErr = validatePhone(formData.emergencyPhone, false);
     if (emergencyPhoneErr) errors.emergencyPhone = emergencyPhoneErr;
 
     // Validate office selection
@@ -519,7 +503,7 @@ export function Apply() {
                   onChange={(e) => setFormData({ ...formData, familyName: e.target.value })}
                   required
                   className={inputClass(!!validationErrors.familyName)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Ургийн овог"
                 />
               </FormField>
 
@@ -530,7 +514,7 @@ export function Apply() {
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   required
                   className={inputClass(!!validationErrors.lastName)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Овог"
                 />
               </FormField>
 
@@ -541,7 +525,7 @@ export function Apply() {
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   required
                   className={inputClass(!!validationErrors.firstName)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Нэр"
                 />
               </FormField>
 
@@ -576,7 +560,7 @@ export function Apply() {
                   onChange={(e) => setFormData({ ...formData, birthPlace: e.target.value })}
                   required
                   className={inputClass(!!validationErrors.birthPlace)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Төрсөн газар"
                 />
               </FormField>
 
@@ -587,7 +571,7 @@ export function Apply() {
                   onChange={(e) => setFormData({ ...formData, ethnicity: e.target.value })}
                   required
                   className={inputClass(!!validationErrors.ethnicity)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Үндэс угсаа"
                 />
               </FormField>
 
@@ -670,12 +654,11 @@ export function Apply() {
                 />
               </FormField>
 
-              <FormField label="Яаралтай үед холбоо барих дугаар" required error={validationErrors.emergencyPhone} id="field-emergencyPhone">
+              <FormField label="Яаралтай үед холбоо барих дугаар" error={validationErrors.emergencyPhone} id="field-emergencyPhone">
                 <input
                   type="tel"
                   value={formData.emergencyPhone}
                   onChange={(e) => setFormData({ ...formData, emergencyPhone: e.target.value.replace(/\D/g, '').slice(0, 8) })}
-                  required
                   maxLength={8}
                   placeholder="8 оронтой тоо"
                   className={inputClass(!!validationErrors.emergencyPhone)}
@@ -811,25 +794,23 @@ export function Apply() {
           {/* ═══════ Additional Information ═══════ */}
           <SectionCard title="Нэмэлт мэдээлэл" icon="📝">
             <div className="space-y-5">
-              <FormField label="Үндсэн мэргэжлээсээ гадна ямар төрлийн ажил хийх сонирхолтой, чадвар туршлагатай вэ?" required error={validationErrors.otherSkills} id="field-otherSkills">
+              <FormField label="Үндсэн мэргэжлээсээ гадна ямар төрлийн ажил хийх сонирхолтой, чадвар туршлагатай вэ?" error={validationErrors.otherSkills} id="field-otherSkills">
                 <textarea
                   value={formData.otherSkills}
                   onChange={(e) => setFormData({ ...formData, otherSkills: e.target.value })}
-                  required
                   rows={3}
                   className={inputClass(!!validationErrors.otherSkills)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Нэмэлт мэдээлэл"
                 />
               </FormField>
 
-              <FormField label="Таны давуу болон сул тал" required error={validationErrors.strengthsWeaknesses} id="field-strengthsWeaknesses">
+              <FormField label="Таны давуу болон сул тал" error={validationErrors.strengthsWeaknesses} id="field-strengthsWeaknesses">
                 <textarea
                   value={formData.strengthsWeaknesses}
                   onChange={(e) => setFormData({ ...formData, strengthsWeaknesses: e.target.value })}
-                  required
                   rows={3}
                   className={inputClass(!!validationErrors.strengthsWeaknesses)}
-                  placeholder="Зөвхөн кирилл үсгээр"
+                  placeholder="Нэмэлт мэдээлэл"
                 />
               </FormField>
             </div>
